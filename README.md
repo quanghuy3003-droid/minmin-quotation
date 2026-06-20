@@ -19,6 +19,26 @@ node server.mjs
 
 Mo `http://localhost:5173`.
 
+## Luu anh va hoa don PDF tren Google Drive
+
+App co the upload anh san pham va hoa don PDF len Google Drive, sau do chi luu link trong kho/Supabase.
+
+1. Tao 2 folder tren Google Drive:
+   - `Minmin Product Photos`
+   - `Minmin Invoices`
+2. Mo file `google-drive-upload.gs`, copy noi dung vao Google Apps Script moi.
+3. Thay:
+   - `PASTE_PHOTO_FOLDER_ID_HERE` bang ID folder anh.
+   - `PASTE_INVOICE_FOLDER_ID_HERE` bang ID folder hoa don.
+4. Trong Apps Script, chon Deploy > New deployment > Web app.
+5. Chon:
+   - Execute as: `Me`
+   - Who has access: `Anyone`
+6. Copy Web App URL.
+7. Mo app > Kho hang > Google Drive luu anh/PDF > dan Web App URL > bam `Luu`.
+
+Neu chua dan Web App URL, app van luu tam anh/PDF trong trinh duyet nhu truoc.
+
 ## Dua len Vercel
 
 Day la static site, nen Vercel khong can build.
