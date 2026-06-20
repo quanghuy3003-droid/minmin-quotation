@@ -23,19 +23,21 @@ Mo `http://localhost:5173`.
 
 App upload anh san pham va hoa don PDF len Google Drive, sau do chi luu link trong kho/Supabase.
 
-1. Tao 2 folder tren Google Drive:
-   - `Minmin Product Photos`
-   - `Minmin Invoices`
-2. Mo file `google-drive-upload.gs`, copy noi dung vao Google Apps Script moi.
-3. Thay:
-   - `PASTE_PHOTO_FOLDER_ID_HERE` bang ID folder anh.
-   - `PASTE_INVOICE_FOLDER_ID_HERE` bang ID folder hoa don.
-4. Trong Apps Script, chon Deploy > New deployment > Web app.
-5. Chon:
+Da tao san folder tren Google Drive:
+
+- `MINMIN App Storage`
+- `MINMIN App Storage/Product Photos`
+- `MINMIN App Storage/Invoices PDF`
+
+File `google-drive-upload.gs` da co san ID hai folder con nay.
+
+1. Mo file `google-drive-upload.gs`, copy noi dung vao Google Apps Script moi.
+2. Trong Apps Script, chon Deploy > New deployment > Web app.
+3. Chon:
    - Execute as: `Me`
    - Who has access: `Anyone`
-6. Copy Web App URL.
-7. Mo app > Kho hang > Google Drive luu anh/PDF > dan Web App URL > bam `Luu`.
+4. Copy Web App URL.
+5. Mo app > Kho hang > Google Drive luu anh/PDF > dan Web App URL > bam `Luu`.
 
 Neu chua dan Web App URL, app se chan chon anh/PDF trong kho de tranh luu file nang vao trinh duyet hoac Supabase.
 

@@ -1,5 +1,5 @@
-const PHOTO_FOLDER_ID = 'PASTE_PHOTO_FOLDER_ID_HERE';
-const INVOICE_FOLDER_ID = 'PASTE_INVOICE_FOLDER_ID_HERE';
+const PHOTO_FOLDER_ID = '1-oQQWmiz1nNvRCBbxD-XfVaftMERYPt8';
+const INVOICE_FOLDER_ID = '17AYm5Qu2qS9GzmG7D0vJK38TI3qUqhjm';
 
 function doGet() {
   return jsonOutput({
