@@ -12,7 +12,7 @@ function doPost(e) {
   try {
     const payload = JSON.parse((e && e.postData && e.postData.contents) || '{}');
     const kind = String(payload.kind || '').toLowerCase();
-    const folderId = kind === 'invoice' ? INVOICE_FOLDER_ID : PHOTO_FOLDER_ID;
+    const folderId = kind.indexOf('invoice') !== -1 ? INVOICE_FOLDER_ID : PHOTO_FOLDER_ID;
     if (!folderId || folderId.indexOf('PASTE_') === 0) {
       throw new Error('Missing Google Drive folder id in Apps Script.');
     }

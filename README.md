@@ -21,7 +21,7 @@ Mo `http://localhost:5173`.
 
 ## Luu anh va hoa don PDF tren Google Drive
 
-App co the upload anh san pham va hoa don PDF len Google Drive, sau do chi luu link trong kho/Supabase.
+App upload anh san pham va hoa don PDF len Google Drive, sau do chi luu link trong kho/Supabase.
 
 1. Tao 2 folder tren Google Drive:
    - `Minmin Product Photos`
@@ -37,7 +37,7 @@ App co the upload anh san pham va hoa don PDF len Google Drive, sau do chi luu l
 6. Copy Web App URL.
 7. Mo app > Kho hang > Google Drive luu anh/PDF > dan Web App URL > bam `Luu`.
 
-Neu chua dan Web App URL, app van luu tam anh/PDF trong trinh duyet nhu truoc.
+Neu chua dan Web App URL, app se chan chon anh/PDF trong kho de tranh luu file nang vao trinh duyet hoac Supabase.
 
 ## Dua len Vercel
 
