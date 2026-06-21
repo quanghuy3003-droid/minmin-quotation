@@ -242,7 +242,8 @@ function driveViewUrl(value){ const v=String(value||'').trim(); if(!v||v.startsW
 function driveStoredValue(value){ return String(value||'').trim(); }
 function driveUploadErrorMessage(error){
   const msg=String(error?.message||error||'');
-  if(/Failed to fetch|NetworkError|Load failed/i.test(msg))return 'Chưa kết nối được Google Drive upload. Kiểm tra Web App URL đã deploy quyền Anyone và kết thúc bằng /exec.';
+  if(/<!doctype\s+html|<html[\s>]|trả về trang HTML/i.test(msg))return 'Google Drive Web App URL đang trả về trang HTML. Anh kiểm tra URL phải là Web app URL kết thúc bằng /exec và đã Deploy bản mới với quyền Anyone.';
+  if(/Failed to fetch|NetworkError|Load failed/i.test(msg))return 'Chưa kết nối được Google Drive upload. Có thể app online chưa deploy API upload mới, hoặc Web App URL chưa cho quyền Anyone.';
   return msg||'Google Drive upload bị lỗi.';
 }
 function driveFolderPath(kind,code=''){
@@ -263,7 +264,15 @@ async function uploadFileToDrive(file,kind,code=''){
   if(isGoogleScriptLike(endpoint)&&!isGoogleScriptEndpoint(endpoint))throw new Error('URL Google Drive upload chưa đúng. Anh cần dùng Web app URL dạng https://script.google.com/macros/s/.../exec.');
   const dataUrl=await readFileDataUrl(file);
   const payload={kind,code,folderPath:driveFolderPath(kind,code),fileName:file.name||`${kind}-${Date.now()}`,mimeType:file.type||'application/octet-stream',dataUrl};
-  if(isGoogleScriptEndpoint(endpoint))return uploadFileToDriveViaProxy(endpoint,payload).catch(proxyError=>uploadFileToDriveViaFrame(endpoint,payload).catch(()=>{ throw new Error(driveUploadErrorMessage(proxyError)); }));
+  if(isGoogleScriptEndpoint(endpoint)){
+    try{ return await uploadFileToDriveViaProxy(endpoint,payload); }
+    catch(proxyError){
+      try{ return await uploadFileToDriveViaFrame(endpoint,payload); }
+      catch(frameError){
+        throw new Error(`Chưa upload được Google Drive. API app: ${driveUploadErrorMessage(proxyError)} Apps Script: ${driveUploadErrorMessage(frameError)}`);
+      }
+    }
+  }
   let res;
   try{ res=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)}); }
   catch(e){ return uploadFileToDriveViaFrame(endpoint,payload).catch(()=>{ throw new Error(driveUploadErrorMessage(e)); }); }
@@ -280,7 +289,10 @@ async function uploadFileToDriveViaProxy(endpoint,payload){
   const res=await fetch('/api/drive-upload',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({endpoint,payload})});
   const text=await res.text();
   let data;
-  try{ data=JSON.parse(text); }catch{ throw new Error(text||'API upload Drive chưa trả JSON.'); }
+  try{ data=JSON.parse(text); }catch{
+    if(/<!doctype\s+html|<html[\s>]/i.test(text))throw new Error('API upload Drive của app chưa chạy. Cần deploy bản mới có thư mục /api lên Vercel.');
+    throw new Error(text||'API upload Drive chưa trả JSON.');
+  }
   if(!res.ok||!data.ok)throw new Error(data.error||`API upload Drive lỗi ${res.status}`);
   return data;
 }

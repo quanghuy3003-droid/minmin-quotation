@@ -2,6 +2,7 @@ const MINMIN_ROOT_FOLDER = "MINMIN App Storage";
 
 function doPost(event) {
   try {
+    event = event || { parameter: {}, postData: { contents: "{}" } };
     const isFormUpload = !!(event.parameter && event.parameter.payload);
     const payload = isFormUpload
       ? JSON.parse(event.parameter.payload || "{}")
@@ -34,6 +35,7 @@ function doPost(event) {
     };
     return isFormUpload ? htmlMessage_(payload.requestId, result) : json_(result);
   } catch (error) {
+    event = event || { parameter: {} };
     const requestId = event.parameter && event.parameter.requestId || "";
     const result = { ok: false, error: String(error && error.message || error) };
     return event.parameter && event.parameter.payload ? htmlMessage_(requestId, result) : json_(result);
