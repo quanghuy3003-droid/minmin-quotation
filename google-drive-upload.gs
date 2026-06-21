@@ -90,5 +90,5 @@ function htmlMessage(requestId, data) {
   const message = JSON.stringify({ requestId, data }).replace(/</g, "\\u003c");
   return HtmlService.createHtmlOutput(
     `<!doctype html><meta charset="utf-8"><script>window.parent.postMessage(${message},"*");</script>`
-  );
+  ).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
