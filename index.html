@@ -626,19 +626,18 @@ async function exportPdfA4(options={}){
   const imgs=await Promise.all(productLines.map(pdfImage));
   const rows=productLines.map((line,i)=>({line,img:imgs[i],index:i+1}));
   const pages=[];
-  if(rows.length<=2){
-    pages.push({header:true,rows,summary:true});
-  }else{
-    let pos=0, firstTake=rows.length===3?2:Math.min(3,Math.max(1,rows.length-2));
+  let pos=0;
+  if(rows.length){
+    const firstTake=Math.min(2,rows.length);
     pages.push({header:true,rows:rows.slice(pos,pos+firstTake),summary:false});
     pos+=firstTake;
-    while(rows.length-pos>2){
-      const take=Math.min(4,rows.length-pos-2);
+    while(pos<rows.length){
+      const take=Math.min(4,rows.length-pos);
       pages.push({header:false,rows:rows.slice(pos,pos+take),summary:false});
       pos+=take;
     }
-    pages.push({header:false,rows:rows.slice(pos),summary:true});
   }
+  pages.push({header:false,rows:[],summary:true});
   const dateText=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'2-digit'});
   const words=`${numberToVietnamese(t.afterVat)} (${numberToEnglish(t.afterVat)} Vietnamese dong)`;
   const totalRows=[
