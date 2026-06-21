@@ -9,7 +9,10 @@ function doGet() {
 
 function doPost(e) {
   try {
-    const payload = JSON.parse((e && e.postData && e.postData.contents) || "{}");
+    const isFormUpload = !!(e && e.parameter && e.parameter.payload);
+    const payload = isFormUpload
+      ? JSON.parse(e.parameter.payload || "{}")
+      : JSON.parse((e && e.postData && e.postData.contents) || "{}");
     const dataUrl = String(payload.dataUrl || "");
     const parsed = parseDataUrl(dataUrl);
     const kind = safeFolderName(payload.kind || "files");
@@ -27,7 +30,7 @@ function doPost(e) {
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
 
     const fileId = file.getId();
-    return jsonOutput({
+    const result = {
       ok: true,
       fileId,
       name: file.getName(),
@@ -36,12 +39,14 @@ function doPost(e) {
       viewUrl: file.getUrl(),
       downloadUrl: `https://drive.google.com/uc?export=download&id=${fileId}`,
       imageUrl: `https://drive.google.com/uc?export=view&id=${fileId}`
-    });
+    };
+    return isFormUpload ? htmlMessage(e.parameter.requestId || "", result) : jsonOutput(result);
   } catch (err) {
-    return jsonOutput({
+    const result = {
       ok: false,
       error: err && err.message ? err.message : String(err)
-    });
+    };
+    return e && e.parameter && e.parameter.payload ? htmlMessage(e.parameter.requestId || "", result) : jsonOutput(result);
   }
 }
 
@@ -79,4 +84,11 @@ function jsonOutput(data) {
   return ContentService
     .createTextOutput(JSON.stringify(data))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+function htmlMessage(requestId, data) {
+  const message = JSON.stringify({ requestId, data }).replace(/</g, "\\u003c");
+  return HtmlService.createHtmlOutput(
+    `<!doctype html><meta charset="utf-8"><script>window.parent.postMessage(${message},"*");</script>`
+  );
 }

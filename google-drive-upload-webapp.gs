@@ -2,7 +2,10 @@ const MINMIN_ROOT_FOLDER = "MINMIN App Storage";
 
 function doPost(event) {
   try {
-    const payload = JSON.parse(event.postData && event.postData.contents || "{}");
+    const isFormUpload = !!(event.parameter && event.parameter.payload);
+    const payload = isFormUpload
+      ? JSON.parse(event.parameter.payload || "{}")
+      : JSON.parse(event.postData && event.postData.contents || "{}");
     const dataUrl = String(payload.dataUrl || "");
     const parsed = parseDataUrl_(dataUrl);
     const kind = safeFolderName_(payload.kind || "files");
@@ -20,7 +23,7 @@ function doPost(event) {
 
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
 
-    return json_({
+    const result = {
       ok: true,
       fileId: file.getId(),
       name: file.getName(),
@@ -28,9 +31,12 @@ function doPost(event) {
       viewUrl: file.getUrl(),
       downloadUrl: `https://drive.google.com/uc?export=download&id=${file.getId()}`,
       imageUrl: `https://drive.google.com/uc?export=view&id=${file.getId()}`
-    });
+    };
+    return isFormUpload ? htmlMessage_(payload.requestId, result) : json_(result);
   } catch (error) {
-    return json_({ ok: false, error: String(error && error.message || error) });
+    const requestId = event.parameter && event.parameter.requestId || "";
+    const result = { ok: false, error: String(error && error.message || error) };
+    return event.parameter && event.parameter.payload ? htmlMessage_(requestId, result) : json_(result);
   }
 }
 
@@ -62,4 +68,11 @@ function safeFileName_(value) {
 
 function json_(data) {
   return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(ContentService.MimeType.JSON);
+}
+
+function htmlMessage_(requestId, data) {
+  const message = JSON.stringify({ requestId, data }).replace(/</g, "\\u003c");
+  return HtmlService.createHtmlOutput(
+    `<!doctype html><meta charset="utf-8"><script>window.parent.postMessage(${message},"*");</script>`
+  );
 }
