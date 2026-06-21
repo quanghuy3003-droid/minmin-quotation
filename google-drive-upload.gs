@@ -1,33 +1,29 @@
-const PHOTO_FOLDER_ID = '1-oQQWmiz1nNvRCBbxD-XfVaftMERYPt8';
-const INVOICE_FOLDER_ID = '17AYm5Qu2qS9GzmG7D0vJK38TI3qUqhjm';
+const MINMIN_ROOT_FOLDER = "MINMIN App Storage";
 
 function doGet() {
   return jsonOutput({
     ok: true,
-    message: 'Minmin Drive upload endpoint is ready.'
+    message: "Minmin Drive upload endpoint is ready."
   });
 }
 
 function doPost(e) {
   try {
-    const payload = JSON.parse((e && e.postData && e.postData.contents) || '{}');
-    const kind = String(payload.kind || '').toLowerCase();
-    const folderId = kind.indexOf('invoice') !== -1 ? INVOICE_FOLDER_ID : PHOTO_FOLDER_ID;
-    if (!folderId || folderId.indexOf('PASTE_') === 0) {
-      throw new Error('Missing Google Drive folder id in Apps Script.');
-    }
+    const payload = JSON.parse((e && e.postData && e.postData.contents) || "{}");
+    const dataUrl = String(payload.dataUrl || "");
+    const parsed = parseDataUrl(dataUrl);
+    const kind = safeFolderName(payload.kind || "files");
+    const code = safeFolderName(payload.code || "uncoded");
+    const folderPath = String(payload.folderPath || `${kind}/${code}`)
+      .split("/")
+      .map(safeFolderName)
+      .filter(Boolean);
+    const fileName = safeFileName(payload.fileName || `${kind}-${Date.now()}`);
 
-    const dataUrl = String(payload.dataUrl || '');
-    const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
-    if (!match) throw new Error('Invalid file data.');
-
-    const mimeType = payload.mimeType || match[1] || 'application/octet-stream';
-    const safeName = safeFileName(payload.fileName || `${kind || 'file'}-${Date.now()}`);
-    const code = safeFileName(payload.code || '');
-    const name = code ? `${code} - ${safeName}` : safeName;
-    const bytes = Utilities.base64Decode(match[2]);
-    const blob = Utilities.newBlob(bytes, mimeType, name);
-    const file = DriveApp.getFolderById(folderId).createFile(blob);
+    const root = getOrCreateFolder(DriveApp.getRootFolder(), MINMIN_ROOT_FOLDER);
+    const targetFolder = folderPath.reduce((parent, name) => getOrCreateFolder(parent, name), root);
+    const blob = Utilities.newBlob(parsed.bytes, payload.mimeType || parsed.mimeType, fileName);
+    const file = targetFolder.createFile(blob);
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
 
     const fileId = file.getId();
@@ -35,8 +31,9 @@ function doPost(e) {
       ok: true,
       fileId,
       name: file.getName(),
-      mimeType,
-      viewUrl: `https://drive.google.com/file/d/${fileId}/view`,
+      folderPath: `${MINMIN_ROOT_FOLDER}/${folderPath.join("/")}`,
+      mimeType: payload.mimeType || parsed.mimeType,
+      viewUrl: file.getUrl(),
       downloadUrl: `https://drive.google.com/uc?export=download&id=${fileId}`,
       imageUrl: `https://drive.google.com/uc?export=view&id=${fileId}`
     });
@@ -48,12 +45,34 @@ function doPost(e) {
   }
 }
 
-function safeFileName(value) {
-  return String(value || '')
-    .replace(/[\\/:*?"<>|]+/g, '')
-    .replace(/\s+/g, ' ')
+function parseDataUrl(dataUrl) {
+  const match = dataUrl.match(/^data:([^;,]+)?(;base64)?,(.*)$/);
+  if (!match) throw new Error("File upload không đúng định dạng data URL.");
+  const mimeType = match[1] || "application/octet-stream";
+  const body = match[3] || "";
+  const bytes = match[2] ? Utilities.base64Decode(body) : Utilities.newBlob(decodeURIComponent(body)).getBytes();
+  return { mimeType, bytes };
+}
+
+function getOrCreateFolder(parent, name) {
+  const folders = parent.getFoldersByName(name);
+  return folders.hasNext() ? folders.next() : parent.createFolder(name);
+}
+
+function safeFolderName(value) {
+  return String(value || "files")
+    .replace(/[\\/:*?"<>|#%{}~&]+/g, "-")
+    .replace(/\s+/g, " ")
     .trim()
-    .slice(0, 120);
+    .slice(0, 80) || "files";
+}
+
+function safeFileName(value) {
+  return String(value || "file")
+    .replace(/[\\/:*?"<>|#%{}~&]+/g, "-")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 160) || "file";
 }
 
 function jsonOutput(data) {

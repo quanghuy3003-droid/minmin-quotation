@@ -8,12 +8,15 @@ function doPost(event) {
     const kind = safeFolderName_(payload.kind || "files");
     const code = safeFolderName_(payload.code || "uncoded");
     const fileName = safeFileName_(payload.fileName || `${kind}-${Date.now()}`);
+    const folderPath = String(payload.folderPath || `${kind}/${code}`)
+      .split("/")
+      .map(safeFolderName_)
+      .filter(Boolean);
 
     const root = getOrCreateFolder_(DriveApp.getRootFolder(), MINMIN_ROOT_FOLDER);
-    const kindFolder = getOrCreateFolder_(root, kind);
-    const codeFolder = getOrCreateFolder_(kindFolder, code);
+    const targetFolder = folderPath.reduce((parent, name) => getOrCreateFolder_(parent, name), root);
     const blob = Utilities.newBlob(parsed.bytes, payload.mimeType || parsed.mimeType, fileName);
-    const file = codeFolder.createFile(blob);
+    const file = targetFolder.createFile(blob);
 
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
 
@@ -21,6 +24,7 @@ function doPost(event) {
       ok: true,
       fileId: file.getId(),
       name: file.getName(),
+      folderPath: `${MINMIN_ROOT_FOLDER}/${folderPath.join("/")}`,
       viewUrl: file.getUrl(),
       downloadUrl: `https://drive.google.com/uc?export=download&id=${file.getId()}`,
       imageUrl: `https://drive.google.com/uc?export=view&id=${file.getId()}`

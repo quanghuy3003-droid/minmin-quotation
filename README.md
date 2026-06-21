@@ -22,14 +22,18 @@ Mo `http://localhost:5173`.
 ## Luu anh va hoa don PDF tren Google Drive
 
 App upload anh san pham va hoa don PDF len Google Drive, sau do chi luu link trong kho/Supabase.
+File `google-drive-upload.gs` se tu tao folder Drive khi upload lan dau, khong can tao folder thu cong.
 
-Da tao san folder tren Google Drive:
+Folder goc:
 
 - `MINMIN App Storage`
-- `MINMIN App Storage/Product Photos`
-- `MINMIN App Storage/Invoices PDF`
 
-File `google-drive-upload.gs` da co san ID hai folder con nay.
+Mot so folder con app tu tao:
+
+- `Anh san pham/<ma hang>`
+- `Hoa don/Dau vao/<ma hang>`
+- `Hoa don/Dau ra/<ma hang>`
+- `Ke toan/Hoa don dau vao`
 
 1. Mo file `google-drive-upload.gs`, copy noi dung vao Google Apps Script moi.
 2. Trong Apps Script, chon Deploy > New deployment > Web app.
@@ -37,9 +41,9 @@ File `google-drive-upload.gs` da co san ID hai folder con nay.
    - Execute as: `Me`
    - Who has access: `Anyone`
 4. Copy Web App URL.
-5. Mo app > Kho hang > Google Drive luu anh/PDF > dan Web App URL > bam `Luu`.
+5. Mo app > Kho hang > dan Web App URL > bam `Luu`.
 
-Neu chua dan Web App URL, app se chan chon anh/PDF trong kho de tranh luu file nang vao trinh duyet hoac Supabase.
+Neu chua dan Web App URL, app se chan upload anh/PDF/hoa don de tranh luu file nang vao trinh duyet hoac Supabase.
 
 ## Dua len Vercel
 
