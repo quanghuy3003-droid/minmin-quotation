@@ -582,15 +582,9 @@ async function importQuotationToInventory(file){
     render();
     throw new Error(`File báo giá có ${lines.length} sản phẩm nhưng app chỉ đọc được ${photoCount} ảnh. Anh kiểm tra file Excel có ảnh nằm trong cột Hình ảnh rồi import lại.`);
   }
-  if(uploadImageCount&&!driveUploadEndpoint()){
-    state.inventory.syncStatus='Chưa kết nối Google Drive Web App nên app dừng import để tránh mất ảnh báo giá.';
-    saveInventory();
-    render();
-    throw new Error('Anh cần dán Google Apps Script Web App URL trong mục Drive ảnh/PDF rồi import lại. App sẽ upload ảnh báo giá lên Drive trước khi lưu kho.');
-  }
   let count=0;
   const imported=[], movements=[];
-  state.inventory.syncStatus=driveUploadEndpoint()?'Đang import và lưu ảnh báo giá lên Google Drive...':'Đang import file báo giá; chưa có Drive Web App nên ảnh chỉ giữ trên máy này.';
+  state.inventory.syncStatus=driveUploadEndpoint()?'Đang import và lưu ảnh báo giá lên Google Drive...':'Đang import file báo giá; ảnh Excel sẽ được giữ trong kho trước.';
   render();
   for(const line of lines){
     const productType=line.productType||inferProductType(line)||'PL', code=String(line.code||'').trim()||nextInventoryCode(productType);
@@ -598,12 +592,14 @@ async function importQuotationToInventory(file){
     const attrs={...ATTRIBUTE_DEFAULTS,...(line.attributes||{})};
     if(String(photoDataUrl||'').startsWith('data:image/')){
       const imgFile=fileFromDataUrl(photoDataUrl,`${code}.png`);
-      if(imgFile){
+      if(imgFile&&driveUploadEndpoint()){
         try{
           const uploaded=await uploadFileToDrive(imgFile,'photo',code);
           photoDataUrl=uploaded?.imageUrl||uploaded?.viewUrl||uploaded?.downloadUrl||uploaded?.url||driveFileUrl(uploaded?.fileId);
           if(uploaded?.fileId)attrs._photoDriveId=uploaded.fileId;
         }catch(e){ throw new Error(`Không upload được ảnh ${code} lên Google Drive: ${e.message||e}`); }
+      }else{
+        attrs._photoPendingDrive='true';
       }
     }
     const item=normalizeInventoryItem({id:uid(),code,barcodeId:code,name:String(line.name||productTypeName(productType)).trim(),productType,itemKind:'order',unit:line.unit||'Cái (pcs)',quantity:Number(line.quantity||1),purchasePrice:parseInputMoney(line.purchasePrice||0),price:parseInputMoney(line.price||0),orderDate:todayIso(),importDate:'',exportDate:'',dimension:line.dimension||'',photoDataUrl,invoiceName:'',invoiceDataUrl:'',saleInvoiceName:'',saleInvoiceDataUrl:'',attributes:attrs});
@@ -612,7 +608,7 @@ async function importQuotationToInventory(file){
     else { state.inventory.items.unshift(item); imported.push(item); movements.push(inventoryMovement('Đang sản xuất',item,Number(item.quantity||1))); }
     count++;
   }
-  state.inventory.syncStatus=`Đã import ${count} sản phẩm từ báo giá vào nhóm Đang sản xuất.`;
+  state.inventory.syncStatus=uploadImageCount&&!driveUploadEndpoint()?`Đã import ${count} sản phẩm từ báo giá. Ảnh Excel đang lưu tạm trong kho, chưa đẩy Drive.`:`Đã import ${count} sản phẩm từ báo giá vào nhóm Đang sản xuất.`;
   saveInventory();
   render();
   await Promise.all(imported.map(item=>saveInventoryItemRemote(item).catch(e=>console.warn(e))));
