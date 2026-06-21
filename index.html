@@ -225,8 +225,16 @@ function nextInventoryCode(productType='PL'){ const base=`STK${productType||'PL'
 function ensureInventoryDraftCode(force=false){ const d=state.inventory.draft=state.inventory.draft||inventoryDraftDefaults(); if(!d.name)d.name=productTypeName(d.productType); if(force||!String(d.code||'').trim()||isInventoryCode(d.code))d.code=nextInventoryCode(d.productType); return d.code; }
 function inventoryKindMeta(kind){ const normalized=kind==='sale'?'reserve':(kind||'reserve'); return INVENTORY_KINDS.find(x=>x.value===normalized)||INVENTORY_KINDS[1]; }
 function normalizeInventoryItem(item){ const code=item.code||item.barcodeId||item.qrCode||randomInventoryBarcode(), attrs={...ATTRIBUTE_DEFAULTS,...(item.attributes||{})}, rawKind=item.itemKind||attrs._itemKind||'reserve', itemKind=rawKind==='sale'?'reserve':rawKind, photoDataUrl=item.photoDataUrl||item.photo_data_url||driveFileUrl(attrs._photoDriveId||''); return {...item, code, barcodeId:code, itemKind, photoDataUrl, purchasePrice:parseInputMoney(item.purchasePrice??attrs._purchasePrice??0), orderDate:item.orderDate||attrs._orderDate||'', importDate:item.importDate||attrs._importDate||'', exportDate:item.exportDate||attrs._exportDate||'', saleInvoiceName:item.saleInvoiceName||attrs._saleInvoiceName||'', saleInvoiceDataUrl:item.saleInvoiceDataUrl||attrs._saleInvoiceDataUrl||'', attributes:attrs}; }
-function driveUploadEndpoint(){ return String(state.ui.driveUploadEndpoint||'').trim(); }
-function saveDriveUploadEndpoint(value){ state.ui.driveUploadEndpoint=String(value||'').trim(); localStorage.setItem(DRIVE_UPLOAD_ENDPOINT_KEY,state.ui.driveUploadEndpoint); }
+function normalizeDriveUploadEndpoint(value){
+  let v=String(value||'').trim();
+  const m=v.match(/https:\/\/script\.google\.com\/macros\/s\/([^/?#]+)(?:\/(?:exec|dev))?/i);
+  if(m)return `https://script.google.com/macros/s/${m[1]}/exec`;
+  return v;
+}
+function isGoogleScriptEndpoint(value){ return /^https:\/\/script\.google\.com\/macros\/s\/[^/?#]+\/(?:exec|dev)(?:[?#].*)?$/i.test(String(value||'').trim()); }
+function isGoogleScriptLike(value){ return /script\.google(?:usercontent)?\.com/i.test(String(value||'')); }
+function driveUploadEndpoint(){ return normalizeDriveUploadEndpoint(state.ui.driveUploadEndpoint||''); }
+function saveDriveUploadEndpoint(value){ state.ui.driveUploadEndpoint=normalizeDriveUploadEndpoint(value); localStorage.setItem(DRIVE_UPLOAD_ENDPOINT_KEY,state.ui.driveUploadEndpoint); }
 function driveDirectUrl(id){ return id?`https://drive.google.com/uc?export=view&id=${encodeURIComponent(id)}`:''; }
 function driveFileUrl(id){ return id?`https://drive.google.com/file/d/${encodeURIComponent(id)}/view`:''; }
 function driveAssetUrl(value){ const v=String(value||'').trim(); if(!v)return''; if(v.startsWith('data:'))return v; const id=v.match(/drive\.google\.com\/file\/d\/([^/]+)/)?.[1]||v.match(/[?&]id=([^&]+)/)?.[1]; return id?driveDirectUrl(id):v; }
@@ -252,15 +260,19 @@ function driveFolderPath(kind,code=''){
 async function uploadFileToDrive(file,kind,code=''){
   const endpoint=driveUploadEndpoint();
   if(!endpoint)throw new Error('Chưa cấu hình Google Drive upload.');
+  if(isGoogleScriptLike(endpoint)&&!isGoogleScriptEndpoint(endpoint))throw new Error('URL Google Drive upload chưa đúng. Anh cần dùng Web app URL dạng https://script.google.com/macros/s/.../exec.');
   const dataUrl=await readFileDataUrl(file);
   const payload={kind,code,folderPath:driveFolderPath(kind,code),fileName:file.name||`${kind}-${Date.now()}`,mimeType:file.type||'application/octet-stream',dataUrl};
-  if(/script\.google\.com\/macros\/s\//i.test(endpoint))return uploadFileToDriveViaFrame(endpoint,payload);
+  if(isGoogleScriptEndpoint(endpoint))return uploadFileToDriveViaFrame(endpoint,payload);
   let res;
   try{ res=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)}); }
   catch(e){ return uploadFileToDriveViaFrame(endpoint,payload).catch(()=>{ throw new Error(driveUploadErrorMessage(e)); }); }
   const text=await res.text();
   let data;
-  try{ data=JSON.parse(text); }catch{ throw new Error(/<!doctype\s+html|<html[\s>]/i.test(text)?'Google Drive Web App URL đang trả về trang HTML. Anh deploy Apps Script dạng Web app rồi dán đúng URL kết thúc bằng /exec.':(text||'Google Drive upload chưa trả JSON hợp lệ.')); }
+  try{ data=JSON.parse(text); }catch{
+    if(/<!doctype\s+html|<html[\s>]/i.test(text))return uploadFileToDriveViaFrame(endpoint,payload).catch(()=>{ throw new Error('Google Drive Web App URL đang trả về trang HTML. Anh kiểm tra lại URL phải là Web app URL kết thúc bằng /exec và đã Deploy bản mới.'); });
+    throw new Error(text||'Google Drive upload chưa trả JSON hợp lệ.');
+  }
   if(!res.ok||!data.ok)throw new Error(data.error||`Google Drive upload lỗi ${res.status}`);
   return data;
 }
