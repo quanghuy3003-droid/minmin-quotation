@@ -19,6 +19,7 @@ const STORAGE_KEY = "minmin-quotation-sheet-url";
 const DRAFT_KEY = "minmin-quotation-last-draft-v1";
 const HISTORY_KEY = "minmin-quotation-export-history-v1";
 const INVENTORY_KEY = "minmin-quotation-inventory-v1";
+const INVENTORY_BACKUP_KEY = "minmin-quotation-inventory-backup-v1";
 const DRIVE_UPLOAD_ENDPOINT_KEY = "minmin-drive-upload-endpoint-v1";
 const SUPABASE_URL = "https://tntpytfqgwjwdsnquhre.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRudHB5dGZxZ3dqd2RzbnF1aHJlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4MDk4NDAsImV4cCI6MjA5NzM4NTg0MH0.ooNGuMGk805XUMeHkrRk7acJTx0FhzhoEjSZ9tKQwSE";
@@ -69,8 +70,23 @@ const state = {
 function uid(){ return (crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now()+Math.random()); }
 function todayIso(){ return new Date().toISOString().slice(0,10); }
 function inventoryDraftDefaults(){ return { code:'', name:'', productType:'PL', itemKind:'reserve', unit:'Cái (pcs)', quantity:0, purchasePrice:0, price:0, orderDate:'', importDate:todayIso(), exportDate:'', dimension:'', barcodeId:'', photoDataUrl:'', invoiceName:'', invoiceDataUrl:'', saleInvoiceName:'', saleInvoiceDataUrl:'', attributes:{...ATTRIBUTE_DEFAULTS} }; }
-function loadInventory(){ try{ const inv=JSON.parse(localStorage.getItem(INVENTORY_KEY)||'null')||{}; const items=(Array.isArray(inv.items)?inv.items:[]).map(normalizeInventoryItem); return {items, movements:Array.isArray(inv.movements)?inv.movements:[], draft:{...inventoryDraftDefaults(),...(inv.draft||{}),attributes:{...ATTRIBUTE_DEFAULTS,...(inv.draft?.attributes||{})}}, syncStatus:'Đang dùng dữ liệu đã lưu trên máy, chờ kết nối Supabase.'}; }catch(e){ console.warn('Không đọc được kho hàng:', e); return {items:[],movements:[],draft:inventoryDraftDefaults(),syncStatus:'Chưa có dữ liệu kho trên máy.'}; } }
-function saveInventory(){ try{ localStorage.setItem(INVENTORY_KEY, JSON.stringify(state.inventory)); }catch(e){ console.warn('Không lưu đủ kho trên trình duyệt:', e); state.inventory.syncStatus='Kho đang quá lớn để lưu trong trình duyệt; app vẫn giữ dữ liệu đang mở và sẽ ưu tiên Supabase/Drive.'; } }
+function cleanStoredFileValue(v){ v=String(v||''); return v.startsWith('data:')?'':v; }
+function inventoryStorageSnapshot(inv=state.inventory,slim=false){
+  const snapshot={...inv, savedAt:new Date().toISOString()};
+  snapshot.items=(Array.isArray(inv.items)?inv.items:[]).map(item=>slim?{...item,photoDataUrl:cleanStoredFileValue(item.photoDataUrl),invoiceDataUrl:cleanStoredFileValue(item.invoiceDataUrl),saleInvoiceDataUrl:cleanStoredFileValue(item.saleInvoiceDataUrl)}:{...item});
+  snapshot.movements=Array.isArray(inv.movements)?inv.movements:[];
+  snapshot.draft={...inventoryDraftDefaults(),...(inv.draft||{}),attributes:{...ATTRIBUTE_DEFAULTS,...(inv.draft?.attributes||{})}};
+  if(slim){ snapshot.draft.photoDataUrl=cleanStoredFileValue(snapshot.draft.photoDataUrl); snapshot.draft.invoiceDataUrl=cleanStoredFileValue(snapshot.draft.invoiceDataUrl); snapshot.draft.saleInvoiceDataUrl=cleanStoredFileValue(snapshot.draft.saleInvoiceDataUrl); }
+  return snapshot;
+}
+function normalizeInventoryStorage(inv){ const items=(Array.isArray(inv.items)?inv.items:[]).map(normalizeInventoryItem); return {items, movements:Array.isArray(inv.movements)?inv.movements:[], draft:{...inventoryDraftDefaults(),...(inv.draft||{}),attributes:{...ATTRIBUTE_DEFAULTS,...(inv.draft?.attributes||{})}}, syncStatus:items.length?'Đã khôi phục phiên kho gần nhất.':'Chưa có dữ liệu kho trên máy.'}; }
+function readInventoryStorage(){ for(const key of [INVENTORY_KEY,INVENTORY_BACKUP_KEY]){ try{ const raw=localStorage.getItem(key); if(raw)return JSON.parse(raw)||{}; }catch(e){ console.warn('Không đọc được kho hàng:', key, e); } } return {}; }
+function loadInventory(){ return normalizeInventoryStorage(readInventoryStorage()); }
+function saveInventory(){
+  const full=inventoryStorageSnapshot(state.inventory,false), slim=inventoryStorageSnapshot(state.inventory,true);
+  try{ localStorage.setItem(INVENTORY_KEY, JSON.stringify(full)); }catch(e){ console.warn('Không lưu đủ kho trên trình duyệt:', e); state.inventory.syncStatus='Kho có file lớn nên app lưu bản nhẹ; ảnh/PDF sẽ ưu tiên link Drive/Supabase.'; try{ localStorage.setItem(INVENTORY_KEY, JSON.stringify(slim)); }catch{} }
+  try{ localStorage.setItem(INVENTORY_BACKUP_KEY, JSON.stringify(slim)); }catch(e){ console.warn('Không lưu được backup kho:', e); }
+}
 function randomInventoryBarcode(){ const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s='MM'+quoteDateCode(); for(let i=0;i<6;i++)s+=chars[Math.floor(Math.random()*chars.length)]; return s; }
 function isInventoryCode(v){ return /^(OD|STK)(WL|PL|TL|FL|CD)\d{2}-\d{6}$/.test(String(v||'')); }
 function nextInventoryCode(productType='PL'){ const base=`STK${productType||'PL'}`, date=quoteDateCode(); let max=0; state.inventory.items.forEach(item=>{ const m=String(item.code||'').match(new RegExp(`^${base}(\\d{2})-${date}$`)); if(m)max=Math.max(max,Number(m[1]||0)); }); return `${base}${String(Math.min(max+1,99)).padStart(2,'0')}-${date}`; }
@@ -147,7 +163,34 @@ function itemToSupabaseRow(item){ return {code:item.code,barcode_id:item.barcode
 function supabaseRowToItem(row){ const attrs={...ATTRIBUTE_DEFAULTS,...(row.attributes||{})}, rawKind=attrs._itemKind||'reserve', itemKind=rawKind==='sale'?'reserve':rawKind; return normalizeInventoryItem({id:row.id||row.barcode_id,code:row.code||'',barcodeId:row.barcode_id||'',name:row.name||'',productType:row.product_type||'PL',itemKind,unit:row.unit||'Cái (pcs)',quantity:Number(row.quantity||0),price:Number(row.price||0),dimension:row.dimension||'',photoDataUrl:row.photo_data_url||'',invoiceName:itemKind==='sample'?'':(row.invoice_name||''),invoiceDataUrl:itemKind==='sample'?'':(row.invoice_data_url||''),attributes:attrs}); }
 function movementToSupabaseRow(m){ return {type:m.type,code:m.code,barcode_id:m.barcodeId||'',name:m.name||'',qty:Number(m.qty||0),happened_at:m.time||new Date().toISOString()}; }
 function supabaseMovementToLocal(row){ return {id:String(row.id||uid()),type:row.type||'',code:row.code||'',barcodeId:row.barcode_id||'',name:row.name||'',qty:Number(row.qty||0),time:row.happened_at||row.created_at||new Date().toISOString()}; }
-async function syncInventoryFromSupabase(){ if(!SUPABASE_URL||!SUPABASE_ANON_KEY)return; state.inventory.syncStatus='Đang tải kho từ Supabase...'; render(); try{ const [items,moves]=await Promise.all([supabaseRequest('/rest/v1/inventory_items?select=*&order=updated_at.desc'),supabaseRequest('/rest/v1/inventory_movements?select=*&order=happened_at.desc&limit=200')]); state.inventory.items=(items||[]).map(supabaseRowToItem); state.inventory.movements=(moves||[]).map(supabaseMovementToLocal); state.inventory.syncStatus='Đã đồng bộ Supabase.'; saveInventory(); render(); }catch(e){ state.inventory.syncStatus='Chưa kết nối được Supabase. Nếu mới tạo project, cần tạo bảng inventory_items và inventory_movements trước.'; console.warn('Supabase inventory sync failed:', e); render(); } }
+async function fetchInventoryFromSupabase(){ const [items,moves]=await Promise.all([supabaseRequest('/rest/v1/inventory_items?select=*&order=updated_at.desc'),supabaseRequest('/rest/v1/inventory_movements?select=*&order=happened_at.desc&limit=200')]); return {items:(items||[]).map(supabaseRowToItem),movements:(moves||[]).map(supabaseMovementToLocal)}; }
+async function syncInventoryFromSupabase(options={}){
+  if(!SUPABASE_URL||!SUPABASE_ANON_KEY)return;
+  const auto=!!options.auto, hadLocal=(state.inventory.items||[]).length>0;
+  state.inventory.syncStatus=auto?'Đang kiểm tra phiên kho gần nhất...':'Đang tải kho từ Supabase...';
+  render();
+  try{
+    const remote=await fetchInventoryFromSupabase();
+    if(auto&&hadLocal&&!remote.items.length){
+      state.inventory.syncStatus='Đang giữ phiên kho trên máy và sao lưu lại lên Supabase...';
+      saveInventory();
+      render();
+      await Promise.all((state.inventory.items||[]).map(item=>saveInventoryItemRemote(item).catch(e=>console.warn(e))));
+      state.inventory.syncStatus='Đã giữ phiên kho gần nhất; Supabase rỗng nên không ghi đè.';
+      render();
+      return;
+    }
+    if(remote.items.length||!hadLocal){
+      state.inventory.items=remote.items;
+      state.inventory.movements=remote.movements;
+      state.inventory.syncStatus=remote.items.length?'Đã khôi phục kho từ Supabase.':'Chưa có dữ liệu kho trên Supabase.';
+      saveInventory();
+    }else{
+      state.inventory.syncStatus='Đang giữ phiên kho trên máy.';
+    }
+    render();
+  }catch(e){ state.inventory.syncStatus=hadLocal?'Đang giữ phiên kho trên máy; chưa kết nối được Supabase.':'Chưa kết nối được Supabase. Nếu mới tạo project, cần tạo bảng inventory_items và inventory_movements trước.'; console.warn('Supabase inventory sync failed:', e); render(); }
+}
 async function saveInventoryItemRemote(item){ await supabaseRequest('/rest/v1/inventory_items?on_conflict=barcode_id',{method:'POST',headers:{'Content-Type':'application/json',Prefer:'resolution=merge-duplicates'},body:JSON.stringify(itemToSupabaseRow(item))}); }
 async function insertInventoryMovementRemote(movement){ await supabaseRequest('/rest/v1/inventory_movements',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(movementToSupabaseRow(movement))}); }
 async function deleteInventoryItemRemote(item){ await supabaseRequest(`/rest/v1/inventory_items?barcode_id=eq.${encodeURIComponent(item.barcodeId||item.code)}`,{method:'DELETE'}); }
@@ -641,7 +684,7 @@ async function exportPdfA4(options={}){
 }
 function downloadBlob(blob,name){ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.click(); URL.revokeObjectURL(a.href); }
 window.addEventListener('hashchange',()=>{ if(inventoryLookupKey())state.activeTab='stock'; render(); });
-try { render(); syncInventoryFromSupabase(); } catch (e) { root.innerHTML = `<div style="padding:24px;font-family:Arial,sans-serif;color:#b91c1c"><b>App bị lỗi:</b> ${esc(e.message)}</div>`; }
+try { render(); syncInventoryFromSupabase({auto:true}); } catch (e) { root.innerHTML = `<div style="padding:24px;font-family:Arial,sans-serif;color:#b91c1c"><b>App bị lỗi:</b> ${esc(e.message)}</div>`; }
     </script>
   </body>
 </html>
