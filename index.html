@@ -59,6 +59,9 @@ const DELIVERY_TIMES = [
 const NOTE_LINES = ["Lưu ý (Note):","1. Màu sắc thực tế có thể chênh lệch ± 5% so với mẫu (Real color may vary by ±5% from sample)","2. Hình thức thanh toán (Payment information:)",".Thanh toán 50% khi xác nhận đơn hàng (Deposit 50% upon order confirmation)",".Thanh toán 50% còn lại trước hoặc tại thời điểm nhận hàng (Pay the remaining 50% before or at the time of receiving the goods)","3. Thông tin chuyển khoản (khách hàng chịu phí chuyển khoản) (Payment information:)",".Chủ tài khoản (Beneficiary) : MINMIN LIFESTYLE",".Số tài khoản (A/c No): 388683838",".Ngân hàng (At bank) ACB","4. Thông tin giao hàng (Delivery time)",".Thời gian giao hàng: 30 ngày kể từ ngày khách hàng đặt cọc đơn hàng trừ các trường hợp thiên tai,dịch bệnh,phong tỏa,...","5. Điều khoản chung (General Terms)",".Bảo hành bóng đèn 1 năm (Warranty: 01-year.)",".Phiếu báo giá có giá trị trong 30 ngày kể từ ngày lập (The quotation is valid for 30 days from the date of issue)",".Vì lý do khách quan, Minmin không hỗ trợ lắp đặt đèn tại công trình.","Chân thành cảm ơn sự quan tâm của Quý khách đối với sản phẩm Min Min Lifestyle (We are looking forward to working with you as soon as possible)"];
 const INPUT_INVOICE_KEY = 'minmin-input-invoices-v1';
 const ACCOUNTING_KEY = 'minmin-accounting-v1';
+const WORKING_STATE_CACHE_KEY = 'minmin-working-state-cache-v1';
+const WORKING_STATE_REMOTE_ID = 'minmin_current_state';
+const DEVICE_ID_KEY = 'minmin-device-id-v1';
 const DEFAULT_ACCOUNTING_RULES = [
   {keyword:'đèn, khung đèn, linh kiện, phụ kiện đèn, bóng đèn, chao đèn, dây điện, đuôi đèn',category:'Hàng hóa nhập kho',accounting_description:'Mua hàng hóa nhập kho để bán',suggested_debit_account:'156',suggested_vat_account:'1331',suggested_credit_account:'331',active:true},
   {keyword:'vận chuyển hàng mua, phí vận chuyển đầu vào, logistics, chuyển phát hàng nhập',category:'Chi phí mua hàng',accounting_description:'Chi phí vận chuyển hàng hóa đầu vào',suggested_debit_account:'1562',suggested_vat_account:'1331',suggested_credit_account:'331',active:true},
@@ -112,13 +115,14 @@ function saveInventory(){
   try{ localStorage.setItem(INVENTORY_KEY, JSON.stringify(slim)); }catch(e){ console.warn('Không lưu cache nhẹ kho:', e); state.inventory.syncStatus='Kho có file cũ dạng base64; cần migrate ảnh/PDF lên Supabase Storage.'; }
   try{ localStorage.setItem(INVENTORY_BACKUP_KEY, JSON.stringify(slim)); }catch(e){ console.warn('Không lưu được backup kho:', e); }
   try{ localStorage.setItem(INVENTORY_DELETED_KEY, JSON.stringify(state.inventory.deletedItems||{})); }catch(e){ console.warn('Không lưu được danh sách kho đã xóa:', e); }
+  scheduleWorkingStateSave();
 }
 function inputInvoiceDefaults(){ return {view:'list', period:`${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}`, note:'', companyTaxCode:'', filters:{period:'',year:String(new Date().getFullYear()),supplier:'',category:'',status:'',reviewed:''}, invoices:[], files:[], rules:DEFAULT_ACCOUNTING_RULES.map(r=>({...r,id:uid()})), editingId:'', syncStatus:''}; }
 function loadInputInvoices(){ try{ const raw=JSON.parse(localStorage.getItem(INPUT_INVOICE_KEY)||'null'); return {...inputInvoiceDefaults(),...(raw||{}),filters:{...inputInvoiceDefaults().filters,...(raw?.filters||{})},rules:Array.isArray(raw?.rules)&&raw.rules.length?raw.rules:DEFAULT_ACCOUNTING_RULES.map(r=>({...r,id:uid()})),invoices:Array.isArray(raw?.invoices)?raw.invoices:[],files:Array.isArray(raw?.files)?raw.files:[]}; }catch(e){ console.warn('Không đọc được module hóa đơn đầu vào:', e); return inputInvoiceDefaults(); } }
-function saveInputInvoices(){ try{ localStorage.setItem(INPUT_INVOICE_KEY, JSON.stringify(lightInputInvoices())); }catch(e){ alert('Dữ liệu hóa đơn đang quá lớn để lưu trong trình duyệt. Anh nên lưu file lên Supabase Storage.'); console.warn(e); } }
+function saveInputInvoices(){ try{ localStorage.setItem(INPUT_INVOICE_KEY, JSON.stringify(lightInputInvoices())); }catch(e){ alert('Dữ liệu hóa đơn đang quá lớn để lưu trong trình duyệt. Anh nên lưu file lên Supabase Storage.'); console.warn(e); } scheduleWorkingStateSave(); }
 function accountingDefaults(){ const now=new Date(); return {view:'overview',filters:{period:`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`,year:String(now.getFullYear()),search:'',status:'',type:''},outgoingInvoices:[],payments:[],suppliers:[],editingOutgoingId:'',editingPaymentId:'',syncStatus:''}; }
 function loadAccounting(){ try{ const raw=JSON.parse(localStorage.getItem(ACCOUNTING_KEY)||'null'); return {...accountingDefaults(),...(raw||{}),filters:{...accountingDefaults().filters,...(raw?.filters||{})},outgoingInvoices:Array.isArray(raw?.outgoingInvoices)?raw.outgoingInvoices:[],payments:Array.isArray(raw?.payments)?raw.payments:[],suppliers:Array.isArray(raw?.suppliers)?raw.suppliers:[]}; }catch(e){ console.warn('Không đọc được module kế toán:', e); return accountingDefaults(); } }
-function saveAccounting(){ try{ localStorage.setItem(ACCOUNTING_KEY, JSON.stringify(lightAccounting())); }catch(e){ alert('Dữ liệu kế toán đang quá lớn để lưu trong trình duyệt. Anh nên lưu file lên Supabase Storage.'); console.warn(e); } }
+function saveAccounting(){ try{ localStorage.setItem(ACCOUNTING_KEY, JSON.stringify(lightAccounting())); }catch(e){ alert('Dữ liệu kế toán đang quá lớn để lưu trong trình duyệt. Anh nên lưu file lên Supabase Storage.'); console.warn(e); } scheduleWorkingStateSave(); }
 function invoiceEmpty(extra={}){ return {id:uid(),invoice_date:'',invoice_number:'',invoice_series:'',invoice_template:'',tax_authority_code:'',seller_name:'',seller_tax_code:'',seller_address:'',buyer_name:'',buyer_tax_code:'',buyer_address:'',raw_item_description:'',accounting_description:'',category:'',net_amount:0,vat_rate:'',vat_amount:0,total_amount:0,suggested_debit_account:'',suggested_vat_account:'',suggested_credit_account:'',payment_status:'không rõ',source_file_url:'',source_file_name:'',source_xml_url:'',source_pdf_url:'',parser_error_message:'',confidence_score:0,ocr_confidence_score:0,raw_ocr_text:'',extraction_method:'MANUAL',needs_manual_review:true,validation_status:'Cần kiểm tra',validation_notes:'',reviewed_by_accountant:false,locked:false,period:'',note:'',items:[],created_at:new Date().toISOString(),updated_at:new Date().toISOString(),...extra}; }
 function invoiceMoney(v){ let s=String(v||'').trim().replace(/[^\d,.-]/g,''); if(!s)return 0; const neg=s.startsWith('-'); s=s.replace(/^-/, ''); if(/[.,]\d{3}([.,]|$)/.test(s))s=s.replace(/[.,]/g,''); else if(/,\d{1,2}$/.test(s))s=s.replace(/\./g,'').replace(',','.'); else s=s.replace(/,/g,''); return Number(`${neg?'-':''}${s}`)||0; }
 function invoiceNorm(v){ return cleanSearch(v).replace(/\s+/g,' ').trim(); }
@@ -426,6 +430,113 @@ function inventoryKindBadge(item){ const k=inventoryKindMeta(item.itemKind), sta
 function inventoryAttrField(field){ const d=state.inventory.draft||inventoryDraftDefaults(), value=d.attributes?.[field.key]||'', listId=`stock-${field.key}`; return `<label class="grid min-w-0 gap-1.5"><span class="truncate text-xs font-semibold uppercase tracking-wide text-black/50">${field.label}</span><input list="${listId}" data-inventory-attr="${field.key}" value="${esc(value)}" class="h-10 min-w-0 rounded-md border border-black/15 bg-white px-3 text-sm outline-none focus:border-mint focus:ring-4 focus:ring-mint/10"/><datalist id="${listId}">${attrOptions(field,value)}</datalist></label>`; }
 function supabaseHeaders(extra={}){ return {apikey:SUPABASE_ANON_KEY, Authorization:`Bearer ${SUPABASE_ANON_KEY}`,...extra}; }
 async function supabaseRequest(path,options={}){ const res=await fetch(`${SUPABASE_URL}${path}`,{...options,headers:supabaseHeaders(options.headers||{})}); const text=await res.text().catch(()=>''); if(!res.ok)throw new Error(text||`Supabase lỗi ${res.status}`); return text?JSON.parse(text):null; }
+let workingStateSaveTimer=null;
+let workingStateReady=false;
+let applyingWorkingState=false;
+function getDeviceId(){
+  try{
+    let id=localStorage.getItem(DEVICE_ID_KEY);
+    if(!id){ id=uid(); localStorage.setItem(DEVICE_ID_KEY,id); }
+    return id;
+  }catch{ return 'device-'+Date.now(); }
+}
+function workingStateSnapshot(){
+  return safeJsonClone({
+    version:2,
+    savedAt:new Date().toISOString(),
+    activeTab:state.activeTab,
+    ui:{...state.ui, openStockItems:{}, selectedStockMoves:{}},
+    sheetInput:state.sheetInput||'',
+    info:lightQuoteInfo(state.info||{}),
+    pricing:state.pricing||{},
+    lines:(state.lines||[]).map(lightQuoteLine),
+    history:(state.history||[]).map(h=>h.snapshot?{...h,snapshot:lightQuoteSnapshot(h.snapshot)}:h),
+    inventory:inventoryStorageSnapshot(state.inventory,true),
+    inputInvoices:lightInputInvoices(state.inputInvoices||inputInvoiceDefaults()),
+    accounting:lightAccounting(state.accounting||accountingDefaults())
+  });
+}
+function writeWorkingStateLocal(snapshot){
+  try{ localStorage.setItem(WORKING_STATE_CACHE_KEY, JSON.stringify(snapshot)); }catch(e){ console.warn('Không lưu cache working state:', e); }
+  try{ localStorage.setItem(DRAFT_KEY, JSON.stringify(lightQuoteSnapshot(snapshot))); }catch{}
+  try{ localStorage.setItem(HISTORY_KEY, JSON.stringify(snapshot.history||[])); }catch{}
+  try{ localStorage.setItem(INVENTORY_KEY, JSON.stringify(snapshot.inventory||{})); localStorage.setItem(INVENTORY_BACKUP_KEY, JSON.stringify(snapshot.inventory||{})); }catch{}
+  try{ localStorage.setItem(INPUT_INVOICE_KEY, JSON.stringify(snapshot.inputInvoices||inputInvoiceDefaults())); }catch{}
+  try{ localStorage.setItem(ACCOUNTING_KEY, JSON.stringify(snapshot.accounting||accountingDefaults())); }catch{}
+}
+function applyWorkingStateSnapshot(data){
+  if(!data||typeof data!=='object')return false;
+  applyingWorkingState=true;
+  try{
+    if(data.info) state.info={...state.info,...data.info};
+    if(data.pricing) state.pricing={...state.pricing,...data.pricing};
+    if(typeof data.sheetInput==='string') state.sheetInput=data.sheetInput;
+    if(Array.isArray(data.lines)) state.lines=data.lines.map(l=>normalizeQuoteLine({...applyProduct({}),...l,attributes:{...ATTRIBUTE_DEFAULTS,...(l.attributes||{})}}));
+    if(Array.isArray(data.history)) state.history=data.history;
+    if(data.inventory) state.inventory=normalizeInventoryStorage(data.inventory);
+    if(data.inputInvoices){ const d={...inputInvoiceDefaults(),...data.inputInvoices}; state.inputInvoices={...d,filters:{...inputInvoiceDefaults().filters,...(d.filters||{})},rules:Array.isArray(d.rules)&&d.rules.length?d.rules:DEFAULT_ACCOUNTING_RULES.map(r=>({...r,id:uid()})),invoices:Array.isArray(d.invoices)?d.invoices:[],files:Array.isArray(d.files)?d.files:[]}; }
+    if(data.accounting){ const d={...accountingDefaults(),...data.accounting}; state.accounting={...d,filters:{...accountingDefaults().filters,...(d.filters||{})},outgoingInvoices:Array.isArray(d.outgoingInvoices)?d.outgoingInvoices:[],payments:Array.isArray(d.payments)?d.payments:[],suppliers:Array.isArray(d.suppliers)?d.suppliers:[]}; }
+    if(data.ui) state.ui={...state.ui,...data.ui,openStockItems:data.ui.openStockItems||{},selectedStockMoves:data.ui.selectedStockMoves||{}};
+    if(data.activeTab) state.activeTab=data.activeTab;
+    if(!state.lines.length)state.lines=defaultLines();
+    refreshLineCodes();
+    writeWorkingStateLocal(data);
+    state.status=`Đã khôi phục dữ liệu làm việc cuối từ Supabase (${data.savedAt?new Date(data.savedAt).toLocaleString('vi-VN'):'bản mới nhất'}).`;
+    if(state.inventory)state.inventory.syncStatus='Đã khôi phục kho từ working state Supabase.';
+    if(state.inputInvoices)state.inputInvoices.syncStatus='Đã khôi phục hóa đơn từ working state Supabase.';
+    if(state.accounting)state.accounting.syncStatus='Đã khôi phục kế toán từ working state Supabase.';
+    return true;
+  }finally{ applyingWorkingState=false; }
+}
+async function fetchWorkingStateFromSupabase(){
+  const rows=await supabaseRequest(`/rest/v1/app_working_state?id=eq.${encodeURIComponent(WORKING_STATE_REMOTE_ID)}&select=id,data,updated_at,device_id&limit=1`);
+  return Array.isArray(rows)&&rows[0]?rows[0]:null;
+}
+async function loadWorkingStateFromSupabase(){
+  try{
+    state.status='Đang tải dữ liệu làm việc cuối từ Supabase...';
+    const row=await fetchWorkingStateFromSupabase();
+    if(row?.data){
+      const data={...row.data,remoteUpdatedAt:row.updated_at};
+      const ok=applyWorkingStateSnapshot(data);
+      workingStateReady=true;
+      return ok;
+    }
+    workingStateReady=true;
+    state.status='Chưa có working state trên Supabase, đang dùng cache trên máy này.';
+    return false;
+  }catch(e){
+    workingStateReady=true;
+    state.status='Chưa tải được working state Supabase. Đang dùng cache trên máy này.';
+    console.warn('Working state load failed:',e);
+    return false;
+  }
+}
+function scheduleWorkingStateSave(delay=1200){
+  if(applyingWorkingState||!workingStateReady)return;
+  clearTimeout(workingStateSaveTimer);
+  workingStateSaveTimer=setTimeout(()=>saveWorkingStateToSupabase().catch(e=>console.warn(e)),delay);
+}
+async function saveWorkingStateToSupabase(){
+  if(applyingWorkingState)return false;
+  const snapshot=workingStateSnapshot();
+  writeWorkingStateLocal(snapshot);
+  try{
+    await supabaseRequest('/rest/v1/app_working_state?on_conflict=id',{method:'POST',headers:{'Content-Type':'application/json',Prefer:'resolution=merge-duplicates'},body:JSON.stringify({id:WORKING_STATE_REMOTE_ID,data:snapshot,updated_at:new Date().toISOString(),device_id:getDeviceId()})});
+    state.status='Đã đồng bộ dữ liệu làm việc cuối lên Supabase.';
+    if(state.inventory)state.inventory.syncStatus='Đã đồng bộ dữ liệu cuối lên Supabase.';
+    if(state.inputInvoices)state.inputInvoices.syncStatus='Đã đồng bộ dữ liệu cuối lên Supabase.';
+    if(state.accounting)state.accounting.syncStatus='Đã đồng bộ dữ liệu cuối lên Supabase.';
+    return true;
+  }catch(e){
+    state.status='Chưa đồng bộ được dữ liệu cuối lên Supabase. App đang giữ cache tạm trên máy này.';
+    console.warn('Working state save failed:',e);
+    return false;
+  }finally{
+    try{ render(); }catch{}
+  }
+}
+
 function inputInvoiceToSupabaseRow(inv){ return {id:inv.id,invoice_date:inv.invoice_date||null,invoice_number:inv.invoice_number||'',invoice_series:inv.invoice_series||'',invoice_template:inv.invoice_template||'',tax_authority_code:inv.tax_authority_code||'',seller_name:inv.seller_name||'',seller_tax_code:inv.seller_tax_code||'',seller_address:inv.seller_address||'',buyer_name:inv.buyer_name||'',buyer_tax_code:inv.buyer_tax_code||'',buyer_address:inv.buyer_address||'',raw_item_description:inv.raw_item_description||'',accounting_description:inv.accounting_description||'',category:inv.category||'',net_amount:Number(inv.net_amount||0),vat_rate:String(inv.vat_rate||''),vat_amount:Number(inv.vat_amount||0),total_amount:Number(inv.total_amount||0),suggested_debit_account:inv.suggested_debit_account||'',suggested_vat_account:inv.suggested_vat_account||'',suggested_credit_account:inv.suggested_credit_account||'',payment_status:inv.payment_status||'',source_file_url:driveStoredValue(inv.source_file_url||inv.source_xml_url),source_file_name:inv.source_file_name||'',source_xml_url:driveStoredValue(inv.source_xml_url||inv.source_file_url),source_pdf_url:driveStoredValue(inv.source_pdf_url),parser_error_message:inv.parser_error_message||'',confidence_score:Number(inv.confidence_score||0),raw_ocr_text:inv.raw_ocr_text||'',ocr_confidence_score:Number(inv.ocr_confidence_score||0),extraction_method:inv.extraction_method||'MANUAL',needs_manual_review:!!inv.needs_manual_review,validation_status:inv.validation_status||'',validation_notes:inv.validation_notes||'',reviewed_by_accountant:!!inv.reviewed_by_accountant,locked:!!inv.locked,updated_at:new Date().toISOString()}; }
 function supabaseRowToInputInvoice(row){ return validateInputInvoice(invoiceEmpty({...row,id:String(row.id||uid()),invoice_date:row.invoice_date||'',net_amount:Number(row.net_amount||0),vat_amount:Number(row.vat_amount||0),total_amount:Number(row.total_amount||0),confidence_score:Number(row.confidence_score||0),ocr_confidence_score:Number(row.ocr_confidence_score||0),needs_manual_review:!!row.needs_manual_review,reviewed_by_accountant:!!row.reviewed_by_accountant,locked:!!row.locked,items:[]})); }
 async function fetchInputInvoicesFromSupabase(){ const [invoices,items,files]=await Promise.all([supabaseRequest('/rest/v1/invoices?select=*&order=updated_at.desc&limit=500'),supabaseRequest('/rest/v1/invoice_items?select=*&order=line_index.asc').catch(()=>[]),supabaseRequest('/rest/v1/invoice_files?select=*&order=uploaded_at.desc&limit=500').catch(()=>[])]); const byInvoice=(items||[]).reduce((a,it)=>{const id=String(it.invoice_id||''); (a[id]=a[id]||[]).push({id:String(it.id||uid()),item_name:it.item_name||'',quantity:Number(it.quantity||0),unit:it.unit||'',unit_price:Number(it.unit_price||0),net_amount:Number(it.net_amount||0),vat_rate:it.vat_rate||'',vat_amount:Number(it.vat_amount||0),total_amount:Number(it.total_amount||0)}); return a;},{}); return {invoices:(invoices||[]).map(row=>{const inv=supabaseRowToInputInvoice(row); inv.items=byInvoice[String(inv.id)]||[]; return inv;}),files:(files||[]).map(f=>({id:String(f.id||uid()),invoice_id:String(f.invoice_id||''),file_name:f.file_name||'',file_type:f.file_type||'',file_url:f.file_url||'',size:Number(f.size||0),uploaded_at:f.uploaded_at||new Date().toISOString()}))}; }
@@ -568,7 +679,19 @@ drop policy if exists "public write movements" on inventory_movements;
 create policy "public read inventory" on inventory_items for select using (true);
 create policy "public write inventory" on inventory_items for all using (true) with check (true);
 create policy "public read movements" on inventory_movements for select using (true);
-create policy "public write movements" on inventory_movements for all using (true) with check (true);`; }
+create policy "public write movements" on inventory_movements for all using (true) with check (true);
+
+create table if not exists app_working_state (
+  id text primary key,
+  data jsonb not null,
+  updated_at timestamptz not null default now(),
+  device_id text
+);
+alter table app_working_state enable row level security;
+drop policy if exists "public read app working state" on app_working_state;
+drop policy if exists "public write app working state" on app_working_state;
+create policy "public read app working state" on app_working_state for select using (true);
+create policy "public write app working state" on app_working_state for all using (true) with check (true);`; }
 function showSupabaseSchemaSql(){ prompt('Copy đoạn SQL này vào Supabase > SQL Editor > Run:', supabaseSchemaSql()); }
 
 
@@ -618,7 +741,7 @@ function quoteSnapshot(){ return lightQuoteSnapshot(); }
 function restoreSnapshot(snapshot){ if(!snapshot)return false; if(snapshot.info)state.info={...state.info,...snapshot.info}; if(snapshot.pricing)state.pricing={...state.pricing,...snapshot.pricing}; if(typeof snapshot.sheetInput==='string')state.sheetInput=snapshot.sheetInput; if(Array.isArray(snapshot.lines))state.lines=snapshot.lines.map(l=>normalizeQuoteLine({...applyProduct({}),...l,attributes:{...ATTRIBUTE_DEFAULTS,...(l.attributes||{})}})); refreshLineCodes(); saveDraft(); state.activeTab='quote'; render(); return true; }
 function recordExportHistory(fileName,total){ const now=new Date(); const first=state.lines[0]||{}; const item={id:uid(), exportedAt:now.toISOString(), fileName, client:state.info.client||'', representative:state.info.representative||'', tel:state.info.tel||'', total:Number(total||0), productCount:state.lines.length, firstCode:first.code||'', firstName:first.name||'', snapshot:quoteSnapshot()}; state.history=[item,...state.history].slice(0,50); saveHistory(); }
 function defaultLines(){ return [applyProduct(SAMPLE_PRODUCTS[0],4), applyProduct(SAMPLE_PRODUCTS[1],136)]; }
-function saveDraft(){ try{ localStorage.setItem(DRAFT_KEY, JSON.stringify(lightQuoteSnapshot())); }catch(e){ console.warn('Không lưu được bản nháp báo giá:', e); } }
+function saveDraft(){ try{ localStorage.setItem(DRAFT_KEY, JSON.stringify(lightQuoteSnapshot())); }catch(e){ console.warn('Không lưu được bản nháp báo giá:', e); } scheduleWorkingStateSave(); }
 function scheduleSave(){ clearTimeout(saveTimer); saveTimer=setTimeout(saveDraft,250); }
 function loadDraft(){ try{ const draft=JSON.parse(localStorage.getItem(DRAFT_KEY)||'null'); if(!draft)return false; if(draft.info) state.info={...state.info,...draft.info}; if(draft.pricing) state.pricing={...state.pricing,...draft.pricing}; if(typeof draft.sheetInput==='string') state.sheetInput=draft.sheetInput; if(Array.isArray(draft.lines)&&draft.lines.length){ state.lines=draft.lines.map(l=>normalizeQuoteLine({...applyProduct({}),...l,attributes:{...ATTRIBUTE_DEFAULTS,...(l.attributes||{})}})); return true; } }catch(e){ console.warn('Không đọc được bản nháp báo giá:', e); } return false; }
 state.history=loadHistory();
@@ -1268,13 +1391,19 @@ async function exportPdfA4(options={}){
 }
 function downloadBlob(blob,name){ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.click(); URL.revokeObjectURL(a.href); }
 window.addEventListener('hashchange',()=>{ if(inventoryLookupKey())state.activeTab='stock'; render(); });
-try {
-  render();
-  syncInventoryFromSupabase({auto:true});
-  syncInputInvoicesFromSupabase({auto:true});
-  syncAccountingFromSupabase({auto:true});
-  setInterval(()=>{ if(document.visibilityState==='visible'){ syncInventoryFromSupabase({auto:true}); syncInputInvoicesFromSupabase({auto:true}); syncAccountingFromSupabase({auto:true}); } },30000);
-} catch (e) { root.innerHTML = `<div style="padding:24px;font-family:Arial,sans-serif;color:#b91c1c"><b>App bị lỗi:</b> ${esc(e.message)}</div>`; }
+async function initApp(){
+  try{
+    root.innerHTML='<div style="padding:24px;font-family:Arial,sans-serif">Đang tải dữ liệu làm việc cuối từ Supabase...</div>';
+    await loadWorkingStateFromSupabase();
+    render();
+    syncInventoryFromSupabase({auto:true});
+    syncInputInvoicesFromSupabase({auto:true});
+    syncAccountingFromSupabase({auto:true});
+    setInterval(()=>{ if(document.visibilityState==='visible'){ syncInventoryFromSupabase({auto:true}); syncInputInvoicesFromSupabase({auto:true}); syncAccountingFromSupabase({auto:true}); loadWorkingStateFromSupabase().then(()=>render()).catch(()=>{}); } },30000);
+    window.addEventListener('beforeunload',()=>{ if(workingStateReady&&!applyingWorkingState){ const snapshot=workingStateSnapshot(); writeWorkingStateLocal(snapshot); } });
+  }catch(e){ root.innerHTML = `<div style="padding:24px;font-family:Arial,sans-serif;color:#b91c1c"><b>App bị lỗi:</b> ${esc(e.message)}</div>`; }
+}
+initApp();
     </script>
   </body>
 </html>
