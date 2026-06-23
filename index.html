@@ -88,7 +88,7 @@ function todayIso(){ return new Date().toISOString().slice(0,10); }
 function inventoryDraftDefaults(){ return { code:'', name:'', productType:'PL', itemKind:'reserve', unit:'Cái (pcs)', quantity:0, purchasePrice:0, price:0, orderDate:'', importDate:todayIso(), exportDate:'', dimension:'', barcodeId:'', photoDataUrl:'', invoiceName:'', invoiceDataUrl:'', saleInvoiceName:'', saleInvoiceDataUrl:'', attributes:{...ATTRIBUTE_DEFAULTS} }; }
 function isEmbeddedFileValue(v){ return String(v||'').startsWith('data:'); }
 function cleanStoredFileValue(v){ v=String(v||''); return isEmbeddedFileValue(v)?'':v; }
-function keepLegacyFileValue(v){ return cleanStoredFileValue(v); }
+function keepLegacyFileValue(v){ return String(v||''); }
 function lightQuoteLine(line){ return normalizePhotoRefs({...line,photoDataUrl:keepLegacyFileValue(line.photoDataUrl),photo:keepLegacyFileValue(line.photo)}); }
 function lightQuoteInfo(info){ return {...info,logoDataUrl:keepLegacyFileValue(info.logoDataUrl),qrDataUrl:keepLegacyFileValue(info.qrDataUrl)}; }
 function lightInputInvoices(data=state.inputInvoices){ return {...data,invoices:(data.invoices||[]).map(inv=>({...inv,source_file_url:keepLegacyFileValue(inv.source_file_url),source_xml_url:keepLegacyFileValue(inv.source_xml_url),source_pdf_url:keepLegacyFileValue(inv.source_pdf_url)})),files:(data.files||[]).map(file=>({...file,file_url:keepLegacyFileValue(file.file_url)}))}; }
@@ -336,14 +336,16 @@ function normalizePhotoRefs(item){
   const attrs={...(item?.attributes||{})};
   const storagePath=item?.photoStoragePath||item?.photo_storage_path||attrs._photoStoragePath||'';
   const storageBucket=item?.photoStorageBucket||item?.photo_storage_bucket||attrs._photoStorageBucket||'';
-  const rawUrl=item?.photoStorageUrl||item?.photo_storage_url||item?.photoDriveUrl||item?.photo_drive_url||item?.photoDataUrl||item?.photo_data_url||'';
+  const rawUrl=item?.photoStorageUrl||item?.photo_storage_url||attrs._photoStorageUrl||item?.photoDriveUrl||item?.photo_drive_url||attrs._photoDriveUrl||item?.photoDataUrl||item?.photo_data_url||item?.photo||'';
   const rawId=item?.photoDriveId||item?.photo_drive_id||attrs._photoDriveId||driveFileIdFromValue(rawUrl);
   const rawUrlText=String(rawUrl||'').trim();
-  const legacy=item?.photoDataUrl||item?.photo_data_url||'';
+  const legacy=item?.photoDataUrl||item?.photo_data_url||item?.photo||'';
+  const embedded=[rawUrlText,legacy,item?.photoStorageUrl,item?.photoDriveUrl,item?.photo].find(v=>isEmbeddedFileValue(v));
   const url=isEmbeddedFileValue(rawUrlText)?'':rawUrlText;
   const driveUrl=rawId?driveFileUrl(rawId):'';
-  const finalUrl=url||driveUrl;
-  return {...item,photoStoragePath:storagePath,photoStorageBucket:storageBucket,photoStorageUrl:finalUrl,photoDriveId:rawId&&driveUrl?rawId:'',photoDriveUrl:finalUrl,photoDataUrl:(finalUrl&&isEmbeddedFileValue(legacy))?finalUrl:(cleanStoredFileValue(legacy)||finalUrl),attributes:{...attrs,_photoDriveId:rawId&&driveUrl?rawId:'',_photoStoragePath:storagePath||attrs._photoStoragePath||'',_photoStorageBucket:storageBucket||attrs._photoStorageBucket||''}};
+  const finalUrl=url||driveUrl||embedded||'';
+  const isEmbeddedFinal=isEmbeddedFileValue(finalUrl);
+  return {...item,photoStoragePath:storagePath,photoStorageBucket:storageBucket,photoStorageUrl:isEmbeddedFinal?'':finalUrl,photoDriveId:rawId&&driveUrl?rawId:'',photoDriveUrl:isEmbeddedFinal?'':finalUrl,photoDataUrl:finalUrl,photo:finalUrl,attributes:{...attrs,_photoDriveId:rawId&&driveUrl?rawId:'',_photoStoragePath:storagePath||attrs._photoStoragePath||'',_photoStorageBucket:storageBucket||attrs._photoStorageBucket||'',_photoStorageUrl:isEmbeddedFinal?'':(finalUrl||attrs._photoStorageUrl||'')}};
 }
 function driveUploadErrorMessage(error){
   const msg=String(error?.message||error||'');
@@ -1303,20 +1305,39 @@ function excelCellText(cell){ const v=cell?.value; if(v==null)return''; if(typeo
 function importLineFromExcel(row){ const desc=excelCellText(row.getCell(7)), attrs={...ATTRIBUTE_DEFAULTS}, descLines=[]; String(desc||'').split(/\r?\n/).forEach(raw=>{ const line=raw.trim(); if(!line)return; const hit=ATTRIBUTE_FIELDS.find(f=>line.toLowerCase().startsWith(`* ${f.label}:`.toLowerCase())); if(hit) attrs[hit.key]=line.slice((`* ${hit.label}:`).length).trim(); else descLines.push(line); }); const code=excelCellText(row.getCell(3)).trim(), status=excelCellText(row.getCell(2)).trim(); const line=syncLineDefaults({uid:uid(),productId:'',status,code,name:excelCellText(row.getCell(4)).trim(),nameCustom:true,leadTime:status.includes('35-45')?'35-45 ngày':'30-35 ngày',photo:'',photoDataUrl:'',dimension:excelCellText(row.getCell(6)).trim(),description:descLines.join('\n'),attributes:attrs,unit:excelCellText(row.getCell(8)).trim()||'Cái (pcs)',quantity:Number(row.getCell(9).value||0),price:Number(row.getCell(10).value||0),productType:(code.match(/(?:OD|STK)(WL|PL|TL|FL|CD)/)||[])[1]||inferProductType({name:excelCellText(row.getCell(4)),code}),stockMode:code.startsWith('STK')?'STK':'OD'}); line.code=code||line.code; line.status=status||statusForLine(line); return line; }
 async function uploadQuoteLineEmbeddedImages(lines,sourceName='bao-gia.xlsx'){
   const embedded=(lines||[]).filter(line=>isEmbeddedFileValue(line.photoDataUrl)||isEmbeddedFileValue(line.photo));
+  uploadQuoteLineEmbeddedImages.lastError='';
+  uploadQuoteLineEmbeddedImages.failed=0;
   if(!embedded.length)return 0;
-  state.status=`Đang upload ${embedded.length} ảnh từ file báo giá lên Supabase Storage...`;
+  state.status=`Đang xử lý ${embedded.length} ảnh từ file báo giá...`;
   render();
   let ok=0;
   for(const line of embedded){
     const source=isEmbeddedFileValue(line.photoDataUrl)?line.photoDataUrl:line.photo;
-    const dataUrl=await compressImageDataUrl(source);
+    let dataUrl='';
+    try{ dataUrl=await compressImageDataUrl(source); }catch{ dataUrl=source; }
+    line.photoDataUrl=dataUrl;
+    line.photo=dataUrl;
     const file=fileFromDataUrl(dataUrl,`${line.code||line.name||Date.now()}.png`);
     if(!file)continue;
-    const uploaded=await uploadFileToSupabaseStorage(file,'quotation',line.code||line.name||sourceName);
-    applyUploadedPhotoMeta(line,uploaded);
-    ok++;
+    try{
+      const uploaded=await uploadFileToSupabaseStorage(file,'quotation',line.code||line.name||sourceName);
+      applyUploadedPhotoMeta(line,uploaded);
+      ok++;
+    }catch(e){
+      uploadQuoteLineEmbeddedImages.failed++;
+      uploadQuoteLineEmbeddedImages.lastError=storageUploadErrorMessage(e);
+      line.photoDataUrl=dataUrl;
+      line.photo=dataUrl;
+      line.photoStorageUrl='';
+      line.photoStoragePath='';
+      line.photoStorageBucket='';
+      line.attributes={...(line.attributes||{}),_photoUploadError:uploadQuoteLineEmbeddedImages.lastError};
+      console.warn('Giữ ảnh tạm vì chưa upload được Supabase Storage:', e);
+    }
   }
-  state.status=`Đã upload ${ok}/${embedded.length} ảnh báo giá lên Supabase Storage.`;
+  state.status=uploadQuoteLineEmbeddedImages.failed
+    ? `Đã giữ ảnh tạm cho ${uploadQuoteLineEmbeddedImages.failed} dòng; ${ok} ảnh đã lưu Storage.`
+    : `Đã upload ${ok}/${embedded.length} ảnh báo giá lên Supabase Storage.`;
   return ok;
 }
 async function importQuotationExcel(file){
@@ -1340,7 +1361,8 @@ async function importQuotationExcel(file){
     catch(e){ uploadError=typeof storageUploadErrorMessage==='function'?storageUploadErrorMessage(e):(e.message||String(e)); console.warn(e); }
     saveDraft();
     render();
-    if(uploadError)alert('Đã nhập dữ liệu Excel từ _APP_DATA. Ảnh có thể hiển thị tạm, nhưng chưa upload được lên Supabase Storage: '+uploadError);
+    const fallbackErr=uploadError||uploadQuoteLineEmbeddedImages.lastError||'';
+    if(fallbackErr)alert('Đã nhập dữ liệu Excel từ _APP_DATA. Ảnh sẽ hiển thị tạm trong Báo giá. Muốn đồng bộ ảnh qua máy khác thì chạy policy Supabase Storage: '+fallbackErr);
     else alert(uploadedImageCount?'Đã nhập lại file Excel từ _APP_DATA và lưu ảnh lên Supabase Storage.':'Đã nhập lại file Excel từ _APP_DATA. Nếu chưa thấy ảnh, file Excel cũ không có ảnh trong dữ liệu ẩn hoặc link ảnh cũ đã hỏng.');
     return;
   }
@@ -1378,7 +1400,8 @@ async function importQuotationExcel(file){
   catch(e){ uploadError=typeof storageUploadErrorMessage==='function'?storageUploadErrorMessage(e):(e.message||String(e)); console.warn(e); }
   saveDraft();
   render();
-  if(uploadError)alert('Đã nhập nội dung Excel. Ảnh có thể hiển thị tạm, nhưng chưa upload được lên Supabase Storage: '+uploadError);
+  const fallbackErr=uploadError||uploadQuoteLineEmbeddedImages.lastError||'';
+  if(fallbackErr)alert('Đã nhập nội dung Excel. Ảnh sẽ hiển thị tạm trong Báo giá. Muốn đồng bộ ảnh qua máy khác thì chạy policy Supabase Storage: '+fallbackErr);
   else alert(uploadedImageCount?'Đã nhập lại nội dung Excel và lưu ảnh lên Supabase Storage.':'Đã nhập lại nội dung Excel, nhưng không tìm thấy ảnh nhúng trong file.');
 }
 async function importQuotationToInventory(file){
@@ -1434,16 +1457,22 @@ async function importQuotationToInventory(file){
           attrs._photoStoragePath=photoMeta.photoStoragePath||attrs._photoStoragePath||'';
           attrs._photoStorageBucket=photoMeta.photoStorageBucket||attrs._photoStorageBucket||'';
           attrs._photoDriveId='';
-        }catch(e){ throw new Error(`Không upload được ảnh ${code} lên Supabase Storage: ${e.message||e}`); }
+        }catch(e){
+          const err=storageUploadErrorMessage(e);
+          attrs._photoUploadError=err;
+          attrs._photoStoragePath=attrs._photoStoragePath||'';
+          attrs._photoStorageBucket=attrs._photoStorageBucket||'';
+          console.warn(`Giữ ảnh tạm cho ${code} vì chưa upload được Supabase Storage:`, e);
+        }
       }
     }
-    const item=normalizeInventoryItem({id:uid(),code,barcodeId:code,name:String(line.name||productTypeName(productType)).trim(),productType,itemKind:'order',unit:line.unit||'Cái (pcs)',quantity:Number(line.quantity||1),purchasePrice:parseInputMoney(line.purchasePrice||0),price:parseInputMoney(line.price||0),orderDate:todayIso(),importDate:'',exportDate:'',dimension:line.dimension||'',photoDataUrl,photoStorageUrl:line.photoStorageUrl||photoDataUrl,photoStoragePath:line.photoStoragePath||attrs._photoStoragePath||'',photoStorageBucket:line.photoStorageBucket||attrs._photoStorageBucket||'',photoDriveId:'',photoDriveUrl:line.photoDriveUrl||photoDataUrl,invoiceName:'',invoiceDataUrl:'',saleInvoiceName:'',saleInvoiceDataUrl:'',attributes:attrs});
+    const item=normalizeInventoryItem({id:uid(),code,barcodeId:code,name:String(line.name||productTypeName(productType)).trim(),productType,itemKind:'order',unit:line.unit||'Cái (pcs)',quantity:Number(line.quantity||1),purchasePrice:parseInputMoney(line.purchasePrice||0),price:parseInputMoney(line.price||0),orderDate:todayIso(),importDate:'',exportDate:'',dimension:line.dimension||'',photoDataUrl,photo:photoDataUrl,photoStorageUrl:line.photoStorageUrl||(!isEmbeddedFileValue(photoDataUrl)?photoDataUrl:''),photoStoragePath:line.photoStoragePath||attrs._photoStoragePath||'',photoStorageBucket:line.photoStorageBucket||attrs._photoStorageBucket||'',photoDriveId:'',photoDriveUrl:line.photoDriveUrl||(!isEmbeddedFileValue(photoDataUrl)?photoDataUrl:''),invoiceName:'',invoiceDataUrl:'',saleInvoiceName:'',saleInvoiceDataUrl:'',attributes:attrs});
     const existing=findInventoryItem(code);
     if(existing){ Object.assign(existing,item,{id:existing.id}); imported.push(existing); movements.push(inventoryMovement('Đang sản xuất',existing,Number(existing.quantity||1))); }
     else { state.inventory.items.unshift(item); imported.push(item); movements.push(inventoryMovement('Đang sản xuất',item,Number(item.quantity||1))); }
     count++;
   }
-  state.inventory.syncStatus=`Đã import ${count} sản phẩm từ báo giá vào nhóm Đang sản xuất.${missingPhotoCount?` Có ${missingPhotoCount} dòng chưa có ảnh.`:' Ảnh đã lưu trên Supabase Storage.'}`;
+  state.inventory.syncStatus=`Đã import ${count} sản phẩm từ báo giá vào nhóm Đang sản xuất.${missingPhotoCount?` Có ${missingPhotoCount} dòng chưa có ảnh.`:(uploadQuoteLineEmbeddedImages.lastError?' Ảnh đang hiển thị tạm, chưa lưu được Storage.':' Ảnh đã lưu trên Supabase Storage.')}`;
   saveInventory();
   render();
   await Promise.all(imported.map(item=>saveInventoryItemRemote(item).catch(e=>console.warn(e))));
