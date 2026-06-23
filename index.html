@@ -533,7 +533,7 @@ async function saveWorkingStateToSupabase(){
     console.warn('Working state save failed:',e);
     return false;
   }finally{
-    try{ render(); }catch{}
+    // Không render tự động sau mỗi lần autosave, tránh màn hình chớp/tắt khi đang nhập hoặc import Excel.
   }
 }
 
@@ -1170,8 +1170,16 @@ function worksheetProductImages(wb,sheet,firstRow=11){
 function productImageFromMap(imageMap,index,rowNumber){ return imageMap.get(`row:${rowNumber}`)||imageMap.get(`row:${Number(rowNumber||0)+1}`)||imageMap.get(`row:${Number(rowNumber||0)-1}`)||imageMap.get(index)||''; }
 function applyExcelPhotoFallback(line,image){
   normalizePhotoRefs(line);
-  if(!photoSourceValue(line)&&image)line.photoDataUrl=image;
-  normalizePhotoRefs(line);
+  if(!photoSourceValue(line)&&image){
+    line.photoDataUrl=image;
+    line.photoStorageUrl='';
+    line.photoStoragePath='';
+    line.photoStorageBucket='';
+    line.photoDriveUrl='';
+    line.photoDriveId='';
+  }
+  // Không normalize lần 2 ở đây, vì normalizePhotoRefs sẽ xóa data:image trước khi upload.
+  // uploadQuoteLineEmbeddedImages() sẽ upload ảnh nhúng lên Supabase Storage rồi thay bằng public URL trước khi saveDraft().
   return line;
 }
 function worksheetForProductImages(wb){ return wb?.worksheets?.find(ws=>ws.name!=='_APP_DATA'&&typeof ws.getImages==='function'&&ws.getImages().length)||wb?.worksheets?.find(ws=>ws.name!=='_APP_DATA')||wb?.worksheets?.[0]; }
