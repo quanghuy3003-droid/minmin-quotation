@@ -1010,6 +1010,36 @@ function inventoryInvoiceLink(label,url,name='file.pdf'){ return url?`<a href="$
 function inventoryInvoiceButton(label,item,field){ const key=item.barcodeId||item.code, has=!!item[field]; return has?`<button data-stock-file="${esc(key)}" data-stock-file-field="${esc(field)}" type="button" class="inline-flex h-9 items-center rounded-md border border-mint/30 px-3 text-xs font-extrabold text-mint hover:bg-mint hover:text-white">Xem ${esc(label)}</button>`:`<span class="inline-flex h-9 items-center rounded-md border border-dashed border-black/10 px-3 text-xs font-extrabold text-black/35">${esc(label)}: chưa có</span>`; }
 function inventoryQuickInvoiceButton(label,item,field){ const key=item.barcodeId||item.code; return item[field]?`<button data-stock-file="${esc(key)}" data-stock-file-field="${esc(field)}" type="button" class="inline-flex h-8 min-w-[108px] items-center justify-center rounded-md border border-mint/30 bg-white px-2 text-xs font-extrabold text-mint hover:bg-mint hover:text-white">${esc(label)}</button>`:`<span class="inline-flex h-8 min-w-[108px] items-center justify-center rounded-md border border-dashed border-black/10 bg-white/70 px-2 text-xs font-extrabold text-black/35">${esc(label.replace('Xem ',''))}: chưa có</span>`; }
 function inventoryInvoiceControl(label,item,field,nameField,kind){ const key=item.barcodeId||item.code; return `<div class="grid min-w-0 gap-2 rounded-md border border-black/10 bg-white p-3 sm:grid-cols-2">${inventoryInvoiceButton(label,item,field)}<label class="inline-flex h-9 cursor-pointer items-center justify-center rounded-md bg-[#F7F7F2] px-3 text-xs font-extrabold text-ink hover:bg-mint hover:text-white"><input data-stock-upload="${esc(key)}" data-stock-upload-field="${esc(field)}" data-stock-upload-name-field="${esc(nameField)}" data-stock-upload-kind="${esc(kind)}" type="file" accept="application/pdf,.pdf" class="sr-only"/>+ ${esc(label)}</label></div>`; }
+
+function inventorySoldTime(item){
+  if(!item)return'';
+  const attrs=item.attributes||{};
+  const code=item.barcodeId||item.code||'';
+  const direct=item.exportDate||item.soldAt||item.sold_at||attrs._soldAt||attrs._sold_at||'';
+  if(direct)return direct;
+  const moves=Array.isArray(state?.inventory?.movements)?state.inventory.movements:[];
+  const sold=moves.filter(m=>(m.barcodeId===code||m.code===code)&&String(m.type||'')==='Xuất kho').sort((a,b)=>String(b.date||b.createdAt||b.updatedAt||'').localeCompare(String(a.date||a.createdAt||a.updatedAt||'')))[0];
+  return sold?.date||sold?.createdAt||sold?.updatedAt||'';
+}
+function inventoryExportSummary(item){
+  if(!item||item.itemKind==='sample')return'';
+  const code=item.barcodeId||item.code||'';
+  const moves=(Array.isArray(state?.inventory?.movements)?state.inventory.movements:[]).filter(m=>(m.barcodeId===code||m.code===code)&&String(m.type||'')==='Xuất kho');
+  if(!moves.length)return'';
+  const total=moves.reduce((s,m)=>s+Number(m.quantity||m.qty||0),0);
+  const latest=moves.slice().sort((a,b)=>String(b.date||b.createdAt||b.updatedAt||'').localeCompare(String(a.date||a.createdAt||a.updatedAt||'')))[0];
+  const latestDate=compactDate(latest?.date||latest?.createdAt||latest?.updatedAt||'');
+  return `<div class="rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-bold text-sky-700">Đã xuất ${esc(total||'')} sản phẩm${latestDate?` · lần cuối ${esc(latestDate)}`:''}</div>`;
+}
+function inventoryAttributeCards(item){
+  const attrs=item?.attributes||{};
+  const cards=ATTRIBUTE_FIELDS.map(f=>{
+    const val=attrs[f.key]||item?.[f.key]||'';
+    return `<div class="rounded-md border border-black/10 bg-white p-2"><div class="text-[10px] font-bold uppercase tracking-wide text-black/40">${esc(f.label)}</div><div class="mt-1 min-h-5 break-words text-xs font-extrabold text-ink">${esc(val||'—')}</div></div>`;
+  }).join('');
+  return `<div class="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">${cards}</div>`;
+}
+
 function inventoryExportIcon(){ return '<span class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-sky-300 bg-sky-300/80 text-base font-black leading-none text-ink shadow-inner">↑</span>'; }
 function inventoryHistoryInvoiceActions(m){ const item=m.item||findInventoryItem(m.barcodeId||m.code); if(!item||item.itemKind==='sample')return '<span class="text-xs font-bold text-black/35">Không cần</span>'; const key=item.barcodeId||item.code, hasExport=Array.isArray(m.moves)?m.moves.some(x=>x.type==='Xuất kho'):String(m.type||'')==='Xuất kho'; const one=(short,label,field,nameField,kind)=>item[field]?`<button data-stock-file="${esc(key)}" data-stock-file-field="${esc(field)}" type="button" class="h-7 rounded-md border border-mint/30 px-1.5 text-[11px] font-extrabold text-mint hover:bg-mint hover:text-white">${esc(short)}</button>`:`<label class="inline-flex h-7 cursor-pointer items-center rounded-md border border-dashed border-black/15 px-1.5 text-[11px] font-extrabold text-black/45 hover:border-mint hover:text-mint"><input data-stock-upload="${esc(key)}" data-stock-upload-field="${esc(field)}" data-stock-upload-name-field="${esc(nameField)}" data-stock-upload-kind="${esc(kind)}" type="file" accept="application/pdf,.pdf" class="sr-only"/>+ ${esc(label)}</label>`; const inbound=one('Vào','vào','invoiceDataUrl','invoiceName','invoice'); const outbound=hasExport?one('Ra','ra','saleInvoiceDataUrl','saleInvoiceName','sale-invoice'):''; return `<div class="flex min-w-0 flex-wrap gap-1">${inbound}${outbound}</div>`; }
 function inventoryCheckNote(label,ok,good,bad,neutral=false){ const isStockStatus=label==='Tình trạng'; const tone=neutral?'border-black/10 bg-black/5 text-black/45':(ok?'border-mint/25 bg-mint/10 text-mint':(isStockStatus?'border-black/10 bg-black/5 text-black/45':'border-coral/25 bg-coral/10 text-coral')); const mark=neutral?'•':(ok?'✓':(isStockStatus?'•':'!')); return `<div class="flex min-h-10 items-center gap-2 rounded-md border ${tone} px-3 py-2 text-xs font-extrabold"><span class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white/80">${mark}</span><span>${esc(label)}: ${esc(ok?good:bad)}</span></div>`; }
