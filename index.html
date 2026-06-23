@@ -310,6 +310,12 @@ function driveDirectUrl(id){ return id?`https://drive.google.com/uc?export=view&
 function driveFileUrl(id){ return id?`https://drive.google.com/file/d/${encodeURIComponent(id)}/view`:''; }
 function driveFileIdFromValue(value){ const v=String(value||'').trim(); return v.match(/drive\.google\.com\/file\/d\/([^/]+)/)?.[1]||v.match(/[?&]id=([^&]+)/)?.[1]||''; }
 function driveAssetUrl(value){ const v=String(value||'').trim(); if(!v)return''; if(v.startsWith('data:'))return v; const id=v.match(/drive\.google\.com\/file\/d\/([^/]+)/)?.[1]||v.match(/[?&]id=([^&]+)/)?.[1]; return id?driveDirectUrl(id):v; }
+function storageUploadErrorMessage(error){
+  const msg=String(error?.message||error||'');
+  if(/row-level security|policy|permission|not authorized|unauthorized|403/i.test(msg))return 'Supabase Storage chưa có policy upload/read cho bucket product/invoice.';
+  if(/bucket|not found|404/i.test(msg))return 'Chưa tạo bucket Supabase Storage product/invoice hoặc tên bucket chưa đúng.';
+  return msg||'Supabase Storage upload bị lỗi.';
+}
 function driveViewUrl(value){ const v=String(value||'').trim(); if(!v||v.startsWith('data:'))return v; const id=v.match(/drive\.google\.com\/file\/d\/([^/]+)/)?.[1]||v.match(/[?&]id=([^&]+)/)?.[1]; return id?driveFileUrl(id):v; }
 function driveStoredValue(value){ return cleanStoredFileValue(String(value||'').trim()); }
 function photoSourceValue(item){ const attrs=item?.attributes||{}; const url=item?.photoStorageUrl||item?.photo_storage_url||attrs._photoStorageUrl||item?.photoDriveUrl||item?.photo_drive_url||attrs._photoDriveUrl||item?.photoDataUrl||item?.photo_data_url||item?.photo||''; const id=item?.photoDriveId||item?.photo_drive_id||attrs._photoDriveId||''; return url||(id?driveFileUrl(id):''); }
@@ -949,6 +955,25 @@ async function uploadInventoryItemFile(code,field,nameField,kind,file){
   }
   render();
 }
+
+function daysBetweenDates(start,end){
+  if(!start||!end)return null;
+  const parse=(v)=>{
+    const text=String(v||'').trim();
+    if(!text)return null;
+    const iso=text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if(iso)return new Date(Number(iso[1]),Number(iso[2])-1,Number(iso[3]));
+    const vn=text.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+    if(vn){ const y=vn[3].length===2?Number('20'+vn[3]):Number(vn[3]); return new Date(y,Number(vn[2])-1,Number(vn[1])); }
+    const d=new Date(text);
+    return Number.isNaN(d.getTime())?null:new Date(d.getFullYear(),d.getMonth(),d.getDate());
+  };
+  const a=parse(start), b=parse(end);
+  if(!a||!b)return null;
+  const diff=Math.round((b.getTime()-a.getTime())/86400000);
+  return Math.max(0,diff);
+}
+
 function inventoryStageDuration(item,stage){
   if(stage.key==='production'){
     const days=daysBetweenDates(item.orderDate,item.importDate||todayIso());
@@ -988,6 +1013,14 @@ function inventoryInvoiceControl(label,item,field,nameField,kind){ const key=ite
 function inventoryExportIcon(){ return '<span class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-sky-300 bg-sky-300/80 text-base font-black leading-none text-ink shadow-inner">↑</span>'; }
 function inventoryHistoryInvoiceActions(m){ const item=m.item||findInventoryItem(m.barcodeId||m.code); if(!item||item.itemKind==='sample')return '<span class="text-xs font-bold text-black/35">Không cần</span>'; const key=item.barcodeId||item.code, hasExport=Array.isArray(m.moves)?m.moves.some(x=>x.type==='Xuất kho'):String(m.type||'')==='Xuất kho'; const one=(short,label,field,nameField,kind)=>item[field]?`<button data-stock-file="${esc(key)}" data-stock-file-field="${esc(field)}" type="button" class="h-7 rounded-md border border-mint/30 px-1.5 text-[11px] font-extrabold text-mint hover:bg-mint hover:text-white">${esc(short)}</button>`:`<label class="inline-flex h-7 cursor-pointer items-center rounded-md border border-dashed border-black/15 px-1.5 text-[11px] font-extrabold text-black/45 hover:border-mint hover:text-mint"><input data-stock-upload="${esc(key)}" data-stock-upload-field="${esc(field)}" data-stock-upload-name-field="${esc(nameField)}" data-stock-upload-kind="${esc(kind)}" type="file" accept="application/pdf,.pdf" class="sr-only"/>+ ${esc(label)}</label>`; const inbound=one('Vào','vào','invoiceDataUrl','invoiceName','invoice'); const outbound=hasExport?one('Ra','ra','saleInvoiceDataUrl','saleInvoiceName','sale-invoice'):''; return `<div class="flex min-w-0 flex-wrap gap-1">${inbound}${outbound}</div>`; }
 function inventoryCheckNote(label,ok,good,bad,neutral=false){ const isStockStatus=label==='Tình trạng'; const tone=neutral?'border-black/10 bg-black/5 text-black/45':(ok?'border-mint/25 bg-mint/10 text-mint':(isStockStatus?'border-black/10 bg-black/5 text-black/45':'border-coral/25 bg-coral/10 text-coral')); const mark=neutral?'•':(ok?'✓':(isStockStatus?'•':'!')); return `<div class="flex min-h-10 items-center gap-2 rounded-md border ${tone} px-3 py-2 text-xs font-extrabold"><span class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white/80">${mark}</span><span>${esc(label)}: ${esc(ok?good:bad)}</span></div>`; }
+function inventoryFinance(item){
+  const sell=parseInputMoney(item?.price||0);
+  const cost=parseInputMoney(item?.purchasePrice||0);
+  const profit=sell-cost;
+  const vat=Math.round(sell*0.08);
+  const profitTax=Math.max(0,Math.round(profit*0.2));
+  return {sell,cost,profit,vat,profitTax};
+}
 function inventoryEditableMoney(label,key,item){ const value=moneyPlain(parseInputMoney(item[key])); return `<label class="grid min-w-0 gap-1.5 rounded-md border border-black/10 bg-white p-3"><span class="truncate text-[10px] font-bold uppercase tracking-wide text-black/40">${esc(label)}</span><input data-stock-edit="${esc(item.barcodeId||item.code)}" data-stock-edit-field="${esc(key)}" value="${esc(value)}" inputmode="numeric" class="h-10 min-w-0 w-full rounded-md border border-black/15 bg-white px-3 text-sm font-extrabold text-ink outline-none focus:border-mint focus:ring-4 focus:ring-mint/10"/></label>`; }
 function inventoryItemCard(item){
   const key=item.barcodeId||item.code, open=!!state.ui.openStockItems?.[key], f=inventoryFinance(item), isSample=item.itemKind==='sample', stage=inventoryStage(item), inStock=stage.key==='stock', timeline=inventoryStatusTimeline(item,stage), exportSummary=inventoryExportSummary(item), quoteFile=item.attributes?._quotationFileName||item.quotationFileName||'';
@@ -1274,7 +1307,7 @@ async function importQuotationExcel(file){
     render();
     let uploadedImageCount=0, uploadError='';
     try{ uploadedImageCount=await uploadQuoteLineEmbeddedImages(state.lines,file.name); }
-    catch(e){ uploadError=storageUploadErrorMessage?storageUploadErrorMessage(e):(e.message||String(e)); console.warn(e); }
+    catch(e){ uploadError=typeof storageUploadErrorMessage==='function'?storageUploadErrorMessage(e):(e.message||String(e)); console.warn(e); }
     saveDraft();
     render();
     if(uploadError)alert('Đã nhập dữ liệu Excel từ _APP_DATA. Ảnh có thể hiển thị tạm, nhưng chưa upload được lên Supabase Storage: '+uploadError);
@@ -1312,7 +1345,7 @@ async function importQuotationExcel(file){
   render();
   let uploadedImageCount=0, uploadError='';
   try{ uploadedImageCount=await uploadQuoteLineEmbeddedImages(state.lines,file.name); }
-  catch(e){ uploadError=storageUploadErrorMessage?storageUploadErrorMessage(e):(e.message||String(e)); console.warn(e); }
+  catch(e){ uploadError=typeof storageUploadErrorMessage==='function'?storageUploadErrorMessage(e):(e.message||String(e)); console.warn(e); }
   saveDraft();
   render();
   if(uploadError)alert('Đã nhập nội dung Excel. Ảnh có thể hiển thị tạm, nhưng chưa upload được lên Supabase Storage: '+uploadError);
