@@ -903,9 +903,16 @@ function numberToEnglish(input){
   return words.join(' ').replace(/^./,c=>c.toUpperCase());
 }
 
+function normalizePinValue(value){
+  return String(value||'').replace(/\D/g,'').trim();
+}
 function appPinCode(){
-  const stored=String(localStorage.getItem(PIN_CODE_KEY)||'').trim();
-  return stored || PIN_DEFAULT_CODE;
+  const remote=normalizePinValue(state?.ui?.appPinCode);
+  const stored=normalizePinValue(localStorage.getItem(PIN_CODE_KEY));
+  return remote || stored || PIN_DEFAULT_CODE;
+}
+function acceptedPinCodes(){
+  return [...new Set([state?.ui?.appPinCode, localStorage.getItem(PIN_CODE_KEY), PIN_DEFAULT_CODE].map(normalizePinValue).filter(Boolean))];
 }
 function lockApp(){
   sessionStorage.removeItem(PIN_UNLOCK_SESSION_KEY);
@@ -914,13 +921,16 @@ function lockApp(){
   render();
 }
 function unlockApp(pin){
-  const entered=String(pin||'').trim();
+  const entered=normalizePinValue(pin);
   if(!entered){appPinError='Anh nhập mã PIN.'; return false;}
-  if(entered===appPinCode()){
+  if(acceptedPinCodes().includes(entered)){
+    localStorage.setItem(PIN_CODE_KEY,entered);
+    state.ui.appPinCode=entered;
     sessionStorage.setItem(PIN_UNLOCK_SESSION_KEY,'1');
     appUnlocked=true;
     appPinError='';
     appLastActivity=Date.now();
+    scheduleWorkingStateSave();
     render();
     return true;
   }
@@ -932,17 +942,21 @@ function renderLoadingSplash(text='Đang tải dữ liệu...'){
   return `<main class="min-h-screen bg-white"><div class="flex min-h-screen flex-col items-center justify-center px-6 text-center"><img src="${PIN_LOGO_DATA_URL||UI_LOGO_DATA_URL}" alt="MINMIN Lifestyle" class="w-64 max-w-[72vw] object-contain"/><div class="mt-8 flex gap-2" aria-hidden="true"><span class="h-2 w-2 animate-pulse rounded-full bg-ink"></span><span class="h-2 w-2 animate-pulse rounded-full bg-ink [animation-delay:120ms]"></span><span class="h-2 w-2 animate-pulse rounded-full bg-ink [animation-delay:240ms]"></span></div><p class="mt-4 text-sm font-bold tracking-wide text-black/45">${esc(text)}</p></div></main>`;
 }
 function renderPinGate(){
-  return `<main class="min-h-screen bg-white"><section class="flex min-h-screen flex-col items-center justify-center gap-16 px-5 text-center"><img src="${PIN_LOGO_DATA_URL||UI_LOGO_DATA_URL}" alt="MINMIN Lifestyle" class="w-72 max-w-[70vw] object-contain"/><form id="pinForm" class="w-full max-w-[380px]"><input id="pinInput" type="password" inputmode="numeric" autocomplete="current-password" autofocus placeholder="••••••" aria-label="Nhập mã PIN" class="h-16 w-full rounded-xl border ${appPinError?'border-coral bg-coral/5':'border-black/15 bg-[#F7F7F2]'} px-5 text-center text-3xl font-extrabold tracking-[0.38em] text-ink outline-none transition focus:border-ink focus:ring-4 focus:ring-black/5"/></form></section></main>`;
+  return `<main class="min-h-screen bg-white"><section class="flex min-h-screen flex-col items-center justify-center gap-16 px-5 text-center"><img src="${PIN_LOGO_DATA_URL||UI_LOGO_DATA_URL}" alt="MINMIN Lifestyle" class="w-72 max-w-[70vw] object-contain"/><form id="pinForm" class="w-full max-w-[380px]"><input id="pinInput" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="12" enterkeyhint="go" autocomplete="one-time-code" autofocus placeholder="••••••" aria-label="Nhập mã PIN" class="h-16 w-full rounded-xl border ${appPinError?'border-coral bg-coral/5':'border-black/15 bg-[#F7F7F2]'} px-5 text-center text-3xl font-extrabold tracking-[0.38em] text-ink outline-none transition focus:border-ink focus:ring-4 focus:ring-black/5"/><button type="submit" class="sr-only" tabindex="-1" aria-hidden="true">Vào app</button></form></section></main>`;
 }
 function bindPinGate(){
   const form=document.getElementById('pinForm'), input=document.getElementById('pinInput');
+  const clean=()=>{ if(input)input.value=normalizePinValue(input.value).slice(0,12); return input?.value||''; };
+  const tryUnlock=()=>{
+    const value=clean();
+    if(appPinError){ appPinError=''; input?.classList.remove('border-coral','bg-coral/5'); input?.classList.add('border-black/15','bg-[#F7F7F2]'); }
+    if(acceptedPinCodes().includes(value))unlockApp(value);
+  };
   if(input){
-    setTimeout(()=>input.focus(),80);
-    input.oninput=()=>{
-      input.value=String(input.value||'').replace(/\D/g,'').slice(0,12);
-      if(appPinError){ appPinError=''; input.classList.remove('border-coral','bg-coral/5'); input.classList.add('border-black/15','bg-[#F7F7F2]'); }
-      if(input.value.length>=appPinCode().length)unlockApp(input.value);
-    };
+    setTimeout(()=>{input.focus(); input.select?.();},120);
+    input.oninput=tryUnlock;
+    input.onchange=tryUnlock;
+    input.onkeyup=e=>{ if(e.key==='Enter')unlockApp(clean()); else tryUnlock(); };
   }
   if(form)form.onsubmit=e=>{e.preventDefault(); unlockApp(input?.value||'');};
 }
@@ -957,7 +971,9 @@ function bindPinTools(){
     if(a.length<4)return alert('PIN nên có ít nhất 4 số/ký tự.');
     if(a!==b)return alert('PIN nhập lại chưa khớp.');
     localStorage.setItem(PIN_CODE_KEY,a);
-    alert('Đã đổi PIN. Lần mở app sau sẽ dùng PIN mới.');
+    state.ui.appPinCode=a;
+    scheduleWorkingStateSave();
+    alert('Đã đổi PIN. PIN mới sẽ đồng bộ qua Supabase working state nếu thiết bị có mạng.');
     document.getElementById('pinNew1').value='';
     document.getElementById('pinNew2').value='';
   };
