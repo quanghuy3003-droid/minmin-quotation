@@ -398,6 +398,28 @@ async function storeInventoryFile(file,kind,code=''){
 }
 function inventoryLookupKey(){ const m=String(location.hash||'').match(/^#stock=(.+)$/); return m?decodeURIComponent(m[1]):''; }
 function findInventoryItem(key){ return state.inventory.items.find(x=>x.code===key||x.barcodeId===key); }
+function inventoryImportBatchKey(file,appData={}){
+  const info=appData.info||{}, exp=appData.export||{};
+  return [exp.id,exp.exportedAt,info._quoteExportId,info.quoteDate,info.client,info.representative,file?.name,file?.lastModified].filter(Boolean).join('|')||`import-${Date.now()}`;
+}
+function inventoryLineImportKey(line,index,file,appData={}){
+  return [inventoryImportBatchKey(file,appData),index+1,line?.code||'',line?.name||'',line?.dimension||''].join('|');
+}
+function sameInventoryImportLine(item,importKey,baseCode,index,fileName){
+  const attrs=item?.attributes||{};
+  if(attrs._quotationImportKey&&attrs._quotationImportKey===importKey)return true;
+  return !attrs._quotationImportKey && String(attrs._quotationFileName||'')===String(fileName||'') && String(attrs._quoteLineCode||item?.code||'')===String(baseCode||'') && (!attrs._quoteLineIndex || Number(attrs._quoteLineIndex)===Number(index+1));
+}
+function uniqueInventoryCode(baseCode,exceptItem=null){
+  const base=String(baseCode||'').trim()||randomInventoryBarcode();
+  const used=code=>state.inventory.items.some(item=>item!==exceptItem && (String(item.code||'')===code||String(item.barcodeId||'')===code));
+  if(!used(base))return base;
+  for(let n=2;n<1000;n++){ const code=`${base}-${String(n).padStart(2,'0')}`; if(!used(code))return code; }
+  return `${base}-${Date.now()}`;
+}
+function findSameImportedInventoryItem(importKey,baseCode,index,fileName){
+  return state.inventory.items.find(item=>sameInventoryImportLine(item,importKey,baseCode,index,fileName));
+}
 function inventorySearchText(item){ return cleanSearch([item.code,item.barcodeId,item.name,productTypeName(item.productType),item.dimension,item.unit,...ATTRIBUTE_FIELDS.map(f=>item.attributes?.[f.key]||'')].join(' ')); }
 function inventoryLookupUrl(item){ const base=location.href.split('#')[0]; return `${base}#stock=${encodeURIComponent(item.code||item.barcodeId)}`; }
 function inventoryQrPayload(item){ return inventoryLookupUrl(item); }
@@ -781,10 +803,13 @@ function excelQuoteLine(line){
   return l;
 }
 function quoteSnapshotForExcel(){
+  const exportId=`quote-${Date.now()}-${Math.random().toString(16).slice(2,8)}`;
   return safeJsonClone({
-    info:{...(state.info||{})},
+    version:3,
+    export:{id:exportId,exportedAt:new Date().toISOString(),quoteDate:quoteDateIso(),client:state.info?.client||'',representative:state.info?.representative||''},
+    info:{...(state.info||{}),_quoteExportId:exportId},
     pricing:{...(state.pricing||{})},
-    lines:(state.lines||[]).map(excelQuoteLine),
+    lines:(state.lines||[]).map((line,index)=>({...excelQuoteLine(line),_quoteLineIndex:index+1,_quoteExportId:exportId})),
     sheetInput:state.sheetInput||''
   });
 }
@@ -1422,12 +1447,13 @@ async function importQuotationToInventory(file){
   await wb.xlsx.load(await file.arrayBuffer());
   const appSheet=wb.getWorksheet('_APP_DATA');
   let lines=[];
+  let appData={};
   if(appSheet){
-    const data=readAppDataSheet(appSheet);
-    lines=Array.isArray(data.lines)?data.lines.map(l=>normalizeQuoteLineForExcelImport({...applyProduct({}),...l,attributes:{...ATTRIBUTE_DEFAULTS,...(l.attributes||{})}})):[];
+    appData=readAppDataSheet(appSheet)||{};
+    lines=Array.isArray(appData.lines)?appData.lines.map(l=>normalizeQuoteLineForExcelImport({...applyProduct({}),...l,attributes:{...ATTRIBUTE_DEFAULTS,...(l.attributes||{})}})):[];
     const imageMap=worksheetProductImages(wb,worksheetForProductImages(wb));
     lines.forEach((line,i)=>applyExcelPhotoFallback(line,imageMap.get(i)));
-    state.info.quoteDate=(data.info&&isValidIsoDate(data.info.quoteDate))?data.info.quoteDate:(inferQuoteDateFromLines(lines)||inferQuoteDateFromFileName(file.name)||quoteDateIso());
+    state.info.quoteDate=(appData.info&&isValidIsoDate(appData.info.quoteDate))?appData.info.quoteDate:(inferQuoteDateFromLines(lines)||inferQuoteDateFromFileName(file.name)||quoteDateIso());
   }else{
     const sheet=wb.worksheets[0];
     if(!sheet)throw new Error('File Excel không có sheet báo giá.');
@@ -1451,21 +1477,32 @@ async function importQuotationToInventory(file){
     state.inventory.syncStatus=`Đã đọc ${photoCount}/${lines.length} ảnh từ file báo giá. Vẫn tiếp tục import, dòng thiếu ảnh sẽ để trống.`;
     render();
   }
-  let count=0;
+  let count=0, createdCount=0, mergedCount=0, renamedCount=0;
   const imported=[], movements=[];
-  state.inventory.syncStatus='Đang import và lưu ảnh báo giá lên Supabase Storage...';
+  const batchKey=inventoryImportBatchKey(file,appData);
+  state.inventory.syncStatus='Đang import báo giá vào Kho hàng và xử lý mã trùng...';
   render();
-  for(const line of lines){
-    const productType=line.productType||inferProductType(line)||'PL', code=String(line.code||'').trim()||nextInventoryCode(productType);
+  for(const [lineIndex,line] of lines.entries()){
+    const productType=line.productType||inferProductType(line)||'PL';
+    const baseCode=String(line.code||'').trim()||nextInventoryCode(productType);
+    const importKey=inventoryLineImportKey(line,lineIndex,file,appData);
+    const sameExisting=findSameImportedInventoryItem(importKey,baseCode,lineIndex,file.name||'');
+    const finalCode=sameExisting?String(sameExisting.code||sameExisting.barcodeId||baseCode):uniqueInventoryCode(baseCode);
+    if(finalCode!==baseCode&&!sameExisting)renamedCount++;
     let photoDataUrl=photoSourceValue(line)||'';
     const attrs={...ATTRIBUTE_DEFAULTS,...(line.attributes||{})};
     attrs._quotationFileName=file.name||'';
+    attrs._quotationBatchKey=batchKey;
+    attrs._quotationImportKey=importKey;
+    attrs._quoteLineCode=baseCode;
+    attrs._quoteLineIndex=lineIndex+1;
+    attrs._inventoryCodeGenerated=finalCode;
     if(String(photoDataUrl||'').startsWith('data:image/')){
       photoDataUrl=await compressImageDataUrl(photoDataUrl);
-      const imgFile=fileFromDataUrl(photoDataUrl,`${code}.png`);
+      const imgFile=fileFromDataUrl(photoDataUrl,`${finalCode}.png`);
       if(imgFile){
         try{
-          const uploaded=await uploadFileToSupabaseStorage(imgFile,'photo',code);
+          const uploaded=await uploadFileToSupabaseStorage(imgFile,'photo',finalCode);
           const photoMeta=applyUploadedPhotoMeta({attributes:attrs},uploaded);
           photoDataUrl=photoMeta.photoStorageUrl||photoMeta.photoDriveUrl||photoDataUrl;
           attrs._photoStoragePath=photoMeta.photoStoragePath||attrs._photoStoragePath||'';
@@ -1476,32 +1513,35 @@ async function importQuotationToInventory(file){
           attrs._photoUploadError=err;
           attrs._photoStoragePath=attrs._photoStoragePath||'';
           attrs._photoStorageBucket=attrs._photoStorageBucket||'';
-          console.warn(`Giữ ảnh tạm cho ${code} vì chưa upload được Supabase Storage:`, e);
+          console.warn(`Giữ ảnh tạm cho ${finalCode} vì chưa upload được Supabase Storage:`, e);
         }
       }
     }
-    const item=normalizeInventoryItem({id:uid(),code,barcodeId:code,name:String(line.name||productTypeName(productType)).trim(),productType,itemKind:'order',unit:line.unit||'Cái (pcs)',quantity:Number(line.quantity||1),purchasePrice:parseInputMoney(line.purchasePrice||0),price:parseInputMoney(line.price||0),orderDate:quoteDateIso(),importDate:'',exportDate:'',dimension:line.dimension||'',photoDataUrl,photo:photoDataUrl,photoStorageUrl:line.photoStorageUrl||(!isEmbeddedFileValue(photoDataUrl)?photoDataUrl:''),photoStoragePath:line.photoStoragePath||attrs._photoStoragePath||'',photoStorageBucket:line.photoStorageBucket||attrs._photoStorageBucket||'',photoDriveId:'',photoDriveUrl:line.photoDriveUrl||(!isEmbeddedFileValue(photoDataUrl)?photoDataUrl:''),invoiceName:'',invoiceDataUrl:'',saleInvoiceName:'',saleInvoiceDataUrl:'',attributes:attrs});
-    const existing=findInventoryItem(code);
+    const item=normalizeInventoryItem({id:uid(),code:finalCode,barcodeId:finalCode,name:String(line.name||productTypeName(productType)).trim(),productType,itemKind:'order',unit:line.unit||'Cái (pcs)',quantity:Number(line.quantity||1),purchasePrice:parseInputMoney(line.purchasePrice||0),price:parseInputMoney(line.price||0),orderDate:quoteDateIso(),importDate:'',exportDate:'',dimension:line.dimension||'',photoDataUrl,photo:photoDataUrl,photoStorageUrl:line.photoStorageUrl||(!isEmbeddedFileValue(photoDataUrl)?photoDataUrl:''),photoStoragePath:line.photoStoragePath||attrs._photoStoragePath||'',photoStorageBucket:line.photoStorageBucket||attrs._photoStorageBucket||'',photoDriveId:'',photoDriveUrl:line.photoDriveUrl||(!isEmbeddedFileValue(photoDataUrl)?photoDataUrl:''),invoiceName:'',invoiceDataUrl:'',saleInvoiceName:'',saleInvoiceDataUrl:'',attributes:attrs});
     const importQty=Math.max(1,Number(item.quantity||line.quantity||1));
-    if(existing){
-      const oldQty=Number(existing.quantity||0);
-      const oldPhoto=photoSourceValue(existing)||existing.photoDataUrl||existing.photo||'';
+    if(sameExisting){
+      const oldQty=Number(sameExisting.quantity||0);
+      const oldPhoto=photoSourceValue(sameExisting)||sameExisting.photoDataUrl||sameExisting.photo||'';
       const newPhoto=photoSourceValue(item)||item.photoDataUrl||item.photo||'';
-      const merged={...existing,...item,id:existing.id,quantity:oldQty+importQty,barcodeId:existing.barcodeId||item.barcodeId||code,code:existing.code||item.code||code,photoDataUrl:newPhoto||oldPhoto,photo:newPhoto||oldPhoto,photoStorageUrl:item.photoStorageUrl||existing.photoStorageUrl||(!isEmbeddedFileValue(newPhoto)?newPhoto:''),photoStoragePath:item.photoStoragePath||existing.photoStoragePath||'',photoStorageBucket:item.photoStorageBucket||existing.photoStorageBucket||'',photoDriveUrl:item.photoDriveUrl||existing.photoDriveUrl||(!isEmbeddedFileValue(newPhoto)?newPhoto:''),attributes:{...(existing.attributes||{}),...(item.attributes||{})}};
-      Object.assign(existing,normalizeInventoryItem(merged));
-      imported.push(existing);
-      movements.push(inventoryMovement('Đang sản xuất',existing,importQty));
+      const merged={...sameExisting,...item,id:sameExisting.id,quantity:oldQty+importQty,barcodeId:sameExisting.barcodeId||item.barcodeId||finalCode,code:sameExisting.code||item.code||finalCode,photoDataUrl:newPhoto||oldPhoto,photo:newPhoto||oldPhoto,photoStorageUrl:item.photoStorageUrl||sameExisting.photoStorageUrl||(!isEmbeddedFileValue(newPhoto)?newPhoto:''),photoStoragePath:item.photoStoragePath||sameExisting.photoStoragePath||'',photoStorageBucket:item.photoStorageBucket||sameExisting.photoStorageBucket||'',photoDriveUrl:item.photoDriveUrl||sameExisting.photoDriveUrl||(!isEmbeddedFileValue(newPhoto)?newPhoto:''),attributes:{...(sameExisting.attributes||{}),...(item.attributes||{})}};
+      Object.assign(sameExisting,normalizeInventoryItem(merged));
+      imported.push(sameExisting);
+      movements.push(inventoryMovement('Đang sản xuất',sameExisting,importQty));
+      mergedCount++;
+    }else{
+      state.inventory.items.unshift(item);
+      imported.push(item);
+      movements.push(inventoryMovement('Đang sản xuất',item,importQty));
+      createdCount++;
     }
-    else { state.inventory.items.unshift(item); imported.push(item); movements.push(inventoryMovement('Đang sản xuất',item,importQty)); }
     count++;
   }
-  const newItems=imported.filter((item,idx,arr)=>arr.findIndex(x=>x.id===item.id)===idx).length;
-  state.inventory.syncStatus=`Đã import ${count} dòng từ báo giá vào Kho hàng. Nếu mã đã có thì app đã cộng dồn số lượng, không ghi đè.${missingPhotoCount?` Có ${missingPhotoCount} dòng chưa có ảnh.`:(uploadQuoteLineEmbeddedImages.lastError?' Ảnh đang hiển thị tạm, chưa lưu được Storage.':' Ảnh đã lưu trên Supabase Storage.')}`;
+  state.inventory.syncStatus=`Đã import ${count} dòng báo giá vào Kho hàng: tạo mới ${createdCount}, cộng dồn ${mergedCount}. ${renamedCount?`Có ${renamedCount} mã bị trùng với báo giá cũ nên app đã tự thêm hậu tố -02/-03 để không ghi đè.`:'Không có mã bị ghi đè.'}${missingPhotoCount?` Có ${missingPhotoCount} dòng chưa có ảnh.`:(uploadQuoteLineEmbeddedImages.lastError?' Ảnh đang hiển thị tạm, chưa lưu được Storage.':' Ảnh đã lưu trên Supabase Storage.')}`;
   saveInventory();
   render();
   await Promise.all(imported.map(item=>saveInventoryItemRemote(item).catch(e=>console.warn(e))));
   await Promise.all(movements.map(movement=>insertInventoryMovementRemote(movement).catch(e=>console.warn(e))));
-  alert(`Đã import ${count} dòng báo giá vào Kho hàng. Sản phẩm trùng mã sẽ được cộng dồn số lượng.`);
+  alert(`Đã import ${count} dòng báo giá vào Kho hàng. Báo giá mới có mã trùng sẽ tạo mã phụ -02/-03, không ghi đè hàng cũ.`);
 }
 async function exportQuotation(){ await loadScript('https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js',()=>window.ExcelJS); const ExcelJS=window.ExcelJS; const t=totals(), productLines=state.lines.filter(l=>l.name), firstRow=11, lastProductRow=firstRow+Math.max(productLines.length,1)-1, shipRow=lastProductRow+1,totalRow=shipRow+1,discountRow=totalRow+1,afterDiscountRow=discountRow+1,vatRow=afterDiscountRow+1,afterVatRow=vatRow+1,depositRow=afterVatRow+1,remainingRow=depositRow+1,wordsRow=remainingRow+2,notesStart=wordsRow+2; const wb=new ExcelJS.Workbook(), sheet=wb.addWorksheet('Table 1',{pageSetup:{orientation:'landscape',paperSize:9,fitToPage:true,fitToWidth:1,fitToHeight:0},views:[{showGridLines:false}]}); const font=(size,bold=false)=>({name:'Calibri',size,bold}); sheet.columns=[5,16,10,22.33,24,18.83,29.66,8.5,8.5,13.66,13].map(width=>({width})); const merge=r=>sheet.mergeCells(r), cell=(a,v)=>sheet.getCell(a).value=norm(v), formula=(a,f,result=0)=>sheet.getCell(a).value={formula:f,result}; ['A2:E2','A3:E3','A4:K4','A5:C5','D5:K5','A6:C6','D6:K6','A7:C7','D7:K7','A8:C8','D8:K8'].forEach(merge); cell('A2','HOME DÉCOR - ĐÈN TRANG TRÍ'); cell('A3','TEL 038 868 3838'); cell('A4','PHIẾU BÁO GIÁ (THE QUOTATION)'); cell('A5','Khách hàng (Client)'); cell('D5',state.info.client); cell('A6','Người đại diện (Name)'); cell('D6',state.info.representative); cell('A7','Địa chỉ (Address)'); cell('D7',state.info.address); cell('A8','Nơi giao'); cell('D8',state.info.delivery||state.info.address); cell('A9','Tel'); cell('B9',state.info.tel); cell('D9','Email'); cell('E9',state.info.email); sheet.getRow(10).values=['STT','Tình trạng','Mã hàng\n(Code)','Tên sản phẩm\n(Items)','Hình ảnh\n(Photo)','Kích thước\n(Dimension) (LxWxH)','Đặc điểm\n(Describe)','ĐVT (Unit)',"SL (Q'tity)",'Đơn giá\n(Unit Price)','Thành Tiền\n(Amount)']; productLines.forEach((l,i)=>{const rn=firstRow+i,row=sheet.getRow(rn); const desc=describeForExport(l); row.height=Math.max(124,Math.min(260,desc.split('\n').length*15+34)); const unit=lineUnitPrice(l), amount=lineAmount(l); row.values=[i+1,norm(l.status),norm(l.code),norm(l.name),'',norm(l.dimension),norm(desc),norm(l.unit),Number(l.quantity||0),unit,{formula:`I${rn}*J${rn}`,result:amount}];}); cell(`C${shipRow}`,state.info.shipCode); cell(`D${shipRow}`,state.info.shipName); cell(`H${shipRow}`,state.info.shipUnit); cell(`I${shipRow}`,Number(state.info.shipQty||0)); cell(`K${shipRow}`,Number(parseInputMoney(state.info.shipPriceText||0))*Number(state.info.shipQty||0)); [[totalRow,'TỔNG GIÁ TRỊ',`SUM(K${firstRow}:K${shipRow})`,t.subtotal],[discountRow,`CHIẾT KHẤU ${state.info.discountRate}% (Discount ${state.info.discountRate}%)`,`${Number(state.info.discountRate||0)}%*K${totalRow}`,t.discount],[afterDiscountRow,'TỔNG GIÁ TRỊ SAU CHIẾT KHẤU',`K${totalRow}-K${discountRow}`,t.afterDiscount],[vatRow,`VAT ${state.info.vatRate}%`,`${Number(state.info.vatRate||0)}%*K${afterDiscountRow}`,t.vat],[afterVatRow,'TỔNG TIỀN SAU VAT',`K${afterDiscountRow}+K${vatRow}`,t.afterVat],[depositRow,'ĐẶT CỌC (Deposit)',`${Number(state.info.depositRate||0)}%*K${afterVatRow}`,t.deposit],[remainingRow,'CÒN LẠI (Remaining)',`K${afterVatRow}-K${depositRow}`,t.remaining]].forEach(([r,l,f,res])=>{merge(`H${r}:J${r}`); cell(`H${r}`,l); formula(`K${r}`,f,res);}); sheet.getRow(wordsRow).height=25; cell(`B${wordsRow}`,'Số tiền bằng chữ'); merge(`C${wordsRow}:K${wordsRow}`); cell(`C${wordsRow}`,`${numberToVietnamese(t.afterVat)} (${numberToEnglish(t.afterVat)} Vietnamese dong)`); sheet.getCell(`B${wordsRow}`).alignment={horizontal:'left',vertical:'middle',wrapText:false}; sheet.getCell(`C${wordsRow}`).alignment={horizontal:'left',vertical:'middle',wrapText:false}; NOTE_LINES.forEach((n,i)=>{const r=notesStart+i; merge(`A${r}:K${r}`); cell(`A${r}`,n);}); const dateRow=notesStart+NOTE_LINES.length+1; sheet.pageSetup.printArea=`A1:K${dateRow}`; merge(`I${dateRow}:J${dateRow}`); formula(`I${dateRow}`,'TODAY()',new Date()); sheet.getCell(`I${dateRow}`).numFmt='dddd, mmmm dd, yyyy'; cell(`K${dateRow}`,'Ho Chi Minh City'); sheet.getRow(dateRow).height=18; sheet.eachRow((row,rn)=>row.eachCell({includeEmpty:true},(it,cn)=>{it.font=font(10); it.alignment={vertical:'middle',wrapText:true}; const product=rn>=10&&rn<=shipRow, total=rn>=totalRow&&rn<=remainingRow&&cn>=8&&cn<=11; if(product||total) it.border={top:{style:'thin'},left:{style:'thin'},bottom:{style:'thin'},right:{style:'thin'}};})); sheet.getCell('A2').font=font(14,true); sheet.getCell('A4').font=font(16,true); sheet.getCell('A4').alignment={horizontal:'center',vertical:'middle'}; sheet.getRow(10).font=font(10,true); sheet.getRow(10).height=32; sheet.getRow(10).alignment={horizontal:'center',vertical:'middle',wrapText:true}; ['D5','D6','D7','D8','B9','E9'].forEach(a=>{sheet.getCell(a).font=font(10,true);}); sheet.getCell(`B${wordsRow}`).font=font(10,true); sheet.getCell(`C${wordsRow}`).font={...font(10,true),italic:true}; for(let r=notesStart;r<notesStart+NOTE_LINES.length;r++){sheet.getCell(`A${r}`).font=font(10,true); if(String(sheet.getCell(`A${r}`).value||'').includes('Minmin không hỗ trợ'))sheet.getCell(`A${r}`).font={...font(10,true),color:{argb:'FFFF0000'}};} for(let r=totalRow;r<=remainingRow;r++){sheet.getCell(`H${r}`).font=font(10,true); sheet.getCell(`H${r}`).alignment={horizontal:'right',vertical:'middle',wrapText:true}; sheet.getCell(`K${r}`).font=font(10,true); sheet.getCell(`K${r}`).alignment={horizontal:'right',vertical:'middle',wrapText:true};} ['H','I','J','K'].forEach(c=>{sheet.getCell(`${c}${afterVatRow}`).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFD99694'}};}); for(let r=firstRow;r<=remainingRow;r++){sheet.getCell(`J${r}`).numFmt='#,##0'; sheet.getCell(`K${r}`).numFmt='#,##0';} ['A','B','C','D','F','H','I','J'].forEach(c=>{for(let r=10;r<=shipRow;r++)sheet.getCell(`${c}${r}`).alignment={horizontal:'center',vertical:'middle',wrapText:true};}); sheet.getRow(dateRow).height=18; sheet.getCell(`I${dateRow}`).alignment={horizontal:'right',vertical:'middle',wrapText:false,shrinkToFit:true}; sheet.getCell(`K${dateRow}`).alignment={horizontal:'left',vertical:'middle',wrapText:false,shrinkToFit:true}; const skipped=[]; const productImageSize=136, imageColumnWidthPx=24*7, productRowHeightPx=124*96/72; const colOffset=Math.max(0,(imageColumnWidthPx-productImageSize)/2)/imageColumnWidthPx, rowOffset=Math.max(0,(productRowHeightPx-productImageSize)/2)/productRowHeightPx; for(const [i,l] of productLines.entries()){try{const source=photoSourceValue(l), data=String(source||'').startsWith('data:image/')?await cropImageToSquare(source):await imageSourceToDataUrl(source); if(!data)continue; const id=wb.addImage({base64:data,extension:imageExtension(data)}); sheet.addImage(id,{tl:{col:4+colOffset,row:firstRow+i-1+rowOffset},ext:{width:productImageSize,height:productImageSize},editAs:'oneCell'});}catch{skipped.push(l.name||l.code);}} if(state.info.logoDataUrl){try{const logoData=String(state.info.logoDataUrl).startsWith('data:image/')?state.info.logoDataUrl:await imageSourceToDataUrl(state.info.logoDataUrl); if(logoData){sheet.getRow(1).height=74; const id=wb.addImage({base64:logoData,extension:imageExtension(logoData)}); sheet.addImage(id,{tl:{col:0.15,row:0.05},ext:{width:260,height:78},editAs:'oneCell'});}}catch{}} if(state.info.qrDataUrl){try{const qrData=String(state.info.qrDataUrl).startsWith('data:image/')?state.info.qrDataUrl:await imageSourceToDataUrl(state.info.qrDataUrl); if(qrData){const id=wb.addImage({base64:qrData,extension:imageExtension(qrData)}); sheet.addImage(id,{tl:{col:8.2,row:21.92},ext:{width:278,height:300},editAs:'oneCell'});}}catch{}} writeAppDataSheet(wb); const buf=await wb.xlsx.writeBuffer(); const exportTime=quoteDateObject(), fileName=quotationFileName(exportTime,'xlsx'); downloadBlob(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),fileName); recordExportHistory(fileName,t.afterVat); if(skipped.length)alert('Đã xuất Excel, nhưng chưa chèn được ảnh cho: '+skipped.join(', ')); }
 async function exportPdf(){ await loadScript('https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js',()=>window.html2canvas); await loadScript('https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js',()=>window.jspdf); const {jsPDF}=window.jspdf, t=totals(), productLines=state.lines.filter(l=>l.name), firstRow=11, lastProductRow=firstRow+Math.max(productLines.length,1)-1, shipRow=lastProductRow+1,totalRow=shipRow+1,discountRow=totalRow+1,afterDiscountRow=discountRow+1,vatRow=afterDiscountRow+1,afterVatRow=vatRow+1,depositRow=afterVatRow+1,remainingRow=depositRow+1; const imgs=await Promise.all(productLines.map(async l=>{try{return l.photoDataUrl?await cropImageToSquare(l.photoDataUrl):await imageSourceToDataUrl(l.photo)}catch{return''}})); const moneyCell=v=>moneyPlain(v); const productRows=productLines.map((l,i)=>`<tr class="product-row"><td>${i+1}</td><td>${br(l.status)}</td><td>${esc(l.code)}</td><td>${esc(l.name)}</td><td>${imgs[i]?`<img class="product-img" src="${imgs[i]}"/>`:''}</td><td>${esc(l.dimension)}</td><td class="desc">${br(describeForExport(l))}</td><td>${esc(l.unit)}</td><td>${Number(l.quantity||0)}</td><td>${moneyCell(lineUnitPrice(l))}</td><td>${moneyCell(lineAmount(l))}</td></tr>`).join('') || '<tr class="product-row"><td colspan="11"></td></tr>'; const totalRows=[[totalRow,'TỔNG GIÁ TRỊ',t.subtotal,false],[discountRow,`CHIẾT KHẤU ${state.info.discountRate}% (Discount ${state.info.discountRate}%)`,t.discount,false],[afterDiscountRow,'TỔNG GIÁ TRỊ SAU CHIẾT KHẤU',t.afterDiscount,false],[vatRow,`VAT ${state.info.vatRate}%`,t.vat,false],[afterVatRow,'TỔNG TIỀN SAU VAT',t.afterVat,true],[depositRow,'ĐẶT CỌC (Deposit)',t.deposit,false],[remainingRow,'CÒN LẠI (Remaining)',t.remaining,false]].map(([r,label,value,hot])=>`<tr class="total-row ${hot?'hot':''}"><td class="no-border" colspan="7"></td><td class="total-label" colspan="3">${esc(label)}</td><td class="total-value">${moneyCell(value)}</td></tr>`).join(''); const dateText=quoteDateObject().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'2-digit'}); const words=`${numberToVietnamese(t.afterVat)} (${numberToEnglish(t.afterVat)} Vietnamese dong)`; const div=document.createElement('div'); div.style.cssText='position:fixed;left:-10000px;top:0;width:1600px;background:white'; div.innerHTML=`<div class="pdf-page"><style>.pdf-page{box-sizing:border-box;width:1600px;padding:0 0 18px 0;color:#111;background:#fff;font-family:Arial,Helvetica,sans-serif;font-size:15px;position:relative;overflow:visible}.top-logo{position:absolute;left:10px;top:5px;width:260px;height:78px;object-fit:contain}.brand{padding-top:10px;font-weight:700}.brand div{height:22px}.pdf-title{text-align:center;font-size:28px;font-weight:900;margin:8px 0 5px}.pdf-top{display:grid;grid-template-columns:225px 1fr;gap:3px 18px;max-width:760px;margin-bottom:2px}.pdf-top div{min-height:21px}.sheet{width:100%;border-collapse:collapse;table-layout:fixed}.sheet th,.sheet td{border:1.35px solid #111;padding:5px 6px;vertical-align:middle;overflow-wrap:break-word}.sheet th{text-align:center;font-weight:900;font-size:17px;line-height:1.15}.sheet td{font-size:16px;line-height:1.25}.product-row{height:150px}.product-row td{text-align:center}.product-row .desc{text-align:left;font-size:15px;line-height:1.22}.product-img{width:128px;height:128px;object-fit:contain;display:block;margin:0 auto}.ship-row{height:28px}.total-row{height:28px}.total-row .no-border{border:none!important}.total-label{text-align:right;font-weight:900}.total-value{text-align:right;font-weight:900}.total-row.hot .total-label,.total-row.hot .total-value{background:#d99694}.words{display:grid;grid-template-columns:190px 1fr;margin-top:20px;margin-left:230px;column-gap:16px;white-space:nowrap;font-size:13px}.notes{margin-top:18px;font-size:16px;line-height:1.25}.notes p{margin:0 0 5px 0}.qr-img{position:absolute;left:1275px;top:672px;width:167px;height:180px;object-fit:contain}.date-line{margin-top:16px;margin-left:1030px;margin-right:8px;display:grid;grid-template-columns:1fr 160px;gap:20px;white-space:nowrap;font-size:15px}.date-line div:first-child{text-align:right}</style>${state.info.logoDataUrl?`<img class="top-logo" src="${state.info.logoDataUrl}"/>`:''}<div class="brand"><div>HOME DÉCOR - ĐÈN TRANG TRÍ</div><div>TEL 038 868 3838</div></div><div class="pdf-title">PHIẾU BÁO GIÁ (THE QUOTATION)</div><div class="pdf-top"><div>Khách hàng (Client)</div><div>${esc(state.info.client)}</div><div>Người đại diện (Name)</div><div>${esc(state.info.representative)}</div><div>Địa chỉ (Address)</div><div>${esc(state.info.address)}</div><div>Nơi giao</div><div>${esc(state.info.delivery||state.info.address)}</div><div>Tel&nbsp;&nbsp;&nbsp; ${esc(state.info.tel)}</div><div>Email&nbsp;&nbsp;&nbsp; ${esc(state.info.email)}</div></div><table class="sheet"><colgroup><col style="width:3%"><col style="width:9.4%"><col style="width:5.9%"><col style="width:13.1%"><col style="width:14.1%"><col style="width:11.1%"><col style="width:17.5%"><col style="width:5%"><col style="width:5%"><col style="width:8%"><col style="width:7.9%"></colgroup><thead><tr><th>STT</th><th>Tình trạng</th><th>Mã hàng<br>(Code)</th><th>Tên sản phẩm<br>(Items)</th><th>Hình ảnh<br>(Photo)</th><th>Kích thước<br>(Dimension) (LxWxH)</th><th>Đặc điểm<br>(Describe)</th><th>ĐVT (Unit)</th><th>SL (Q'tity)</th><th>Đơn giá<br>(Unit Price)</th><th>Thành Tiền<br>(Amount)</th></tr></thead><tbody>${productRows}<tr class="ship-row"><td></td><td></td><td>${esc(state.info.shipCode)}</td><td>${esc(state.info.shipName)}</td><td></td><td></td><td></td><td>${esc(state.info.shipUnit)}</td><td>${Number(state.info.shipQty||0)}</td><td></td><td>${moneyCell(Number(parseInputMoney(state.info.shipPriceText||0))*Number(state.info.shipQty||0))}</td></tr>${totalRows}</tbody></table><div class="words"><strong>Số tiền bằng chữ</strong><div>${esc(words)}</div></div><div class="notes">${NOTE_LINES.map(n=>`<p>${esc(n)}</p>`).join('')}</div>${state.info.qrDataUrl?`<img class="qr-img" src="${state.info.qrDataUrl}"/>`:''}<div class="date-line"><div>${esc(dateText)}</div><div>Ho Chi Minh City</div></div></div>`; document.body.appendChild(div); const canvas=await html2canvas(div,{scale:1.5,useCORS:true,backgroundColor:'#fff'}); document.body.removeChild(div); const pdf=new jsPDF({orientation:'landscape',unit:'pt',format:'a3'}), pw=pdf.internal.pageSize.getWidth(), ph=pdf.internal.pageSize.getHeight(), margin=12, aw=pw-margin*2, ah=ph-margin*2, pageContentHeight=Math.floor(ah*canvas.width/aw), pages=Math.max(1,Math.ceil(canvas.height/pageContentHeight)); for(let i=0;i<pages;i++){ const sliceHeight=Math.min(pageContentHeight,canvas.height-i*pageContentHeight), pageCanvas=document.createElement('canvas'); pageCanvas.width=canvas.width; pageCanvas.height=sliceHeight; pageCanvas.getContext('2d').drawImage(canvas,0,i*pageContentHeight,canvas.width,sliceHeight,0,0,canvas.width,sliceHeight); if(i)pdf.addPage('a3','landscape'); const img=pageCanvas.toDataURL('image/jpeg',0.92), imgH=sliceHeight*aw/canvas.width; pdf.addImage(img,'JPEG',margin,margin,aw,imgH); } pdf.save(quotationFileName(quoteDateObject(),'pdf')); }
