@@ -1495,28 +1495,55 @@ function viewInventoryFile(code,field,label='hóa đơn'){
 function viewInventoryInvoice(code){ viewInventoryFile(code,'invoiceDataUrl','hóa đơn vào'); }
 function viewInventorySaleInvoice(code){ viewInventoryFile(code,'saleInvoiceDataUrl','hóa đơn đầu ra'); }
 
+function inventoryInvoiceCodeKeys(item){
+  const values=[item?.code,item?.barcodeId,item?.name,item?.attributes?._linkedInventoryCode,item?.attributes?.linked_inventory_code].filter(Boolean);
+  const keys=new Set();
+  values.forEach(v=>{
+    const n=invoiceNorm(v);
+    if(n)keys.add(n);
+    const compact=n.replace(/[^a-z0-9]/gi,'');
+    if(compact)keys.add(compact);
+  });
+  return keys;
+}
+function inventoryInvoiceFileUrl(inv,type=''){
+  if(!inv)return '';
+  const direct=type==='pdf'?(inv.source_pdf_url||''):(type==='xml'?(inv.source_xml_url||inv.source_file_url||''):(inv.source_pdf_url||inv.source_xml_url||inv.source_file_url||''));
+  if(direct)return direct;
+  const files=Array.isArray(state?.inputInvoices?.files)?state.inputInvoices.files:[];
+  const match=files.find(f=>String(f.invoice_id||'')===String(inv.id||'')&&(!type||String(f.file_type||f.file_name||'').toLowerCase().includes(type)));
+  return match?.file_url||'';
+}
 function inventoryLinkedInputInvoice(item){
   if(!item||!state?.inputInvoices?.invoices)return null;
-  const keys=[item.code,item.barcodeId].filter(Boolean).map(v=>invoiceNorm(v));
-  if(!keys.length)return null;
+  const keys=inventoryInvoiceCodeKeys(item);
+  if(!keys.size)return null;
+  const hit=(raw)=>{
+    const n=invoiceNorm(raw||'');
+    if(!n)return false;
+    const compact=n.replace(/[^a-z0-9]/gi,'');
+    if(keys.has(n)||keys.has(compact))return true;
+    for(const k of keys){
+      if(k.length>=4&&(n.includes(k)||compact.includes(k)))return true;
+    }
+    return false;
+  };
   for(const inv of (state.inputInvoices.invoices||[])){
     const rows=Array.isArray(inv.items)?inv.items:[];
     for(let i=0;i<rows.length;i++){
       const it=normalizeInputInvoiceItem(rows[i],i);
-      const linked=invoiceNorm(it.linked_inventory_code||'');
-      if(linked&&keys.includes(linked))return {invoice:inv,item:it,index:i};
+      if(hit(it.linked_inventory_code)||hit(it.product_note))return {invoice:inv,item:it,index:i,source:'item'};
     }
   }
   return null;
 }
-function inventoryInputInvoiceUrl(item){
+function inventoryInputInvoiceUrl(item,type=''){
   const linked=inventoryLinkedInputInvoice(item);
   if(!linked)return '';
-  const inv=linked.invoice||{};
-  return inv.source_pdf_url||inv.source_xml_url||inv.source_file_url||'';
+  return inventoryInvoiceFileUrl(linked.invoice,type);
 }
-function inventoryHasInboundInvoice(item){ return !!(item?.invoiceDataUrl||inventoryInputInvoiceUrl(item)); }
-function inventoryInboundInvoiceSourceText(item){ return item?.invoiceDataUrl?'Đã có file trong kho':(inventoryInputInvoiceUrl(item)?'Đã liên kết từ Kế toán':'Cần bổ sung'); }
+function inventoryHasInboundInvoice(item){ return !!(item?.invoiceDataUrl||inventoryLinkedInputInvoice(item)); }
+function inventoryInboundInvoiceSourceText(item){ return item?.invoiceDataUrl?'Đã có file trong kho':(inventoryLinkedInputInvoice(item)?'Đã liên kết từ Kế toán':'Cần bổ sung'); }
 
 async function uploadInventoryItemFile(code,field,nameField,kind,file){
   const item=findInventoryItem(code);
