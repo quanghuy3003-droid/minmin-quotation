@@ -1448,8 +1448,9 @@ function recalcOutgoingTotals(inv={},changedKey=''){
   }
   const pct=Math.max(0,Number(inv.discount_percent||0));
   const ship=Math.max(0,Number(inv.shipping_fee||0));
-  const discount=Math.round(Math.max(0,goods)*pct/100);
-  const net=Math.max(0,Math.round(Math.max(0,goods)-discount+ship));
+  const subtotal=Math.max(0,goods)+ship;
+  const discount=Math.round(subtotal*pct/100);
+  const net=Math.max(0,Math.round(subtotal-discount));
   inv.goods_amount=Math.max(0,Math.round(goods));
   inv.discount_percent=pct;
   inv.discount_amount=discount;
@@ -1553,12 +1554,13 @@ function outgoingFromInventory(extra={},options={}){
   const goodsAmount=Math.round(rows.reduce((s,r)=>s+r.amount,0));
   const discountPercent=Number(draft.discount_percent||0);
   const shippingFee=Number(draft.shipping_fee||0);
-  const discountAmount=Math.round(goodsAmount*Math.max(0,discountPercent)/100);
-  const net=Math.max(0,Math.round(goodsAmount-discountAmount+Math.max(0,shippingFee)));
+  const subtotal=goodsAmount+Math.max(0,shippingFee);
+  const discountAmount=Math.round(subtotal*Math.max(0,discountPercent)/100);
+  const net=Math.max(0,Math.round(subtotal-discountAmount));
   const vat=Math.round(net*vatRate/100);
   const quoteNames=[...new Set(rows.map(r=>r.item.attributes?._quotationFileName||r.item.quotationFileName||'').filter(Boolean))];
   const itemSummaryBase=rows.map(r=>`${r.item.code||r.item.barcodeId||''} ${r.item.name||productTypeName(r.item.productType)||''} x ${r.qty}`).join('; ');
-  const adjustSummary=[discountPercent?`Giảm giá ${discountPercent}% (${money(discountAmount)})`:'',shippingFee?`Phí ship ${money(shippingFee)}`:''].filter(Boolean).join('; ');
+  const adjustSummary=[discountPercent?`Giảm giá ${discountPercent}% trên tiền hàng + phí ship (${money(discountAmount)})`:'',shippingFee?`Phí ship ${money(shippingFee)}`:''].filter(Boolean).join('; ');
   const itemSummary=adjustSummary?`${itemSummaryBase}; ${adjustSummary}`:itemSummaryBase;
   const orderCode=rows.map(r=>r.item.code||r.item.barcodeId||'').filter(Boolean).join(', ');
   return outgoingEmpty({
