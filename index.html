@@ -1331,23 +1331,30 @@ function inputInvoiceItemsSummary(inv){
   if(!inputInvoiceNeedsItemImages(inv))return '<span class="text-xs font-bold text-black/30">--</span>';
   const items=(inv.items||[]).map((it,i)=>inputInvoiceFinalizeLineAmount(normalizeInputInvoiceItem(it,i),inv.vat_rate));
   if(!items.length)return '<span class="text-xs font-bold text-coral">Chưa tách dòng hàng</span>';
-  return `<div class="w-[420px] max-w-[420px] overflow-x-auto overflow-y-hidden pb-1">
-    <div class="flex w-max flex-nowrap items-center gap-1.5">
-      ${items.slice(0,12).map((it,i)=>{
-        const img=inputInvoiceItemImageUrl(it), label=inputInvoiceItemLabel(it,i), code=it.linked_inventory_code||'', lineTotal=Number(it.total_amount||0)||Number(it.net_amount||0)+Number(it.vat_amount||0);
-        return `<div class="flex h-11 w-[205px] shrink-0 items-center gap-1.5 rounded-md border border-black/10 bg-white p-1">
-          <div class="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded border border-black/10 bg-[#F7F7F2]">
-            ${img?`<img src="${esc(img)}" class="h-full w-full object-cover"/>`:'<span class="text-[9px] font-bold text-black/30">Ảnh</span>'}
-          </div>
-          <div class="min-w-0 flex-1 leading-tight">
-            <div class="truncate text-[10px] font-extrabold">${i+1}. ${esc(label)}</div>
-            ${code&&code!==label?`<div class="truncate text-[9px] font-bold text-mint">${esc(code)}</div>`:''}
-            <div class="truncate text-[9px] font-bold text-black/55">SL ${esc(it.quantity||'--')} · VAT- ${money(it.net_amount||0)} · VAT+ ${money(lineTotal)}</div>
-          </div>
-        </div>`;
-      }).join('')}
-      ${items.length>12?`<div class="flex h-11 w-[76px] shrink-0 items-center justify-center rounded-md border border-dashed border-black/15 bg-[#F7F7F2] px-2 text-center text-[10px] font-bold text-black/45">+${items.length-12} món</div>`:''}
+  const visibleItems=items.slice(0,12);
+  const scrollId=`input-invoice-items-${String(inv.id||uid()).replace(/[^a-zA-Z0-9_-]/g,'')}`;
+  const card=(it,i)=>{
+    const img=inputInvoiceItemImageUrl(it), label=inputInvoiceItemLabel(it,i), code=it.linked_inventory_code||'', lineTotal=Number(it.total_amount||0)||Number(it.net_amount||0)+Number(it.vat_amount||0);
+    return `<div class="flex min-h-[58px] w-[348px] shrink-0 items-center gap-2 rounded-md border border-black/10 bg-white p-1.5 shadow-sm">
+      <div class="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded border border-black/10 bg-[#F7F7F2]">
+        ${img?`<img src="${esc(img)}" class="h-full w-full object-contain"/>`:'<span class="text-[9px] font-bold text-black/30">Ảnh</span>'}
+      </div>
+      <div class="min-w-0 flex-1 leading-tight">
+        <div class="whitespace-normal break-words text-[10px] font-extrabold leading-snug">${i+1}. ${esc(label)}</div>
+        ${code&&code!==label?`<div class="mt-0.5 whitespace-normal break-words text-[9px] font-bold leading-snug text-mint">${esc(code)}</div>`:''}
+        <div class="mt-0.5 whitespace-normal break-words text-[9px] font-bold leading-snug text-black/55">SL ${esc(it.quantity||'--')} · VAT- ${money(it.net_amount||0)} · VAT+ ${money(lineTotal)}</div>
+      </div>
+    </div>`;
+  };
+  return `<div class="flex w-[420px] max-w-[420px] items-center gap-1.5">
+    ${items.length>1?`<button data-input-invoice-item-scroll="${esc(scrollId)}" data-scroll-dir="left" type="button" class="flex h-9 w-7 shrink-0 items-center justify-center rounded-md border border-black/10 bg-white text-sm font-extrabold text-ink hover:border-mint hover:text-mint" title="Kéo qua trái">‹</button>`:''}
+    <div id="${esc(scrollId)}" class="w-[348px] max-w-[348px] overflow-x-auto overflow-y-hidden pb-1 scroll-smooth">
+      <div class="flex w-max flex-nowrap items-start gap-2">
+        ${visibleItems.map(card).join('')}
+        ${items.length>12?`<div class="flex min-h-[58px] w-[348px] shrink-0 items-center justify-center rounded-md border border-dashed border-black/15 bg-[#F7F7F2] px-2 text-center text-[10px] font-bold text-black/45">+${items.length-12} món khác</div>`:''}
+      </div>
     </div>
+    ${items.length>1?`<button data-input-invoice-item-scroll="${esc(scrollId)}" data-scroll-dir="right" type="button" class="flex h-9 w-7 shrink-0 items-center justify-center rounded-md border border-black/10 bg-white text-sm font-extrabold text-ink hover:border-mint hover:text-mint" title="Kéo qua phải">›</button>`:''}
   </div>`;
 }
 
@@ -1977,6 +1984,7 @@ function bindInputInvoices(){
   document.querySelectorAll('[data-input-invoice-item-clear]').forEach(b=>b.onclick=async()=>{const inv=state.inputInvoices.invoices.find(x=>x.id===b.dataset.invoiceId); if(!inv||inv.locked)return; const item=(inv.items||[]).find(x=>String(x.id)===String(b.dataset.itemId)); if(item){item.product_image_url=''; await saveInputInvoiceItemChange(inv); render();}});
   document.querySelectorAll('[data-input-invoice-item-add]').forEach(b=>b.onclick=async()=>{const inv=state.inputInvoices.invoices.find(x=>x.id===b.dataset.inputInvoiceItemAdd); if(!inv||inv.locked)return; inv.items=Array.isArray(inv.items)?inv.items:[]; inv.items.push(normalizeInputInvoiceItem({item_name:'',product_note:'',quantity:1,unit:'Cái',vat_rate:inv.vat_rate||'',product_image_url:'',linked_inventory_code:''},inv.items.length)); await saveInputInvoiceItemChange(inv); render();});
   document.querySelectorAll('[data-input-invoice-item-delete]').forEach(b=>b.onclick=async()=>{const inv=state.inputInvoices.invoices.find(x=>x.id===b.dataset.invoiceId); if(!inv||inv.locked)return; if(!confirm('Xóa dòng món này khỏi chi tiết hóa đơn?'))return; inv.items=(inv.items||[]).filter(x=>String(x.id)!==String(b.dataset.itemId)); await saveInputInvoiceItemChange(inv); render();});
+  document.querySelectorAll('[data-input-invoice-item-scroll]').forEach(b=>b.onclick=()=>{const box=document.getElementById(b.dataset.inputInvoiceItemScroll); if(!box)return; const dir=b.dataset.scrollDir==='left'?-1:1; box.scrollBy({left:dir*(box.clientWidth||348),behavior:'smooth'});});
   document.querySelectorAll('[data-input-invoice-reparse]').forEach(b=>b.onclick=()=>reparseInputInvoiceItemsFromXml(b.dataset.inputInvoiceReparse));
   document.querySelectorAll('[data-accounting-rule]').forEach(el=>el.onchange=()=>{const r=state.inputInvoices.rules.find(x=>x.id===el.dataset.accountingRule); if(r){r[el.dataset.accountingRuleField]=el.value; saveInputInvoices(); render();}});
   document.querySelectorAll('[data-accounting-rule-delete]').forEach(b=>b.onclick=()=>{state.inputInvoices.rules=state.inputInvoices.rules.filter(x=>x.id!==b.dataset.accountingRuleDelete); saveInputInvoices(); render();});
