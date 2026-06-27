@@ -1719,6 +1719,7 @@ async function createOrUpdateOutgoingFromInventory(selectedRows=[]){
   if(current){
     const keepId=current.id, keepCreated=current.created_at;
     Object.assign(current,inv,{id:keepId,created_at:keepCreated||inv.created_at,updated_at:new Date().toISOString()});
+    ensureOutgoingInvoiceVisible(current);
     saveAccounting();
     render();
     await saveOutgoingInvoiceRemote(current).catch(e=>{state.accounting.syncStatus='Đã lấy sản phẩm từ kho trên máy, chưa đồng bộ được Supabase.'; console.warn(e); render();});
@@ -1726,6 +1727,7 @@ async function createOrUpdateOutgoingFromInventory(selectedRows=[]){
   }
   state.accounting.outgoingInvoices.unshift(inv);
   state.accounting.editingOutgoingId=inv.id;
+  ensureOutgoingInvoiceVisible(inv);
   saveAccounting();
   render();
   await saveOutgoingInvoiceRemote(inv).catch(e=>{state.accounting.syncStatus='Đã tạo từ kho trên máy, chưa đồng bộ được Supabase.'; console.warn(e); render();});
@@ -1823,12 +1825,14 @@ async function importOutgoingInvoiceFromQuotation(file){
       const keepId=current.id, keepCreated=current.created_at;
       Object.assign(current,inv,{id:keepId,created_at:keepCreated||inv.created_at,updated_at:new Date().toISOString()});
       state.accounting.editingOutgoingId=current.id;
+      ensureOutgoingInvoiceVisible(current);
       saveAccounting();
       render();
       await saveOutgoingInvoiceRemote(current).catch(e=>{state.accounting.syncStatus='Đã import báo giá trên máy, chưa đồng bộ được Supabase.'; console.warn(e); render();});
     }else{
       state.accounting.outgoingInvoices.unshift(inv);
       state.accounting.editingOutgoingId=inv.id;
+      ensureOutgoingInvoiceVisible(inv);
       saveAccounting();
       render();
       await saveOutgoingInvoiceRemote(inv).catch(e=>{state.accounting.syncStatus='Đã import báo giá trên máy, chưa đồng bộ được Supabase.'; console.warn(e); render();});
@@ -1985,6 +1989,21 @@ function accountingStatusClass(s){ return String(s||'').includes('Quá hạn')||
 function accountingNav(){ const tabs=[['overview','Tổng quan'],['incoming','Hóa đơn đầu vào'],['outgoing','Hóa đơn đầu ra'],['debts','Công nợ'],['payments','Thanh toán'],['reports','Báo cáo']]; return `<div class="flex flex-wrap gap-2">${tabs.map(([id,label])=>`<button data-accounting-view="${id}" type="button" class="h-9 rounded-md px-3 text-xs font-extrabold ${state.accounting.view===id?'bg-ink text-white':'border border-black/10 bg-white text-ink hover:border-mint'}">${label}</button>`).join('')}</div>`; }
 function accountingFilters(){ const f=state.accounting.filters||{}; return `<div class="grid gap-2 rounded-lg border border-black/10 bg-white p-3 shadow-sm md:grid-cols-4"><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">Tháng</span><input data-accounting-filter="period" type="month" value="${esc(f.period||'')}" class="h-9 rounded-md border border-black/15 px-2 text-xs font-bold"/></label><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">Năm</span><input data-accounting-filter="year" type="number" value="${esc(f.year||'')}" class="h-9 rounded-md border border-black/15 px-2 text-xs font-bold"/></label><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">Tìm kiếm</span><input data-accounting-filter="search" value="${esc(f.search||'')}" class="h-9 rounded-md border border-black/15 px-2 text-xs font-bold"/></label><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">Trạng thái</span><select data-accounting-filter="status" class="h-9 rounded-md border border-black/15 px-2 text-xs font-bold"><option value="">Tất cả</option>${['Chờ xuất hóa đơn','Đã xuất hóa đơn','Đã gửi khách','Đã thanh toán','Thanh toán một phần','Chưa thanh toán','Quá hạn','Hủy'].map(s=>`<option ${f.status===s?'selected':''}>${s}</option>`).join('')}</select></label></div>`; }
 function accountingRows(){ const f=state.accounting.filters||{}, q=invoiceNorm(f.search); return (state.accounting.outgoingInvoices||[]).filter(x=>(!f.period||String(x.invoice_date||x.request_date||'').slice(0,7)===f.period)&&(!f.year||String(x.invoice_date||x.request_date||'').includes(f.year))&&(!f.status||x.status===f.status||x.payment_status===f.status)&&(!q||invoiceNorm([x.customer_name,x.customer_tax_code,x.invoice_number,x.quote_file_name,x.item_summary].join(' ')).includes(q))); }
+function ensureOutgoingInvoiceVisible(inv={}){
+  const f=state.accounting.filters=state.accounting.filters||{};
+  const date=String(inv.invoice_date||inv.request_date||'');
+  f.search='';
+  f.status='';
+  if(/^\d{4}-\d{2}/.test(date)){
+    f.period=date.slice(0,7);
+    f.year=date.slice(0,4);
+  }else{
+    f.period='';
+    f.year='';
+  }
+  state.ui.justSavedOutgoingId=String(inv.id||'');
+}
+function outgoingRowHighlightClass(id){ return state.ui.justSavedOutgoingId&&String(state.ui.justSavedOutgoingId)===String(id)?'bg-mint/5 ring-2 ring-mint/30':''; }
 function accountingOverview(){ const incoming=accountingInputInvoices().filter(x=>accountingInPeriod(x.invoice_date||x.period)), outgoing=accountingRows(), payments=state.accounting.payments.filter(x=>accountingInPeriod(x.payment_date)), revenue=outgoing.reduce((s,x)=>s+Number(x.total_amount||0),0), outVat=outgoing.reduce((s,x)=>s+Number(x.vat_amount||0),0), inVat=incoming.reduce((s,x)=>s+Number(x.vat_amount||0),0), inputCost=incoming.reduce((s,x)=>s+Number(x.total_amount||0),0), receivable=outgoing.reduce((s,x)=>s+Math.max(0,Number(x.total_amount||0)-outgoingPaid(x)),0), payable=incoming.reduce((s,x)=>s+Math.max(0,Number(x.total_amount||0)-incomingPaid(x)),0), needReview=incoming.filter(x=>x.validation_status!=='Hợp lệ'||!x.reviewed_by_accountant).length+outgoing.filter(x=>!x.invoice_number||!x.customer_tax_code).length; const metric=(l,v,t='')=>`<div class="rounded-lg border border-black/10 ${t||'bg-white'} p-3 shadow-sm"><div class="text-[10px] font-bold uppercase text-black/40">${l}</div><div class="mt-1 text-lg font-extrabold">${v}</div></div>`; const top=list=>Object.values(list.reduce((a,x)=>{const k=x.customer_name||x.seller_name||'Không rõ'; a[k]=a[k]||{name:k,total:0}; a[k].total+=Number(x.total_amount||0); return a;},{})).sort((a,b)=>b.total-a.total).slice(0,5); return `<div class="grid gap-3">${accountingFilters()}<div class="grid gap-2 md:grid-cols-4">${metric('Doanh thu đầu ra',money(revenue),'bg-mint/10')}${metric('VAT đầu ra',money(outVat))}${metric('VAT đầu vào',money(inVat))}${metric('VAT tạm tính',money(Math.max(0,outVat-inVat)),'bg-gold/20')}${metric('Chi phí đầu vào',money(inputCost))}${metric('Phải thu',money(receivable),'bg-coral/10')}${metric('Phải trả',money(payable))}${metric('Cần kiểm tra',needReview,'bg-gold/20')}</div><div class="grid gap-3 lg:grid-cols-2"><div class="rounded-lg border border-black/10 bg-white p-3 shadow-sm"><h2 class="text-base font-extrabold">Top khách hàng</h2>${top(outgoing).map(x=>`<div class="mt-2 flex justify-between gap-3 border-b border-black/5 pb-2"><b>${esc(x.name)}</b><span>${money(x.total)}</span></div>`).join('')||'<p class="mt-2 text-sm font-bold text-black/40">Chưa có dữ liệu.</p>'}</div><div class="rounded-lg border border-black/10 bg-white p-3 shadow-sm"><h2 class="text-base font-extrabold">Top nhà cung cấp</h2>${top(incoming).map(x=>`<div class="mt-2 flex justify-between gap-3 border-b border-black/5 pb-2"><b>${esc(x.name)}</b><span>${money(x.total)}</span></div>`).join('')||'<p class="mt-2 text-sm font-bold text-black/40">Chưa có dữ liệu.</p>'}</div></div></div>`; }
 function outgoingForm(inv){
   const targetId=(inv&&inv.id)||'new';
@@ -2043,7 +2062,7 @@ function outgoingInvoiceFileCell(inv){
   </div>`;
 }
 function outgoingTable(rows){
-  return `<div class="overflow-x-auto rounded-lg border border-black/10 bg-white p-3 shadow-sm"><table class="w-full min-w-[1260px] border-collapse text-sm"><thead><tr class="border-b border-black/10 text-left text-xs uppercase text-black/45"><th class="py-2 pr-2">Ngày HĐ</th><th class="py-2 pr-2">Số HĐ</th><th class="py-2 pr-2">Khách hàng</th><th class="py-2 pr-2">Sản phẩm</th><th class="py-2 pr-2 text-right">Tổng</th><th class="py-2 pr-2 text-right">Đã thu</th><th class="py-2 pr-2">Trạng thái</th><th class="py-2 pr-2">File HĐ</th><th class="py-2 text-right">Thao tác</th></tr></thead><tbody>${rows.map(x=>{const paid=outgoingPaid(x), pay=outgoingPaymentStatusChip(x,paid); return `<tr class="border-b border-black/10 align-top"><td class="py-3 pr-2 font-bold">${x.invoice_date?esc(compactDate(x.invoice_date)):'<span class="text-black/35">Chưa có HĐ</span>'}</td><td class="py-3 pr-2"><b>${esc(x.invoice_number||'Chờ xuất')}</b>${x.invoice_series?`<div class="text-xs text-black/45">${esc(x.invoice_series)}</div>`:''}</td><td class="py-3 pr-2"><b>${esc(x.customer_name||'--')}</b><div class="text-xs text-black/45">${esc(x.customer_tax_code||'Thiếu MST')}</div></td><td class="py-3 pr-2">${outgoingProductsCell(x)}</td><td class="py-3 pr-2 text-right"><div class="font-extrabold">${money(x.total_amount)}</div>${Number(x.discount_percent||0)||Number(x.shipping_fee||0)?`<div class="mt-1 text-[11px] font-bold text-black/45">Giảm ${Number(x.discount_percent||0)}% · Ship ${money(x.shipping_fee||0)}</div>`:''}</td><td class="py-3 pr-2 text-right font-bold">${outgoingPaidLabel(x,paid)}</td><td class="py-3 pr-2"><div class="flex min-w-[190px] flex-wrap gap-1"><span class="rounded-md border px-2 py-1 text-xs font-extrabold ${accountingStatusClass(x.status)}">${esc(outgoingStatusLabel(x.status))}</span><span class="rounded-md border px-2 py-1 text-xs font-extrabold ${pay.cls}">${esc(pay.label)}</span></div></td><td class="py-3 pr-2">${outgoingInvoiceFileCell(x)}</td><td class="py-3"><div class="flex justify-end gap-1"><button data-outgoing-edit-row="${esc(x.id)}" class="h-8 rounded-md bg-ink px-2 text-xs font-extrabold text-white">Sửa</button><button data-outgoing-delete="${esc(x.id)}" class="h-8 rounded-md border border-coral/30 px-2 text-xs font-extrabold text-coral">Xóa</button></div></td></tr>`}).join('')}</tbody></table></div>`;
+  return `<div class="overflow-x-auto rounded-lg border border-black/10 bg-white p-3 shadow-sm"><table class="w-full min-w-[1260px] border-collapse text-sm"><thead><tr class="border-b border-black/10 text-left text-xs uppercase text-black/45"><th class="py-2 pr-2">Ngày HĐ</th><th class="py-2 pr-2">Số HĐ</th><th class="py-2 pr-2">Khách hàng</th><th class="py-2 pr-2">Sản phẩm</th><th class="py-2 pr-2 text-right">Tổng</th><th class="py-2 pr-2 text-right">Đã thu</th><th class="py-2 pr-2">Trạng thái</th><th class="py-2 pr-2">File HĐ</th><th class="py-2 text-right">Thao tác</th></tr></thead><tbody>${rows.map(x=>{const paid=outgoingPaid(x), pay=outgoingPaymentStatusChip(x,paid); return `<tr class="border-b border-black/10 align-top ${outgoingRowHighlightClass(x.id)}"><td class="py-3 pr-2 font-bold">${x.invoice_date?esc(compactDate(x.invoice_date)):'<span class="text-black/35">Chưa có HĐ</span>'}</td><td class="py-3 pr-2"><b>${esc(x.invoice_number||'Chờ xuất')}</b>${x.invoice_series?`<div class="text-xs text-black/45">${esc(x.invoice_series)}</div>`:''}</td><td class="py-3 pr-2"><b>${esc(x.customer_name||'--')}</b><div class="text-xs text-black/45">${esc(x.customer_tax_code||'Thiếu MST')}</div></td><td class="py-3 pr-2">${outgoingProductsCell(x)}</td><td class="py-3 pr-2 text-right"><div class="font-extrabold">${money(x.total_amount)}</div>${Number(x.discount_percent||0)||Number(x.shipping_fee||0)?`<div class="mt-1 text-[11px] font-bold text-black/45">Giảm ${Number(x.discount_percent||0)}% · Ship ${money(x.shipping_fee||0)}</div>`:''}</td><td class="py-3 pr-2 text-right font-bold">${outgoingPaidLabel(x,paid)}</td><td class="py-3 pr-2"><div class="flex min-w-[190px] flex-wrap gap-1"><span class="rounded-md border px-2 py-1 text-xs font-extrabold ${accountingStatusClass(x.status)}">${esc(outgoingStatusLabel(x.status))}</span><span class="rounded-md border px-2 py-1 text-xs font-extrabold ${pay.cls}">${esc(pay.label)}</span></div></td><td class="py-3 pr-2">${outgoingInvoiceFileCell(x)}</td><td class="py-3"><div class="flex justify-end gap-1"><button data-outgoing-edit-row="${esc(x.id)}" class="h-8 rounded-md bg-ink px-2 text-xs font-extrabold text-white">Sửa</button><button data-outgoing-delete="${esc(x.id)}" class="h-8 rounded-md border border-coral/30 px-2 text-xs font-extrabold text-coral">Xóa</button></div></td></tr>`}).join('')}</tbody></table></div>`;
 }
 function renderOutgoingInvoices(){ const rows=accountingRows(), edit=state.accounting.outgoingInvoices.find(x=>x.id===state.accounting.editingOutgoingId); return `<div class="grid gap-3">${accountingFilters()}${outgoingForm(edit)}${rows.length?outgoingTable(rows):'<div class="rounded-lg border border-dashed border-black/15 bg-white p-6 text-center text-sm font-bold text-black/45">Chưa có hóa đơn đầu ra.</div>'}</div>`; }
 function isIgnoredInputInvoice(inv){
@@ -3036,7 +3055,8 @@ function bindAccounting(){
       if(!inv)return alert('Không tìm thấy hóa đơn đang sửa.');
       if(inv.locked)return alert('Hóa đơn đang khóa. Anh mở khóa trước khi lưu.');
       Object.assign(inv,values,{updated_at:new Date().toISOString()});
-      state.accounting.syncStatus='Đã lưu thông tin hóa đơn đầu ra.';
+      ensureOutgoingInvoiceVisible(inv);
+      state.accounting.syncStatus='Đã lưu thông tin hóa đơn đầu ra. Dòng vừa lưu đang hiện trong bảng bên dưới.';
       saveAccounting();
       clearOutgoingDraft();
       render();
@@ -3049,7 +3069,8 @@ function bindAccounting(){
     inv.updated_at=new Date().toISOString();
     state.accounting.outgoingInvoices.unshift(inv);
     state.accounting.editingOutgoingId=inv.id;
-    state.accounting.syncStatus='Đã tạo và lưu hóa đơn đầu ra.';
+    ensureOutgoingInvoiceVisible(inv);
+    state.accounting.syncStatus='Đã tạo và lưu hóa đơn đầu ra. Dòng mới đang hiện trong bảng bên dưới.';
     saveAccounting();
     clearOutgoingDraft();
     render();
