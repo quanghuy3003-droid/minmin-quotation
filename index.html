@@ -1476,23 +1476,25 @@ function recalcOutgoingTotals(inv={},changedKey=''){
   if(!inv)return inv;
   const vatRate=Number(inv.vat_rate||0);
   let goods=Number(inv.goods_amount||0);
-  if(changedKey==='net_amount'||changedKey==='goods_amount')goods=Number(inv[changedKey]||0);
-  if(!goods){
-    const net=Number(inv.net_amount||0), discount=Number(inv.discount_amount||0), ship=Number(inv.shipping_fee||0);
-    goods=Math.max(0, net+discount-ship);
+  if(changedKey==='goods_amount')goods=Number(inv.goods_amount||0);
+  if(!goods&&Number(inv.net_amount||0)>0){
+    const net=Number(inv.net_amount||0), pct=Math.max(0,Number(inv.discount_percent||0)), ship=Math.max(0,Number(inv.shipping_fee||0));
+    goods=Math.max(0,Math.round((net/(1-(Math.min(pct,99.999)/100)))-ship));
   }
   const pct=Math.max(0,Number(inv.discount_percent||0));
   const ship=Math.max(0,Number(inv.shipping_fee||0));
-  const subtotal=Math.max(0,goods)+ship;
-  const discount=Math.round(subtotal*pct/100);
-  const net=Math.max(0,Math.round(subtotal-discount));
+  // Công thức đúng: (Tiền hàng + phí ship) - chiết khấu = Trước VAT; sau đó VAT tính trên số sau chiết khấu.
+  const subtotalBeforeDiscount=Math.max(0,goods)+ship;
+  const discount=Math.round(subtotalBeforeDiscount*pct/100);
+  const net=Math.max(0,Math.round(subtotalBeforeDiscount-discount));
+  const vat=Math.round(net*vatRate/100);
   inv.goods_amount=Math.max(0,Math.round(goods));
   inv.discount_percent=pct;
   inv.discount_amount=discount;
   inv.shipping_fee=ship;
   inv.net_amount=net;
-  inv.vat_amount=Math.round(net*vatRate/100);
-  inv.total_amount=net+Number(inv.vat_amount||0);
+  inv.vat_amount=vat;
+  inv.total_amount=net+vat;
   return inv;
 }
 function outgoingCurrentDraft(){
@@ -1720,6 +1722,7 @@ async function createOrUpdateOutgoingFromInventory(selectedRows=[]){
     const keepId=current.id, keepCreated=current.created_at;
     Object.assign(current,inv,{id:keepId,created_at:keepCreated||inv.created_at,updated_at:new Date().toISOString()});
     ensureOutgoingInvoiceVisible(current);
+    clearOutgoingDraft();
     saveAccounting();
     render();
     await saveOutgoingInvoiceRemote(current).catch(e=>{state.accounting.syncStatus='Đã lấy sản phẩm từ kho trên máy, chưa đồng bộ được Supabase.'; console.warn(e); render();});
@@ -1728,6 +1731,7 @@ async function createOrUpdateOutgoingFromInventory(selectedRows=[]){
   state.accounting.outgoingInvoices.unshift(inv);
   state.accounting.editingOutgoingId=inv.id;
   ensureOutgoingInvoiceVisible(inv);
+  clearOutgoingDraft();
   saveAccounting();
   render();
   await saveOutgoingInvoiceRemote(inv).catch(e=>{state.accounting.syncStatus='Đã tạo từ kho trên máy, chưa đồng bộ được Supabase.'; console.warn(e); render();});
@@ -1826,6 +1830,7 @@ async function importOutgoingInvoiceFromQuotation(file){
       Object.assign(current,inv,{id:keepId,created_at:keepCreated||inv.created_at,updated_at:new Date().toISOString()});
       state.accounting.editingOutgoingId=current.id;
       ensureOutgoingInvoiceVisible(current);
+      clearOutgoingDraft();
       saveAccounting();
       render();
       await saveOutgoingInvoiceRemote(current).catch(e=>{state.accounting.syncStatus='Đã import báo giá trên máy, chưa đồng bộ được Supabase.'; console.warn(e); render();});
@@ -1833,6 +1838,7 @@ async function importOutgoingInvoiceFromQuotation(file){
       state.accounting.outgoingInvoices.unshift(inv);
       state.accounting.editingOutgoingId=inv.id;
       ensureOutgoingInvoiceVisible(inv);
+      clearOutgoingDraft();
       saveAccounting();
       render();
       await saveOutgoingInvoiceRemote(inv).catch(e=>{state.accounting.syncStatus='Đã import báo giá trên máy, chưa đồng bộ được Supabase.'; console.warn(e); render();});
@@ -2015,7 +2021,7 @@ function outgoingForm(inv){
     const v=t==='date'?(inv[k]??''):outgoingEditValue(k,inv[k]??'');
     return `<label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">${l}</span><input data-outgoing-edit="${k}" ${dis} type="${t}" value="${esc(v)}" class="h-9 min-w-0 rounded-md border border-black/15 px-2 text-xs font-bold disabled:bg-black/5"/></label>`;
   };
-  return `<div class="rounded-lg border border-mint/20 bg-mint/[0.04] p-3 shadow-sm"><div class="flex flex-wrap items-center justify-between gap-2"><h2 class="text-base font-extrabold">${inv.id?'Sửa hóa đơn đầu ra':'Tạo đề nghị xuất hóa đơn'}</h2><div class="flex flex-wrap gap-2">${inv.id?`<button id="newOutgoingInvoice" type="button" class="h-9 rounded-md border border-mint/30 bg-white px-3 text-xs font-extrabold text-mint">Tạo mới hóa đơn</button>`:''}<label class="inline-flex h-9 cursor-pointer items-center rounded-md border border-mint/30 bg-white px-3 text-xs font-extrabold text-mint hover:bg-mint hover:text-white">Import báo giá<input id="outgoingQuoteImport" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="hidden"/></label><button id="createOutgoingFromInventory" type="button" class="h-9 rounded-md bg-gold px-3 text-xs font-extrabold">Chọn từ kho</button><button id="saveOutgoingInvoice" type="button" class="h-9 rounded-md bg-ink px-3 text-xs font-extrabold text-white">Lưu thông tin hóa đơn</button>${inv.id?`<button data-outgoing-lock="${esc(inv.id)}" type="button" class="h-9 rounded-md border border-black/10 px-3 text-xs font-extrabold">${locked?'Mở khóa':'Khóa'}</button>`:''}</div></div><div id="outgoingDraftStatus" class="mt-2 rounded-md border border-gold/40 bg-gold/20 px-3 py-2 text-xs font-extrabold text-ink">Nhập xong bấm “Lưu thông tin hóa đơn”. App sẽ không tự lưu/tự tính lại khi anh đang nhập.</div><div class="mt-3 grid gap-2 md:grid-cols-4">${field('Ngày đề nghị','request_date','date')}${field('Ngày hóa đơn','invoice_date','date')}${field('Hạn thanh toán','due_date','date')}${field('Số hóa đơn','invoice_number')}${field('Ký hiệu','invoice_series')}${field('Mã CQT','tax_authority_code')}${field('Khách hàng','customer_name')}${field('MST khách','customer_tax_code')}${field('Địa chỉ','customer_address')}${field('Email','customer_email')}${field('File báo giá','quote_file_name')}${field('Mã đơn/báo giá','order_code')}${field('Tiền hàng','goods_amount')}${field('Giảm giá %','discount_percent')}${field('Phí ship','shipping_fee')}${field('Trước VAT','net_amount')}${field('VAT %','vat_rate')}${field('Tiền VAT','vat_amount')}${field('Tổng tiền','total_amount')}<label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">Trạng thái</span><select data-outgoing-edit="status" ${dis} class="h-9 rounded-md border border-black/15 px-2 text-xs font-bold">${['Chờ xuất hóa đơn','Đã xuất hóa đơn','Đã gửi khách','Đã thanh toán','Hủy'].map(s=>`<option ${inv.status===s?'selected':''}>${s}</option>`).join('')}</select></label><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">Thanh toán</span><select data-outgoing-edit="payment_status" ${dis} class="h-9 rounded-md border border-black/15 px-2 text-xs font-bold">${['Chưa thanh toán','Thanh toán một phần','Đã thanh toán','Quá hạn'].map(s=>`<option ${inv.payment_status===s?'selected':''}>${s}</option>`).join('')}</select></label>${field('Link PDF','pdf_url')}${field('Link XML','xml_url')}</div><label class="mt-2 grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">Sản phẩm / ghi chú</span><textarea data-outgoing-edit="item_summary" ${dis} class="min-h-20 rounded-md border border-black/15 p-2 text-xs font-bold">${esc(inv.item_summary||'')}</textarea></label><div class="mt-3 flex justify-end"><button id="saveOutgoingInvoiceBottom" type="button" class="h-11 rounded-md bg-mint px-5 text-sm font-extrabold text-white">Lưu thông tin hóa đơn</button></div></div>`;
+  return `<div class="rounded-lg border border-mint/20 bg-mint/[0.04] p-3 shadow-sm"><div class="flex flex-wrap items-center justify-between gap-2"><h2 class="text-base font-extrabold">${inv.id?'Sửa hóa đơn đầu ra':'Tạo đề nghị xuất hóa đơn'}</h2><div class="flex flex-wrap gap-2">${inv.id?`<button id="newOutgoingInvoice" type="button" class="h-9 rounded-md border border-mint/30 bg-white px-3 text-xs font-extrabold text-mint">Tạo mới hóa đơn</button>`:''}<label class="inline-flex h-9 cursor-pointer items-center rounded-md border border-mint/30 bg-white px-3 text-xs font-extrabold text-mint hover:bg-mint hover:text-white">Import báo giá<input id="outgoingQuoteImport" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="hidden"/></label><button id="createOutgoingFromInventory" type="button" class="h-9 rounded-md bg-gold px-3 text-xs font-extrabold">Chọn từ kho</button><button id="saveOutgoingInvoice" type="button" class="h-9 rounded-md bg-ink px-3 text-xs font-extrabold text-white">Lưu thông tin hóa đơn</button>${inv.id?`<button data-outgoing-lock="${esc(inv.id)}" type="button" class="h-9 rounded-md border border-black/10 px-3 text-xs font-extrabold">${locked?'Mở khóa':'Khóa'}</button>`:''}</div></div><div id="outgoingDraftStatus" class="mt-2 rounded-md border border-gold/40 bg-gold/20 px-3 py-2 text-xs font-extrabold text-ink">Nhập xong bấm “Lưu thông tin hóa đơn”. App sẽ tính: (Tiền hàng + phí ship) - chiết khấu, rồi mới tính VAT trên số sau chiết khấu.</div><div class="mt-3 grid gap-2 md:grid-cols-4">${field('Ngày đề nghị','request_date','date')}${field('Ngày hóa đơn','invoice_date','date')}${field('Hạn thanh toán','due_date','date')}${field('Số hóa đơn','invoice_number')}${field('Ký hiệu','invoice_series')}${field('Mã CQT','tax_authority_code')}${field('Khách hàng','customer_name')}${field('MST khách','customer_tax_code')}${field('Địa chỉ','customer_address')}${field('Email','customer_email')}${field('File báo giá','quote_file_name')}${field('Mã đơn/báo giá','order_code')}${field('Tiền hàng','goods_amount')}${field('Giảm giá %','discount_percent')}${field('Phí ship','shipping_fee')}${field('Trước VAT','net_amount')}${field('VAT %','vat_rate')}${field('Tiền VAT','vat_amount')}${field('Tổng tiền','total_amount')}<label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">Trạng thái</span><select data-outgoing-edit="status" ${dis} class="h-9 rounded-md border border-black/15 px-2 text-xs font-bold">${['Chờ xuất hóa đơn','Đã xuất hóa đơn','Đã gửi khách','Đã thanh toán','Hủy'].map(s=>`<option ${inv.status===s?'selected':''}>${s}</option>`).join('')}</select></label><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">Thanh toán</span><select data-outgoing-edit="payment_status" ${dis} class="h-9 rounded-md border border-black/15 px-2 text-xs font-bold">${['Chưa thanh toán','Thanh toán một phần','Đã thanh toán','Quá hạn'].map(s=>`<option ${inv.payment_status===s?'selected':''}>${s}</option>`).join('')}</select></label>${field('Link PDF','pdf_url')}${field('Link XML','xml_url')}</div><label class="mt-2 grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">Sản phẩm / ghi chú</span><textarea data-outgoing-edit="item_summary" ${dis} class="min-h-20 rounded-md border border-black/15 p-2 text-xs font-bold">${esc(inv.item_summary||'')}</textarea></label><div class="mt-3 flex justify-end"><button id="saveOutgoingInvoiceBottom" type="button" class="h-11 rounded-md bg-mint px-5 text-sm font-extrabold text-white">Lưu thông tin hóa đơn</button></div></div>`;
 }
 function outgoingSummaryItems(inv){
   const summary=String(inv.item_summary||''), codes=String(inv.order_code||'').split(/[,;\n]+/).map(x=>x.trim()).filter(Boolean);
@@ -3054,21 +3060,21 @@ function bindAccounting(){
   const outgoingQuoteImport=document.getElementById('outgoingQuoteImport');
   if(outgoingQuoteImport)outgoingQuoteImport.onchange=()=>{if(outgoingQuoteImport.files[0])importOutgoingInvoiceFromQuotation(outgoingQuoteImport.files[0]);};
   const saveOutgoingNow=async()=>{
-    const values=outgoingCurrentDraft();
+    const values=recalcOutgoingTotals(outgoingCurrentDraft());
     if(state.accounting.editingOutgoingId){
       const inv=state.accounting.outgoingInvoices.find(x=>x.id===state.accounting.editingOutgoingId);
       if(!inv)return alert('Không tìm thấy hóa đơn đang sửa.');
       if(inv.locked)return alert('Hóa đơn đang khóa. Anh mở khóa trước khi lưu.');
-      Object.assign(inv,values,{updated_at:new Date().toISOString()});
+      Object.assign(inv,recalcOutgoingTotals({...inv,...values}),{updated_at:new Date().toISOString()});
       ensureOutgoingInvoiceVisible(inv);
-      state.accounting.syncStatus='Đã lưu thông tin hóa đơn đầu ra. Dòng vừa lưu đang hiện trong bảng bên dưới.';
+      state.accounting.syncStatus='Đã lưu hóa đơn: VAT đã tính trên số tiền sau chiết khấu.';
       saveAccounting();
       clearOutgoingDraft();
       render();
       await saveOutgoingInvoiceRemote(inv).catch(e=>{state.accounting.syncStatus='Đã lưu trên máy, chưa đồng bộ được Supabase.'; console.warn(e); render();});
       return;
     }
-    const inv=outgoingEmpty(values);
+    const inv=recalcOutgoingTotals(outgoingEmpty(values));
     inv.id=uid();
     inv.created_at=new Date().toISOString();
     inv.updated_at=new Date().toISOString();
