@@ -70,6 +70,7 @@ const DELIVERY_TIMES = [
 const NOTE_LINES = ["Lưu ý (Note):","1. Màu sắc thực tế có thể chênh lệch ± 5% so với mẫu (Real color may vary by ±5% from sample)","2. Hình thức thanh toán (Payment information:)",".Thanh toán 50% khi xác nhận đơn hàng (Deposit 50% upon order confirmation)",".Thanh toán 50% còn lại trước hoặc tại thời điểm nhận hàng (Pay the remaining 50% before or at the time of receiving the goods)","3. Thông tin chuyển khoản (khách hàng chịu phí chuyển khoản) (Payment information:)",".Chủ tài khoản (Beneficiary) : MINMIN LIFESTYLE",".Số tài khoản (A/c No): 388683838",".Ngân hàng (At bank) ACB","4. Thông tin giao hàng (Delivery time)",".Thời gian giao hàng: 30 ngày kể từ ngày khách hàng đặt cọc đơn hàng trừ các trường hợp thiên tai,dịch bệnh,phong tỏa,...","5. Điều khoản chung (General Terms)",".Bảo hành bóng đèn 1 năm (Warranty: 01-year.)",".Phiếu báo giá có giá trị trong 30 ngày kể từ ngày lập (The quotation is valid for 30 days from the date of issue)",".Vì lý do khách quan, Minmin không hỗ trợ lắp đặt đèn tại công trình.","Chân thành cảm ơn sự quan tâm của Quý khách đối với sản phẩm Min Min Lifestyle (We are looking forward to working with you as soon as possible)"];
 const INPUT_INVOICE_KEY = 'minmin-input-invoices-v1';
 const ACCOUNTING_KEY = 'minmin-accounting-v1';
+const OUTGOING_DRAFT_KEY = 'minmin-outgoing-invoice-draft-v1';
 const WORKING_STATE_CACHE_KEY = 'minmin-working-state-cache-v1';
 const WORKING_STATE_REMOTE_ID = 'minmin_current_state';
 const DEVICE_ID_KEY = 'minmin-device-id-v1';
@@ -839,6 +840,7 @@ async function fetchWorkingStateFromSupabase(){
 }
 async function loadWorkingStateFromSupabase(){
   if(inventoryImportLocked()){ workingStateReady=true; return false; }
+  if(holdOutgoingDraftSync()){ workingStateReady=true; state.status='Đang nhập hóa đơn đầu ra, tạm ngưng tải working state để không mất nội dung.'; return false; }
   try{
     state.status='Đang tải dữ liệu làm việc cuối từ Supabase...';
     const row=await fetchWorkingStateFromSupabase();
@@ -927,6 +929,7 @@ async function fetchAccountingFromSupabase(){
 }
 async function syncAccountingFromSupabase(options={}){
   const auto=!!options.auto, hadLocal=(state.accounting.outgoingInvoices||[]).length||(state.accounting.payments||[]).length;
+  if(auto&&holdOutgoingDraftSync()){ state.accounting.syncStatus='Đang nhập hóa đơn đầu ra, tạm ngưng tự đồng bộ để không mất nội dung.'; return; }
   state.accounting.syncStatus=auto?'Đang kiểm tra dữ liệu kế toán trên Supabase...':'Đang đồng bộ kế toán...';
   if(!auto)render();
   try{
@@ -1440,6 +1443,35 @@ function outgoingMoneyKeys(){ return ['goods_amount','discount_percent','discoun
 function outgoingAmountKeys(){ return ['goods_amount','discount_amount','shipping_fee','net_amount','vat_amount','total_amount']; }
 function outgoingMoneyValue(key,value){ return outgoingMoneyKeys().includes(key)?invoiceMoney(value):value; }
 function outgoingEditValue(key,value){ return outgoingAmountKeys().includes(key)?moneyPlain(value):String(value??''); }
+function outgoingDraftTargetId(){ return state.accounting?.editingOutgoingId || 'new'; }
+function saveOutgoingDraftCache(draft){ try{ draft&&draft.values?localStorage.setItem(OUTGOING_DRAFT_KEY,JSON.stringify(draft)):localStorage.removeItem(OUTGOING_DRAFT_KEY); }catch(e){ console.warn('Không lưu được nháp hóa đơn đầu ra:', e); } }
+function outgoingDraftValuesFor(targetId){
+  const current=state.ui?.outgoingDraft;
+  if(current&&current.targetId===targetId&&current.values)return current.values;
+  try{
+    const cached=JSON.parse(localStorage.getItem(OUTGOING_DRAFT_KEY)||'null');
+    if(cached&&cached.targetId===targetId&&cached.values){ state.ui.outgoingDraft=cached; return cached.values; }
+  }catch{}
+  return {};
+}
+function outgoingDraftActive(){ const d=state.ui?.outgoingDraft; return !!(d&&d.dirty&&d.targetId===outgoingDraftTargetId()&&state.activeTab==='accounting'&&state.accounting?.view==='outgoing'); }
+function holdOutgoingDraftSync(){ return outgoingDraftActive()&&document.querySelector('[data-outgoing-edit]'); }
+function updateOutgoingDraftStatus(text,tone='warn'){
+  const el=document.getElementById('outgoingDraftStatus');
+  if(!el)return;
+  const cls=tone==='saved'?'border-mint/30 bg-mint/10 text-mint':tone==='error'?'border-coral/30 bg-coral/10 text-coral':'border-gold/40 bg-gold/20 text-ink';
+  el.className=`mt-2 rounded-md border px-3 py-2 text-xs font-extrabold ${cls}`;
+  el.textContent=text;
+}
+function rememberOutgoingDraft(){
+  const draft={targetId:outgoingDraftTargetId(),values:outgoingCurrentDraft(),dirty:true,updatedAt:new Date().toISOString()};
+  state.ui.outgoingDraft=draft;
+  saveOutgoingDraftCache(draft);
+  updateOutgoingDraftStatus('Đang giữ bản nháp trên màn hình. Nhập xong bấm “Lưu thông tin hóa đơn” để lưu vào danh sách và Supabase.');
+  if(typeof scheduleWorkingStateSave==='function')scheduleWorkingStateSave(2500);
+  return draft;
+}
+function clearOutgoingDraft(){ state.ui.outgoingDraft={targetId:'',values:{},dirty:false,updatedAt:new Date().toISOString()}; saveOutgoingDraftCache(null); }
 function recalcOutgoingTotals(inv={},changedKey=''){
   if(!inv)return inv;
   const vatRate=Number(inv.vat_rate||0);
@@ -1954,59 +1986,17 @@ function accountingNav(){ const tabs=[['overview','Tổng quan'],['incoming','H�
 function accountingFilters(){ const f=state.accounting.filters||{}; return `<div class="grid gap-2 rounded-lg border border-black/10 bg-white p-3 shadow-sm md:grid-cols-4"><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">Tháng</span><input data-accounting-filter="period" type="month" value="${esc(f.period||'')}" class="h-9 rounded-md border border-black/15 px-2 text-xs font-bold"/></label><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">Năm</span><input data-accounting-filter="year" type="number" value="${esc(f.year||'')}" class="h-9 rounded-md border border-black/15 px-2 text-xs font-bold"/></label><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">Tìm kiếm</span><input data-accounting-filter="search" value="${esc(f.search||'')}" class="h-9 rounded-md border border-black/15 px-2 text-xs font-bold"/></label><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">Trạng thái</span><select data-accounting-filter="status" class="h-9 rounded-md border border-black/15 px-2 text-xs font-bold"><option value="">Tất cả</option>${['Chờ xuất hóa đơn','Đã xuất hóa đơn','Đã gửi khách','Đã thanh toán','Thanh toán một phần','Chưa thanh toán','Quá hạn','Hủy'].map(s=>`<option ${f.status===s?'selected':''}>${s}</option>`).join('')}</select></label></div>`; }
 function accountingRows(){ const f=state.accounting.filters||{}, q=invoiceNorm(f.search); return (state.accounting.outgoingInvoices||[]).filter(x=>(!f.period||String(x.invoice_date||x.request_date||'').slice(0,7)===f.period)&&(!f.year||String(x.invoice_date||x.request_date||'').includes(f.year))&&(!f.status||x.status===f.status||x.payment_status===f.status)&&(!q||invoiceNorm([x.customer_name,x.customer_tax_code,x.invoice_number,x.quote_file_name,x.item_summary].join(' ')).includes(q))); }
 function accountingOverview(){ const incoming=accountingInputInvoices().filter(x=>accountingInPeriod(x.invoice_date||x.period)), outgoing=accountingRows(), payments=state.accounting.payments.filter(x=>accountingInPeriod(x.payment_date)), revenue=outgoing.reduce((s,x)=>s+Number(x.total_amount||0),0), outVat=outgoing.reduce((s,x)=>s+Number(x.vat_amount||0),0), inVat=incoming.reduce((s,x)=>s+Number(x.vat_amount||0),0), inputCost=incoming.reduce((s,x)=>s+Number(x.total_amount||0),0), receivable=outgoing.reduce((s,x)=>s+Math.max(0,Number(x.total_amount||0)-outgoingPaid(x)),0), payable=incoming.reduce((s,x)=>s+Math.max(0,Number(x.total_amount||0)-incomingPaid(x)),0), needReview=incoming.filter(x=>x.validation_status!=='Hợp lệ'||!x.reviewed_by_accountant).length+outgoing.filter(x=>!x.invoice_number||!x.customer_tax_code).length; const metric=(l,v,t='')=>`<div class="rounded-lg border border-black/10 ${t||'bg-white'} p-3 shadow-sm"><div class="text-[10px] font-bold uppercase text-black/40">${l}</div><div class="mt-1 text-lg font-extrabold">${v}</div></div>`; const top=list=>Object.values(list.reduce((a,x)=>{const k=x.customer_name||x.seller_name||'Không rõ'; a[k]=a[k]||{name:k,total:0}; a[k].total+=Number(x.total_amount||0); return a;},{})).sort((a,b)=>b.total-a.total).slice(0,5); return `<div class="grid gap-3">${accountingFilters()}<div class="grid gap-2 md:grid-cols-4">${metric('Doanh thu đầu ra',money(revenue),'bg-mint/10')}${metric('VAT đầu ra',money(outVat))}${metric('VAT đầu vào',money(inVat))}${metric('VAT tạm tính',money(Math.max(0,outVat-inVat)),'bg-gold/20')}${metric('Chi phí đầu vào',money(inputCost))}${metric('Phải thu',money(receivable),'bg-coral/10')}${metric('Phải trả',money(payable))}${metric('Cần kiểm tra',needReview,'bg-gold/20')}</div><div class="grid gap-3 lg:grid-cols-2"><div class="rounded-lg border border-black/10 bg-white p-3 shadow-sm"><h2 class="text-base font-extrabold">Top khách hàng</h2>${top(outgoing).map(x=>`<div class="mt-2 flex justify-between gap-3 border-b border-black/5 pb-2"><b>${esc(x.name)}</b><span>${money(x.total)}</span></div>`).join('')||'<p class="mt-2 text-sm font-bold text-black/40">Chưa có dữ liệu.</p>'}</div><div class="rounded-lg border border-black/10 bg-white p-3 shadow-sm"><h2 class="text-base font-extrabold">Top nhà cung cấp</h2>${top(incoming).map(x=>`<div class="mt-2 flex justify-between gap-3 border-b border-black/5 pb-2"><b>${esc(x.name)}</b><span>${money(x.total)}</span></div>`).join('')||'<p class="mt-2 text-sm font-bold text-black/40">Chưa có dữ liệu.</p>'}</div></div></div>`; }
-function outgoingFormulaBox(inv){
-  const goods=Number(inv.goods_amount||0);
-  const ship=Number(inv.shipping_fee||0);
-  const subtotal=goods+ship;
-  const pct=Number(inv.discount_percent||0);
-  const discount=Number(inv.discount_amount||Math.round(subtotal*pct/100));
-  const afterDiscount=Number(inv.net_amount||Math.max(0,subtotal-discount));
-  const vatRate=Number(inv.vat_rate||0);
-  const vat=Number(inv.vat_amount||Math.round(afterDiscount*vatRate/100));
-  const total=Number(inv.total_amount||afterDiscount+vat);
-  return `<div class="mt-3 rounded-lg border border-black/10 bg-white p-3 shadow-sm">
-    <div class="flex flex-wrap items-start justify-between gap-2">
-      <div>
-        <h3 class="text-sm font-extrabold text-ink">Công thức tính theo bảng báo giá</h3>
-        <p class="mt-1 text-xs font-bold text-black/45">Tổng giá trị trước chiết khấu = Tiền hàng + Phí ship. Sau đó mới áp dụng giảm giá và VAT.</p>
-      </div>
-      <div class="rounded-md bg-gold/20 px-3 py-2 text-xs font-extrabold text-ink">Ship có tính trong giá trị trước chiết khấu</div>
-    </div>
-    <div class="mt-3 overflow-hidden rounded-md border border-black/10">
-      <div class="grid grid-cols-[minmax(0,1fr)_160px] border-b border-black/10 bg-[#F7F7F2] text-sm font-extrabold">
-        <div class="px-3 py-2">TỔNG GIÁ TRỊ TRƯỚC CHIẾT KHẤU<br><span class="text-xs font-bold text-black/45">Tiền hàng ${money(goods)} + Phí ship ${money(ship)}</span></div>
-        <div class="px-3 py-2 text-right">${money(subtotal)}</div>
-      </div>
-      <div class="grid grid-cols-[minmax(0,1fr)_160px] border-b border-black/10 bg-black/5 text-sm font-bold italic">
-        <div class="px-3 py-2">CHIẾT KHẤU ${pct}%</div>
-        <div class="px-3 py-2 text-right">${money(discount)}</div>
-      </div>
-      <div class="grid grid-cols-[minmax(0,1fr)_160px] border-b border-black/10 bg-[#F7F7F2] text-sm font-extrabold">
-        <div class="px-3 py-2">TỔNG GIÁ TRỊ SAU CHIẾT KHẤU</div>
-        <div class="px-3 py-2 text-right">${money(afterDiscount)}</div>
-      </div>
-      <div class="grid grid-cols-[minmax(0,1fr)_160px] border-b border-black/10 bg-black/5 text-sm font-bold italic">
-        <div class="px-3 py-2">VAT ${vatRate}%</div>
-        <div class="px-3 py-2 text-right">${money(vat)}</div>
-      </div>
-      <div class="grid grid-cols-[minmax(0,1fr)_160px] bg-coral/10 text-sm font-extrabold text-coral">
-        <div class="px-3 py-2">TỔNG TIỀN SAU VAT</div>
-        <div class="px-3 py-2 text-right">${money(total)}</div>
-      </div>
-    </div>
-    <div class="mt-2 text-xs font-bold text-black/55">
-      Công thức: (${money(goods)} + ${money(ship)}) - ${pct}% = ${money(afterDiscount)}; VAT ${vatRate}% = ${money(vat)}; Tổng = ${money(total)}.
-    </div>
-  </div>`;
-}
 function outgoingForm(inv){
-  inv=recalcOutgoingTotals(outgoingEmpty({...((inv)||{}),id:(inv&&inv.id)||''}));
+  const targetId=(inv&&inv.id)||'new';
+  inv=outgoingEmpty({...((inv)||{}),id:(inv&&inv.id)||''});
+  const draftValues=outgoingDraftValuesFor(targetId);
+  if(draftValues&&Object.keys(draftValues).length)inv={...inv,...draftValues};
   const locked=!!inv.locked, dis=locked?'disabled':'';
   const field=(l,k,t='text')=>{
     const v=t==='date'?(inv[k]??''):outgoingEditValue(k,inv[k]??'');
     return `<label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">${l}</span><input data-outgoing-edit="${k}" ${dis} type="${t}" value="${esc(v)}" class="h-9 min-w-0 rounded-md border border-black/15 px-2 text-xs font-bold disabled:bg-black/5"/></label>`;
   };
-  return `<div class="rounded-lg border border-mint/20 bg-mint/[0.04] p-3 shadow-sm"><div class="flex flex-wrap items-center justify-between gap-2"><h2 class="text-base font-extrabold">${inv.id?'Sửa hóa đơn đầu ra':'Tạo đề nghị xuất hóa đơn'}</h2><div class="flex flex-wrap gap-2">${inv.id?`<button id="newOutgoingInvoice" type="button" class="h-9 rounded-md border border-mint/30 bg-white px-3 text-xs font-extrabold text-mint">Tạo mới hóa đơn</button>`:''}<label class="inline-flex h-9 cursor-pointer items-center rounded-md border border-mint/30 bg-white px-3 text-xs font-extrabold text-mint hover:bg-mint hover:text-white">Import báo giá<input id="outgoingQuoteImport" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="hidden"/></label><button id="createOutgoingFromInventory" type="button" class="h-9 rounded-md bg-gold px-3 text-xs font-extrabold">Chọn từ kho</button><button id="saveOutgoingInvoice" type="button" class="h-9 rounded-md bg-ink px-3 text-xs font-extrabold text-white">${inv.id?'Lưu':'Tạo mới'}</button>${inv.id?`<button data-outgoing-lock="${esc(inv.id)}" type="button" class="h-9 rounded-md border border-black/10 px-3 text-xs font-extrabold">${locked?'Mở khóa':'Khóa'}</button>`:''}</div></div><div class="mt-3 grid gap-2 md:grid-cols-4">${field('Ngày đề nghị','request_date','date')}${field('Ngày hóa đơn','invoice_date','date')}${field('Hạn thanh toán','due_date','date')}${field('Số hóa đơn','invoice_number')}${field('Ký hiệu','invoice_series')}${field('Mã CQT','tax_authority_code')}${field('Khách hàng','customer_name')}${field('MST khách','customer_tax_code')}${field('Địa chỉ','customer_address')}${field('Email','customer_email')}${field('File báo giá','quote_file_name')}${field('Mã đơn/báo giá','order_code')}${field('Tiền hàng','goods_amount')}${field('Giảm giá %','discount_percent')}${field('Phí ship','shipping_fee')}${field('Trước VAT','net_amount')}${field('VAT %','vat_rate')}${field('Tiền VAT','vat_amount')}${field('Tổng tiền','total_amount')}<label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">Trạng thái</span><select data-outgoing-edit="status" ${dis} class="h-9 rounded-md border border-black/15 px-2 text-xs font-bold">${['Chờ xuất hóa đơn','Đã xuất hóa đơn','Đã gửi khách','Đã thanh toán','Hủy'].map(s=>`<option ${inv.status===s?'selected':''}>${s}</option>`).join('')}</select></label><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">Thanh toán</span><select data-outgoing-edit="payment_status" ${dis} class="h-9 rounded-md border border-black/15 px-2 text-xs font-bold">${['Chưa thanh toán','Thanh toán một phần','Đã thanh toán','Quá hạn'].map(s=>`<option ${inv.payment_status===s?'selected':''}>${s}</option>`).join('')}</select></label>${field('Link PDF','pdf_url')}${field('Link XML','xml_url')}</div>${outgoingFormulaBox(inv)}<label class="mt-2 grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">Sản phẩm / ghi chú</span><textarea data-outgoing-edit="item_summary" ${dis} class="min-h-20 rounded-md border border-black/15 p-2 text-xs font-bold">${esc(inv.item_summary||'')}</textarea></label></div>`;
+  return `<div class="rounded-lg border border-mint/20 bg-mint/[0.04] p-3 shadow-sm"><div class="flex flex-wrap items-center justify-between gap-2"><h2 class="text-base font-extrabold">${inv.id?'Sửa hóa đơn đầu ra':'Tạo đề nghị xuất hóa đơn'}</h2><div class="flex flex-wrap gap-2">${inv.id?`<button id="newOutgoingInvoice" type="button" class="h-9 rounded-md border border-mint/30 bg-white px-3 text-xs font-extrabold text-mint">Tạo mới hóa đơn</button>`:''}<label class="inline-flex h-9 cursor-pointer items-center rounded-md border border-mint/30 bg-white px-3 text-xs font-extrabold text-mint hover:bg-mint hover:text-white">Import báo giá<input id="outgoingQuoteImport" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="hidden"/></label><button id="createOutgoingFromInventory" type="button" class="h-9 rounded-md bg-gold px-3 text-xs font-extrabold">Chọn từ kho</button><button id="saveOutgoingInvoice" type="button" class="h-9 rounded-md bg-ink px-3 text-xs font-extrabold text-white">Lưu thông tin hóa đơn</button>${inv.id?`<button data-outgoing-lock="${esc(inv.id)}" type="button" class="h-9 rounded-md border border-black/10 px-3 text-xs font-extrabold">${locked?'Mở khóa':'Khóa'}</button>`:''}</div></div><div id="outgoingDraftStatus" class="mt-2 rounded-md border border-gold/40 bg-gold/20 px-3 py-2 text-xs font-extrabold text-ink">Nhập xong bấm “Lưu thông tin hóa đơn”. App sẽ không tự lưu/tự tính lại khi anh đang nhập.</div><div class="mt-3 grid gap-2 md:grid-cols-4">${field('Ngày đề nghị','request_date','date')}${field('Ngày hóa đơn','invoice_date','date')}${field('Hạn thanh toán','due_date','date')}${field('Số hóa đơn','invoice_number')}${field('Ký hiệu','invoice_series')}${field('Mã CQT','tax_authority_code')}${field('Khách hàng','customer_name')}${field('MST khách','customer_tax_code')}${field('Địa chỉ','customer_address')}${field('Email','customer_email')}${field('File báo giá','quote_file_name')}${field('Mã đơn/báo giá','order_code')}${field('Tiền hàng','goods_amount')}${field('Giảm giá %','discount_percent')}${field('Phí ship','shipping_fee')}${field('Trước VAT','net_amount')}${field('VAT %','vat_rate')}${field('Tiền VAT','vat_amount')}${field('Tổng tiền','total_amount')}<label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">Trạng thái</span><select data-outgoing-edit="status" ${dis} class="h-9 rounded-md border border-black/15 px-2 text-xs font-bold">${['Chờ xuất hóa đơn','Đã xuất hóa đơn','Đã gửi khách','Đã thanh toán','Hủy'].map(s=>`<option ${inv.status===s?'selected':''}>${s}</option>`).join('')}</select></label><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">Thanh toán</span><select data-outgoing-edit="payment_status" ${dis} class="h-9 rounded-md border border-black/15 px-2 text-xs font-bold">${['Chưa thanh toán','Thanh toán một phần','Đã thanh toán','Quá hạn'].map(s=>`<option ${inv.payment_status===s?'selected':''}>${s}</option>`).join('')}</select></label>${field('Link PDF','pdf_url')}${field('Link XML','xml_url')}</div><label class="mt-2 grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">Sản phẩm / ghi chú</span><textarea data-outgoing-edit="item_summary" ${dis} class="min-h-20 rounded-md border border-black/15 p-2 text-xs font-bold">${esc(inv.item_summary||'')}</textarea></label><div class="mt-3 flex justify-end"><button id="saveOutgoingInvoiceBottom" type="button" class="h-11 rounded-md bg-mint px-5 text-sm font-extrabold text-white">Lưu thông tin hóa đơn</button></div></div>`;
 }
 function outgoingSummaryItems(inv){
   const summary=String(inv.item_summary||''), codes=String(inv.order_code||'').split(/[,;\n]+/).map(x=>x.trim()).filter(Boolean);
@@ -3016,17 +3006,21 @@ function bindAccounting(){
   if(sql)sql.onclick=()=>showAccountingSchemaSql();
   const exportBtn=document.getElementById('exportAccountingReport');
   if(exportBtn)exportBtn.onclick=()=>exportAccountingReport().catch(e=>alert('Chưa xuất được báo cáo kế toán: '+e.message));
-  document.querySelectorAll('[data-outgoing-edit-row]').forEach(b=>b.onclick=()=>{state.accounting.editingOutgoingId=b.dataset.outgoingEditRow; saveAccounting(); render();});
+  document.querySelectorAll('[data-outgoing-edit-row]').forEach(b=>b.onclick=()=>{clearOutgoingDraft(); state.accounting.editingOutgoingId=b.dataset.outgoingEditRow; saveAccounting(); render();});
   const newOutgoingBtn=document.getElementById('newOutgoingInvoice');
   if(newOutgoingBtn)newOutgoingBtn.onclick=()=>{
+    clearOutgoingDraft();
     state.accounting.editingOutgoingId='';
     saveAccounting();
     render();
   };
   document.querySelectorAll('[data-outgoing-delete]').forEach(b=>b.onclick=async()=>{if(confirm('Xóa hóa đơn đầu ra này? File gốc trong Storage vẫn giữ nguyên.')){state.accounting.outgoingInvoices=state.accounting.outgoingInvoices.filter(x=>x.id!==b.dataset.outgoingDelete); saveAccounting(); render(); await deleteOutgoingInvoiceRemote(b.dataset.outgoingDelete).catch(e=>{state.accounting.syncStatus='Đã xóa trên máy, chưa xóa được trên Supabase.'; console.warn(e); render();});}});
   document.querySelectorAll('[data-outgoing-lock]').forEach(b=>b.onclick=async()=>{const inv=state.accounting.outgoingInvoices.find(x=>x.id===b.dataset.outgoingLock); if(inv){inv.locked=!inv.locked; inv.updated_at=new Date().toISOString(); saveAccounting(); render(); await saveOutgoingInvoiceRemote(inv).catch(e=>{state.accounting.syncStatus='Đã khóa/mở trên máy, chưa đồng bộ được Supabase.'; console.warn(e); render();});}});
-  const draft={};
-  document.querySelectorAll('[data-outgoing-edit]').forEach(el=>{draft[el.dataset.outgoingEdit]=outgoingMoneyValue(el.dataset.outgoingEdit,el.value); el.onchange=async()=>{const inv=state.accounting.outgoingInvoices.find(x=>x.id===state.accounting.editingOutgoingId); if(inv&&!inv.locked){const k=el.dataset.outgoingEdit; inv[k]=outgoingMoneyValue(k,el.value); if(['goods_amount','discount_percent','shipping_fee','vat_rate','net_amount'].includes(k))recalcOutgoingTotals(inv,k); inv.updated_at=new Date().toISOString(); saveAccounting(); await saveOutgoingInvoiceRemote(inv).catch(e=>{state.accounting.syncStatus='Đã sửa trên máy, chưa đồng bộ được Supabase.'; console.warn(e);}); render();} else {draft[el.dataset.outgoingEdit]=outgoingMoneyValue(el.dataset.outgoingEdit,el.value);}};});
+  document.querySelectorAll('[data-outgoing-edit]').forEach(el=>{
+    const mark=()=>rememberOutgoingDraft();
+    el.oninput=mark;
+    el.onchange=mark;
+  });
   const fromInventory=document.getElementById('createOutgoingFromInventory');
   if(fromInventory)fromInventory.onclick=()=>{
     const current=state.accounting.editingOutgoingId?state.accounting.outgoingInvoices.find(x=>x.id===state.accounting.editingOutgoingId):null;
@@ -3035,8 +3029,36 @@ function bindAccounting(){
   };
   const outgoingQuoteImport=document.getElementById('outgoingQuoteImport');
   if(outgoingQuoteImport)outgoingQuoteImport.onchange=()=>{if(outgoingQuoteImport.files[0])importOutgoingInvoiceFromQuotation(outgoingQuoteImport.files[0]);};
+  const saveOutgoingNow=async()=>{
+    const values=outgoingCurrentDraft();
+    if(state.accounting.editingOutgoingId){
+      const inv=state.accounting.outgoingInvoices.find(x=>x.id===state.accounting.editingOutgoingId);
+      if(!inv)return alert('Không tìm thấy hóa đơn đang sửa.');
+      if(inv.locked)return alert('Hóa đơn đang khóa. Anh mở khóa trước khi lưu.');
+      Object.assign(inv,values,{updated_at:new Date().toISOString()});
+      state.accounting.syncStatus='Đã lưu thông tin hóa đơn đầu ra.';
+      saveAccounting();
+      clearOutgoingDraft();
+      render();
+      await saveOutgoingInvoiceRemote(inv).catch(e=>{state.accounting.syncStatus='Đã lưu trên máy, chưa đồng bộ được Supabase.'; console.warn(e); render();});
+      return;
+    }
+    const inv=outgoingEmpty(values);
+    inv.id=uid();
+    inv.created_at=new Date().toISOString();
+    inv.updated_at=new Date().toISOString();
+    state.accounting.outgoingInvoices.unshift(inv);
+    state.accounting.editingOutgoingId=inv.id;
+    state.accounting.syncStatus='Đã tạo và lưu hóa đơn đầu ra.';
+    saveAccounting();
+    clearOutgoingDraft();
+    render();
+    await saveOutgoingInvoiceRemote(inv).catch(e=>{state.accounting.syncStatus='Đã tạo trên máy, chưa đồng bộ được Supabase.'; console.warn(e); render();});
+  };
   const saveOut=document.getElementById('saveOutgoingInvoice');
-  if(saveOut)saveOut.onclick=async()=>{if(state.accounting.editingOutgoingId){const inv=state.accounting.outgoingInvoices.find(x=>x.id===state.accounting.editingOutgoingId); if(inv&&!inv.locked){Object.assign(inv,outgoingCurrentDraft()); recalcOutgoingTotals(inv); inv.updated_at=new Date().toISOString();} if(inv)await saveOutgoingInvoiceRemote(inv).catch(e=>{state.accounting.syncStatus='Chưa đồng bộ được Supabase.'; console.warn(e);}); saveAccounting(); render(); return;} const inv=recalcOutgoingTotals(outgoingEmpty(draft)); state.accounting.outgoingInvoices.unshift(inv); state.accounting.editingOutgoingId=inv.id; saveAccounting(); render(); await saveOutgoingInvoiceRemote(inv).catch(e=>{state.accounting.syncStatus='Đã tạo trên máy, chưa đồng bộ được Supabase.'; console.warn(e); render();});};
+  const saveOutBottom=document.getElementById('saveOutgoingInvoiceBottom');
+  if(saveOut)saveOut.onclick=saveOutgoingNow;
+  if(saveOutBottom)saveOutBottom.onclick=saveOutgoingNow;
   const proofFile=document.getElementById('paymentProofFile');
   if(proofFile)proofFile.onchange=()=>{if(proofFile.files[0])attachPaymentProofFile(proofFile.files[0]);};
   const pasteProof=document.getElementById('pastePaymentProof');
@@ -3613,7 +3635,7 @@ async function initApp(){
     syncInventoryFromSupabase({auto:true});
     syncInputInvoicesFromSupabase({auto:true});
     syncAccountingFromSupabase({auto:true});
-    setInterval(()=>{ if(document.visibilityState==='visible'){ syncInventoryFromSupabase({auto:true}); syncInputInvoicesFromSupabase({auto:true}); syncAccountingFromSupabase({auto:true}); loadWorkingStateFromSupabase().then(()=>render()).catch(()=>{}); } },30000);
+    setInterval(()=>{ if(document.visibilityState==='visible'){ syncInventoryFromSupabase({auto:true}); syncInputInvoicesFromSupabase({auto:true}); syncAccountingFromSupabase({auto:true}); loadWorkingStateFromSupabase().then(ok=>{ if(ok&&!holdOutgoingDraftSync())render(); }).catch(()=>{}); } },30000);
     ['click','keydown','pointerdown','touchstart'].forEach(evt=>document.addEventListener(evt,touchAppActivity,{passive:true}));
     setInterval(()=>{ if(appUnlocked&&Date.now()-appLastActivity>5*60*1000)lockApp(); },30000);
     window.addEventListener('beforeunload',()=>{ if(workingStateReady&&!applyingWorkingState){ const snapshot=workingStateSnapshot(); writeWorkingStateLocal(snapshot); } });
