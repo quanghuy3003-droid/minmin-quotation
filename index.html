@@ -2027,6 +2027,9 @@ async function importBankStatementPdf(file){
       method:`Sao kê ${file.name||''}`.trim(),
       proof_url:proofUrl,
       note:row.note,
+      statement_balance:row.balance,
+      statement_transaction_no:row.transaction_no,
+      statement_source_file:file.name||'',
       created_at:now,
       updated_at:now
     };
@@ -2076,9 +2079,70 @@ function paymentForm(){
   const quoteFileOptions=[...new Set(outs.map(x=>x.quote_file_name||x.order_code||'').filter(Boolean))];
   return `<div class="rounded-lg border border-black/10 bg-white p-3 shadow-sm"><div class="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between"><div><h2 class="text-base font-extrabold">Ghi nhận thanh toán / UNC</h2><p class="mt-1 text-xs font-bold text-black/45">Dùng cho tiền thu vào, tiền chi ra, giấy báo có hoặc ủy nhiệm chi dạng hình ảnh.</p>${editing?`<p class="mt-1 inline-flex rounded-md border border-gold/40 bg-gold/15 px-2 py-1 text-xs font-extrabold text-[#8a5a00]">Đang chỉnh sửa dòng thanh toán ngày ${esc(compactDate(editing.payment_date))}</p>`:''}</div></div><div class="mt-3 grid gap-2 md:grid-cols-[.8fr_1.25fr_.75fr_.9fr_1fr]"><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">Ngày</span><input id="paymentDate" type="date" value="${esc(dateVal)}" class="h-9 rounded-md border border-black/15 px-2 text-xs font-bold"/></label><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">Liên kết hóa đơn nếu có</span><select id="paymentRelated" class="h-9 rounded-md border border-black/15 px-2 text-xs font-bold"><option value="" ${selectedRel?'':'selected'}>Không liên kết hóa đơn</option>${opts.map(([t,id,l])=>`<option value="${t}|${id}" ${selectedRel===`${t}|${id}`?'selected':''}>${esc(l)}</option>`).join('')}</select></label><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">Loại</span><select id="paymentType" class="h-9 rounded-md border border-black/15 px-2 text-xs font-bold"><option ${typeVal==='Thu'?'selected':''}>Thu</option><option ${typeVal==='Chi'?'selected':''}>Chi</option></select></label><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">Số tiền</span><input id="paymentAmount" inputmode="numeric" value="${esc(amountVal)}" class="h-9 rounded-md border border-black/15 px-2 text-xs font-bold"/></label><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">File báo giá / nguồn</span><input id="paymentMethod" list="paymentQuoteFileList" value="${esc(methodVal)}" placeholder="Tên file báo giá / mã đơn" class="h-9 rounded-md border border-black/15 px-2 text-xs font-bold"/><datalist id="paymentQuoteFileList">${quoteFileOptions.map(q=>`<option value="${esc(q)}"></option>`).join('')}</datalist></label></div><div class="mt-2 grid gap-2 md:grid-cols-[1.1fr_1fr]"><input id="paymentLabel" value="${esc(labelVal)}" placeholder="Đối tượng / nội dung thu chi, ví dụ: Cọc xưởng TQ, phí ngân hàng, khách A thanh toán..." class="h-9 w-full rounded-md border border-black/15 px-2 text-xs font-bold"/><input id="paymentNote" value="${esc(noteVal)}" placeholder="Ghi chú thanh toán" class="h-9 w-full rounded-md border border-black/15 px-2 text-xs font-bold"/></div><div class="mt-2 rounded-md border border-mint/20 bg-mint/[0.04] p-2"><div class="grid gap-2 md:grid-cols-[108px_minmax(0,1fr)]"><div id="paymentProofPreview" tabindex="0" title="Bấm vào đây rồi Cmd+V để dán ảnh UNC" class="flex aspect-square h-[96px] cursor-copy items-center justify-center overflow-hidden rounded-md border border-dashed border-mint/35 bg-white outline-none ring-mint/10 focus:border-mint focus:ring-4">${proof?`<img src="${esc(driveAssetUrl(proof))}" class="h-full w-full object-contain"/>`:'<span class="px-2 text-center text-xs font-semibold text-black/40">Dán / chọn ảnh UNC</span>'}</div><div class="grid content-start gap-2"><div class="flex flex-wrap gap-2"><button id="pastePaymentProof" type="button" class="h-9 rounded-md bg-mint px-3 text-xs font-extrabold text-white">Dán ảnh</button><label class="flex h-9 cursor-pointer items-center justify-center rounded-md bg-ink px-3 text-xs font-extrabold text-white"><input id="paymentProofFile" type="file" accept="image/png,image/jpeg,image/webp" class="sr-only"/>Chọn ảnh</label><button id="clearPaymentProof" type="button" class="h-9 rounded-md border border-coral/30 px-3 text-xs font-extrabold text-coral">Bỏ ảnh</button><button id="openPaymentProof" data-open-url="${esc(proof)}" type="button" class="${proof?'':'hidden'} h-9 rounded-md border border-mint/30 px-3 text-xs font-extrabold text-mint">Mở ảnh</button><button id="scanPaymentProof" type="button" class="h-9 rounded-md border border-gold/40 bg-gold/20 px-3 text-xs font-extrabold text-[#8a5a00]">Quét UNC</button></div><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">Link chứng từ tự điền sau khi upload</span><input id="paymentProof" value="${esc(proof)}" class="h-9 rounded-md border border-black/15 bg-white px-2 text-xs font-bold"/></label><p id="paymentProofStatus" class="text-xs font-bold text-black/45">${proof?'Đã gắn chứng từ.':'Chưa có ảnh chứng từ. Có thể dán screenshot ngân hàng hoặc chọn ảnh trong máy.'}</p></div></div></div><div class="mt-2 rounded-md border border-gold/30 bg-gold/[0.08] p-2"><div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><div><h3 class="text-sm font-extrabold text-ink">Import sao kê PDF ngân hàng</h3><p class="mt-1 text-xs font-bold text-black/45">App đọc sao kê PDF và tự thêm từng dòng Ghi có = Thu, Ghi nợ = Chi vào bảng thanh toán.</p></div><div class="flex flex-wrap gap-2"><label class="flex h-9 cursor-pointer items-center justify-center rounded-md bg-gold px-3 text-xs font-extrabold text-ink"><input id="bankStatementPdf" type="file" accept="application/pdf,.pdf" class="sr-only"/>Chọn PDF sao kê</label><button id="importBankStatementPdf" type="button" class="h-9 rounded-md border border-gold/50 bg-white px-3 text-xs font-extrabold text-[#8a5a00]">Quét PDF sao kê</button></div></div><p id="bankStatementStatus" class="mt-2 text-xs font-bold text-black/45">Chưa chọn file sao kê.</p></div><div class="mt-3 flex flex-wrap gap-2"><button id="addPayment" class="h-10 rounded-md bg-mint px-4 text-sm font-extrabold text-white">${editing?'Cập nhật thanh toán':'Lưu thanh toán'}</button>${editing?`<button id="cancelPaymentEdit" type="button" class="h-10 rounded-md border border-black/10 px-4 text-sm font-extrabold text-ink">Hủy sửa</button>`:''}</div></div>`;
 }
+function paymentMonthKey(date){
+  const d=String(date||'').slice(0,10);
+  return /^\d{4}-\d{2}/.test(d)?d.slice(0,7):'Không rõ';
+}
+function paymentMonthLabel(key){
+  if(!/^\d{4}-\d{2}$/.test(key))return key||'Không rõ';
+  const [y,m]=key.split('-');
+  return `Tháng ${Number(m)}/${y}`;
+}
+function paymentLinkedInvoiceLabel(p){
+  if(!p?.related_type||!p?.related_id)return '';
+  if(p.related_type==='outgoing'){
+    const inv=(state.accounting.outgoingInvoices||[]).find(x=>String(x.id)===String(p.related_id));
+    return inv?`HĐ ra: ${inv.customer_name||'Khách'} ${inv.invoice_number||inv.order_code||''}`:(p.related_label||'Hóa đơn đầu ra');
+  }
+  if(p.related_type==='incoming'){
+    const inv=(state.inputInvoices.invoices||[]).find(x=>String(x.id)===String(p.related_id));
+    return inv?`HĐ vào: ${inv.seller_name||'Nhà cung cấp'} ${inv.invoice_number||''}`:(p.related_label||'Hóa đơn đầu vào');
+  }
+  return p.related_label||'';
+}
+function paymentMonthlySummaryRows(){
+  const rows=[...(state.accounting.payments||[])].sort((a,b)=>String(a.payment_date||'').localeCompare(String(b.payment_date||'')));
+  const map={};
+  let running=0;
+  rows.forEach(p=>{
+    const k=paymentMonthKey(p.payment_date);
+    if(!map[k])map[k]={key:k,thu:0,chi:0,linkedThu:0,linkedChi:0,unlinkedThu:0,unlinkedChi:0,count:0,linked:[],unlinked:[],lastBalance:null};
+    const amount=Number(p.amount||0);
+    const isThu=p.payment_type==='Thu';
+    if(isThu){map[k].thu+=amount; running+=amount;} else {map[k].chi+=amount; running-=amount;}
+    map[k].count+=1;
+    const hasLink=!!(p.related_type&&p.related_id);
+    if(hasLink){
+      if(isThu)map[k].linkedThu+=amount; else map[k].linkedChi+=amount;
+      map[k].linked.push(p);
+    }else{
+      if(isThu)map[k].unlinkedThu+=amount; else map[k].unlinkedChi+=amount;
+      map[k].unlinked.push(p);
+    }
+    const statementBalance=Number(p.statement_balance||0);
+    map[k].lastBalance=statementBalance||running;
+  });
+  return Object.values(map).sort((a,b)=>String(b.key).localeCompare(String(a.key)));
+}
+function paymentInvoiceLinkSummaryForMonth(month){
+  const linked=month.linked||[];
+  if(!linked.length)return '<p class="mt-2 text-xs font-bold text-black/40">Tháng này chưa có dòng nào liên kết hóa đơn.</p>';
+  const grouped={};
+  linked.forEach(p=>{
+    const key=`${p.related_type}|${p.related_id}`;
+    if(!grouped[key])grouped[key]={label:paymentLinkedInvoiceLabel(p),thu:0,chi:0,items:[]};
+    if(p.payment_type==='Thu')grouped[key].thu+=Number(p.amount||0); else grouped[key].chi+=Number(p.amount||0);
+    grouped[key].items.push(p);
+  });
+  return `<div class="mt-2 overflow-x-auto rounded-md border border-black/10"><table class="w-full min-w-[680px] border-collapse text-xs"><thead><tr class="border-b border-black/10 bg-black/[0.03] text-left uppercase text-black/45"><th class="p-2">Liên kết hóa đơn</th><th class="p-2 text-right">Thu đã liên kết</th><th class="p-2 text-right">Chi đã liên kết</th><th class="p-2 text-right">Số dòng</th><th class="p-2">Chứng từ</th></tr></thead><tbody>${Object.values(grouped).map(g=>`<tr class="border-b border-black/5"><td class="p-2 font-bold">${esc(g.label||'--')}</td><td class="p-2 text-right font-extrabold text-mint">${g.thu?money(g.thu):'--'}</td><td class="p-2 text-right font-extrabold text-[#8a5a00]">${g.chi?money(g.chi):'--'}</td><td class="p-2 text-right">${g.items.length}</td><td class="p-2">${g.items.find(x=>x.proof_url)?`<button data-open-url="${esc(g.items.find(x=>x.proof_url).proof_url)}" class="h-7 rounded-md border border-mint/30 px-2 text-[11px] font-extrabold text-mint">Mở</button>`:'--'}</td></tr>`).join('')}</tbody></table></div>`;
+}
 function paymentTable(){
-  const rows=state.accounting.payments||[];
-  return `<div class="overflow-x-auto rounded-lg border border-black/10 bg-white p-3 shadow-sm"><table class="w-full min-w-[980px] border-collapse text-sm"><thead><tr class="border-b border-black/10 text-left text-xs uppercase text-black/45"><th class="py-2 pr-2">Ngày</th><th class="py-2 pr-2">Loại</th><th class="py-2 pr-2">Liên kết</th><th class="py-2 pr-2">File báo giá / nguồn</th><th class="py-2 pr-2 text-right">Số tiền</th><th class="py-2 pr-2">Chứng từ</th><th class="py-2 text-right">Thao tác</th></tr></thead><tbody>${rows.map(p=>`<tr class="border-b border-black/10"><td class="py-2 pr-2 font-bold">${esc(compactDate(p.payment_date))}</td><td class="py-2 pr-2"><span class="rounded-md border px-2 py-1 text-xs font-extrabold ${p.payment_type==='Thu'?'bg-mint/10 text-mint border-mint/20':'bg-gold/20 text-[#8a5a00] border-gold/30'}">${esc(p.payment_type)}</span></td><td class="py-2 pr-2">${esc(p.related_label||'--')}</td><td class="py-2 pr-2">${esc(p.method||'')}</td><td class="py-2 pr-2 text-right font-extrabold">${money(p.amount)}</td><td class="py-2 pr-2">${p.proof_url?`<button data-open-url="${esc(p.proof_url)}" class="h-8 rounded-md border border-mint/30 px-2 text-xs font-extrabold text-mint">Mở</button>`:'--'}</td><td class="py-2 text-right"><div class="flex justify-end gap-2"><button data-payment-edit="${esc(p.id)}" class="h-8 rounded-md border border-mint/30 px-2 text-xs font-extrabold text-mint">Sửa</button><button data-payment-delete="${esc(p.id)}" class="h-8 rounded-md border border-coral/30 px-2 text-xs font-extrabold text-coral">Xóa</button></div></td></tr>`).join('')}</tbody></table></div>`;
+  const months=paymentMonthlySummaryRows();
+  const current=months.length?months[0].lastBalance:0;
+  const totalThu=months.reduce((s,x)=>s+x.thu,0), totalChi=months.reduce((s,x)=>s+x.chi,0);
+  if(!months.length)return `<div class="rounded-lg border border-black/10 bg-white p-3 shadow-sm"><h2 class="text-base font-extrabold">Tổng hợp thu chi</h2><p class="mt-2 text-sm font-bold text-black/45">Chưa có dữ liệu thu chi. Anh có thể nhập tay hoặc import PDF sao kê ngân hàng ở phía trên.</p></div>`;
+  const metric=(label,value,cls='bg-white')=>`<div class="rounded-lg border border-black/10 ${cls} p-3"><div class="text-[10px] font-bold uppercase text-black/40">${label}</div><div class="mt-1 text-lg font-extrabold">${value}</div></div>`;
+  return `<div class="rounded-lg border border-black/10 bg-white p-3 shadow-sm"><div class="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between"><div><h2 class="text-base font-extrabold">Tổng hợp thu chi theo tháng</h2><p class="mt-1 text-xs font-bold text-black/45">Bảng chi tiết giao dịch đã ẩn. Mục này chỉ tổng hợp Thu/Chi, số dư và các khoản đã liên kết hóa đơn.</p></div></div><div class="mt-3 grid gap-2 md:grid-cols-4">${metric('Tổng thu',money(totalThu),'bg-mint/10')}${metric('Tổng chi',money(totalChi),'bg-gold/20')}${metric('Chênh lệch',money(totalThu-totalChi),'bg-white')}${metric('Số dư hiện tại',money(current),'bg-mint/10')}</div><div class="mt-3 grid gap-3">${months.map(m=>`<div class="rounded-lg border border-black/10 bg-[#FAFAF7] p-3"><div class="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between"><div><h3 class="text-sm font-extrabold">${esc(paymentMonthLabel(m.key))}</h3><p class="mt-1 text-xs font-bold text-black/45">${m.count} dòng thu/chi · Liên kết HĐ: ${m.linked.length} · Chưa liên kết: ${m.unlinked.length}</p></div><div class="grid grid-cols-2 gap-2 text-xs sm:grid-cols-5"><div class="rounded-md bg-mint/10 p-2"><b class="block text-black/45">Thu</b><span class="font-extrabold text-mint">${money(m.thu)}</span></div><div class="rounded-md bg-gold/20 p-2"><b class="block text-black/45">Chi</b><span class="font-extrabold text-[#8a5a00]">${money(m.chi)}</span></div><div class="rounded-md bg-white p-2"><b class="block text-black/45">Chênh lệch</b><span class="font-extrabold">${money(m.thu-m.chi)}</span></div><div class="rounded-md bg-white p-2"><b class="block text-black/45">Đã liên kết</b><span class="font-extrabold">${money(m.linkedThu+m.linkedChi)}</span></div><div class="rounded-md bg-white p-2"><b class="block text-black/45">Số dư cuối tháng</b><span class="font-extrabold">${money(m.lastBalance||0)}</span></div></div></div><div class="mt-2 grid gap-2 sm:grid-cols-2"><div class="rounded-md border border-mint/15 bg-mint/[0.04] p-2 text-xs"><b>Đã liên kết hóa đơn</b><div class="mt-1 flex justify-between"><span>Thu liên kết</span><b>${money(m.linkedThu)}</b></div><div class="flex justify-between"><span>Chi liên kết</span><b>${money(m.linkedChi)}</b></div></div><div class="rounded-md border border-coral/15 bg-coral/[0.04] p-2 text-xs"><b>Chưa liên kết hóa đơn</b><div class="mt-1 flex justify-between"><span>Thu chưa liên kết</span><b>${money(m.unlinkedThu)}</b></div><div class="flex justify-between"><span>Chi chưa liên kết</span><b>${money(m.unlinkedChi)}</b></div></div></div>${paymentInvoiceLinkSummaryForMonth(m)}</div>`).join('')}</div></div>`;
 }
 function renderPayments(){ return `<div class="grid gap-3">${paymentForm()}${paymentTable()}</div>`; }
 function renderAccountingReports(){ return `<div class="grid gap-3">${accountingFilters()}<div class="rounded-lg border border-black/10 bg-white p-3 shadow-sm"><h2 class="text-base font-extrabold">Xuất báo cáo gửi kế toán</h2><p class="mt-1 text-sm text-black/55">File gồm hóa đơn đầu vào, hóa đơn đầu ra, công nợ, thanh toán và VAT tạm tính theo bộ lọc.</p><div class="mt-3 flex flex-wrap gap-2"><button id="exportAccountingReport" class="h-10 rounded-md bg-ink px-4 text-sm font-extrabold text-white">Xuất Excel kế toán</button><button id="accountingSql" class="h-10 rounded-md border border-mint/30 px-4 text-sm font-extrabold text-mint">SQL tạo bảng</button><button id="sampleAccounting" class="h-10 rounded-md border border-black/10 px-4 text-sm font-extrabold">Tạo dữ liệu mẫu</button></div><p class="mt-3 text-xs font-bold text-black/45">Dữ liệu chỉ dùng để tổng hợp nội bộ. Kế toán vẫn cần kiểm tra trước khi kê khai thuế hoặc phát hành hóa đơn chính thức.</p></div></div>`; }
