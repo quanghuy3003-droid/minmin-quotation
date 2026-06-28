@@ -1406,7 +1406,23 @@ function inputInvoiceItemsEditor(inv,locked=false){
   return `<div class="mt-3 rounded-lg border border-black/10 bg-white p-3"><div class="flex flex-wrap items-center justify-between gap-2"><div><h4 class="text-sm font-extrabold">Chi tiết từng món trong hóa đơn</h4><p class="mt-1 text-xs font-semibold text-black/45">Mỗi dòng hàng trên XML/PDF sẽ là một món riêng: tên gốc, số lượng, tiền trước VAT, VAT, tiền sau VAT, ảnh và ghi chú đèn nào.</p><p class="mt-1 text-[11px] font-bold text-mint">Tổng chi tiết: trước VAT ${money(lineTotals.net)} · VAT ${money(lineTotals.vat)} · sau VAT ${money(lineTotals.total)}</p></div><button data-input-invoice-item-add="${esc(inv.id)}" type="button" ${dis} class="h-8 rounded-md border border-mint/30 px-3 text-xs font-extrabold text-mint disabled:opacity-40">+ Thêm món</button></div><div class="mt-3 grid gap-3">${items.map((raw,i)=>{ const it=inputInvoiceFinalizeLineAmount(raw,inv.vat_rate), img=inputInvoiceItemImageUrl(it); return `<div class="grid gap-3 rounded-lg border border-black/10 bg-[#F7F7F2] p-3 md:grid-cols-[88px_minmax(0,1fr)]"><div><div class="flex h-20 w-20 items-center justify-center overflow-hidden rounded-md border border-black/10 bg-white">${img?`<img src="${esc(img)}" class="h-full w-full object-cover"/>`:'<span class="text-xs font-bold text-black/30">Chưa có ảnh</span>'}</div><label class="mt-2 flex h-8 cursor-pointer items-center justify-center rounded-md border border-black/10 bg-white px-2 text-[11px] font-extrabold">Chọn ảnh<input data-input-invoice-item-upload data-invoice-id="${esc(inv.id)}" data-item-id="${esc(it.id)}" type="file" accept="image/*" class="hidden" ${dis}/></label>${img?`<button data-input-invoice-item-clear data-invoice-id="${esc(inv.id)}" data-item-id="${esc(it.id)}" type="button" ${dis} class="mt-1 h-7 w-20 rounded-md border border-coral/30 text-[11px] font-extrabold text-coral disabled:opacity-40">Xóa ảnh</button>`:''}</div><div class="grid min-w-0 gap-2"><div class="grid gap-2 md:grid-cols-[1.25fr_.42fr_.6fr_.6fr_.65fr_.85fr]"><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">Tên gốc dòng ${i+1}</span><textarea data-input-invoice-item-field="item_name" data-invoice-id="${esc(inv.id)}" data-item-id="${esc(it.id)}" ${dis} class="min-h-16 rounded-md border border-black/15 bg-white p-2 text-xs font-bold">${esc(it.item_name||'')}</textarea></label><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">SL</span><input data-input-invoice-item-field="quantity" data-invoice-id="${esc(inv.id)}" data-item-id="${esc(it.id)}" ${dis} value="${esc(it.quantity||'')}" class="h-9 rounded-md border border-black/15 bg-white px-2 text-xs font-bold"/></label><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">Trước VAT</span><input data-input-invoice-item-field="net_amount" data-invoice-id="${esc(inv.id)}" data-item-id="${esc(it.id)}" ${dis} value="${esc(moneyPlain(it.net_amount||0))}" inputmode="numeric" class="h-9 rounded-md border border-black/15 bg-white px-2 text-xs font-bold"/></label><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">Tiền VAT</span><input data-input-invoice-item-field="vat_amount" data-invoice-id="${esc(inv.id)}" data-item-id="${esc(it.id)}" ${dis} value="${esc(moneyPlain(it.vat_amount||0))}" inputmode="numeric" class="h-9 rounded-md border border-black/15 bg-white px-2 text-xs font-bold"/></label><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">Sau VAT</span><input data-input-invoice-item-field="total_amount" data-invoice-id="${esc(inv.id)}" data-item-id="${esc(it.id)}" ${dis} value="${esc(moneyPlain(it.total_amount||0))}" inputmode="numeric" class="h-9 rounded-md border border-black/15 bg-white px-2 text-xs font-bold"/></label><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">Mã kho liên kết</span><select data-input-invoice-item-field="linked_inventory_code" data-invoice-id="${esc(inv.id)}" data-item-id="${esc(it.id)}" ${dis} class="h-9 rounded-md border border-black/15 bg-white px-2 text-xs font-bold">${inputInvoiceInventoryOptions(it.linked_inventory_code)}</select></label></div><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">Tên ghi chú để nhận biết đèn nào</span><input data-input-invoice-item-field="product_note" data-invoice-id="${esc(inv.id)}" data-item-id="${esc(it.id)}" ${dis} value="${esc(it.product_note||'')}" placeholder="VD: OD-02 đèn bàn khung trắng / Đèn thả D800 phòng khách" class="h-9 rounded-md border border-black/15 bg-white px-2 text-xs font-bold"/></label><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">Link ảnh sản phẩm</span><input data-input-invoice-item-field="product_image_url" data-invoice-id="${esc(inv.id)}" data-item-id="${esc(it.id)}" ${dis} value="${esc(it.product_image_url||'')}" placeholder="Có thể dán link ảnh hoặc upload ảnh bên trái" class="h-9 rounded-md border border-black/15 bg-white px-2 text-xs font-bold"/></label><div class="flex flex-wrap items-center justify-between gap-2"><div class="text-[11px] font-bold text-black/45">Dòng ${i+1} · ĐVT ${esc(it.unit||'--')} · VAT ${esc(it.vat_rate||inv.vat_rate||'--')}</div><button data-input-invoice-item-delete data-invoice-id="${esc(inv.id)}" data-item-id="${esc(it.id)}" type="button" ${dis} class="h-8 rounded-md border border-coral/30 px-2 text-xs font-extrabold text-coral disabled:opacity-40">Xóa món</button></div></div></div>`; }).join('')}</div></div>`;
 }
 
-async function saveInputInvoiceItemChange(inv){ inv.items=(inv.items||[]).map((it,i)=>inputInvoiceFinalizeLineAmount({...it,line_index:i+1},inv.vat_rate)); inv.raw_item_description=inv.items.map((x,i)=>`${i+1}. ${x.item_name||''} | SL ${x.quantity||''} | Trước VAT ${moneyPlain(x.net_amount||0)} | VAT ${moneyPlain(x.vat_amount||0)} | Sau VAT ${moneyPlain(x.total_amount||0)}`).filter(Boolean).join('\n')||inv.raw_item_description||''; inv.updated_at=new Date().toISOString(); validateInputInvoice(inv); saveInputInvoices(); await saveInputInvoiceRemote(inv).catch(e=>{state.inputInvoices.syncStatus='Đã sửa hóa đơn trên máy, chưa đồng bộ được Supabase.'; console.warn(e);}); await saveInputInvoiceItemsRemote(inv).catch(e=>{state.inputInvoices.syncStatus='Đã lưu chi tiết món trên máy. Nếu Supabase chưa nhận ảnh/ghi chú, bấm SQL tạo bảng để thêm cột mới.'; console.warn(e);}); }
+async function saveInputInvoiceItemChange(inv){ inv.items=(inv.items||[]).map((it,i)=>inputInvoiceFinalizeLineAmount({...it,line_index:i+1},inv.vat_rate)); inv.raw_item_description=inv.items.map((x,i)=>`${i+1}. ${x.item_name||''} | SL ${x.quantity||''} | Trước VAT ${moneyPlain(x.net_amount||0)} | VAT ${moneyPlain(x.vat_amount||0)} | Sau VAT ${moneyPlain(x.total_amount||0)}`).filter(Boolean).join('\n')||inv.raw_item_description||''; inv.updated_at=new Date().toISOString(); validateInputInvoice(inv); syncInventoryLinksFromInputInvoice(inv); saveInputInvoices(); saveInventory(); await saveInputInvoiceRemote(inv).catch(e=>{state.inputInvoices.syncStatus='Đã sửa hóa đơn trên máy, chưa đồng bộ được Supabase.'; console.warn(e);}); await saveInputInvoiceItemsRemote(inv).catch(e=>{state.inputInvoices.syncStatus='Đã lưu chi tiết món trên máy. Nếu Supabase chưa nhận ảnh/ghi chú, bấm SQL tạo bảng để thêm cột mới.'; console.warn(e);}); await Promise.all((inv.items||[]).map(it=>findInventoryItem(it.linked_inventory_code)).filter(Boolean).map(item=>saveInventoryItemRemote(item).catch(e=>console.warn('Chưa đồng bộ link hóa đơn vào sản phẩm:',e)))); }
+function syncInventoryLinksFromInputInvoice(inv){
+  const invoiceUrl=inventoryInvoiceFileUrl(inv,'pdf')||inventoryInvoiceFileUrl(inv,'xml')||inv.source_file_url||'';
+  (inv.items||[]).forEach(raw=>{
+    const it=normalizeInputInvoiceItem(raw);
+    const stock=it.linked_inventory_code?findInventoryItem(it.linked_inventory_code):null;
+    if(!stock)return;
+    stock.attributes={...(stock.attributes||{}),_inputInvoiceId:inv.id||'',_inputInvoiceNumber:inv.invoice_number||'',_inputInvoiceSeller:inv.seller_name||''};
+    if(invoiceUrl&&!stock.invoiceDataUrl)stock.invoiceDataUrl=invoiceUrl;
+    if((inv.source_file_name||inv.invoice_number)&&!stock.invoiceName)stock.invoiceName=inv.source_file_name||inv.invoice_number;
+    if(it.product_image_url&&!photoSourceValue(stock)){
+      stock.photoDataUrl=it.product_image_url;
+      stock.photoStorageUrl=it.product_image_url;
+      stock.attributes._photoStorageUrl=it.product_image_url;
+    }
+  });
+}
 function syncInputInvoiceItemFromInventory(it){ const stock=it.linked_inventory_code?findInventoryItem(it.linked_inventory_code):null; if(stock){ if(!it.product_note)it.product_note=[stock.code,stock.name||productTypeName(stock.productType)].filter(Boolean).join(' - '); if(!it.product_image_url)it.product_image_url=photoSourceValue(stock); } return it; }
 async function uploadInputInvoiceItemImage(invoiceId,itemId,file){ const inv=state.inputInvoices.invoices.find(x=>x.id===invoiceId); if(!inv||inv.locked||!file)return; const item=(inv.items||[]).find(x=>String(x.id)===String(itemId)); if(!item)return; state.inputInvoices.syncStatus='Đang upload ảnh món trong hóa đơn lên Supabase Storage...'; render(); try{ const code=[inv.invoice_number||inv.id,item.product_note||item.item_name||itemId].join('-'); const uploaded=await storeInventoryFile(file,'input-invoice',code); item.product_image_url=uploaded?.publicUrl||uploaded?.viewUrl||uploaded?.downloadUrl||uploaded?.url||''; await saveInputInvoiceItemChange(inv); state.inputInvoices.syncStatus='Đã lưu ảnh sản phẩm cho dòng hóa đơn.'; }catch(e){ state.inputInvoices.syncStatus='Chưa upload được ảnh sản phẩm: '+(e.message||e); console.warn(e); } render(); }
 async function attachInputInvoicePdf(invoiceId,file){
@@ -2179,13 +2195,52 @@ function debtGroupTable(title,groups,kind){
   return `<div class="overflow-x-auto rounded-lg border border-black/10 bg-white p-3 shadow-sm"><h2 class="text-base font-extrabold">${esc(title)}</h2><table class="mt-3 w-full min-w-[840px] border-collapse text-sm"><thead><tr class="border-b border-black/10 text-left text-xs uppercase text-black/45"><th class="py-2 pr-2">Đối tượng / hóa đơn</th><th class="py-2 pr-2 text-right">Tổng</th><th class="py-2 pr-2 text-right">Đã TT</th><th class="py-2 pr-2 text-right">Còn lại</th><th class="py-2 text-right">Trạng thái</th></tr></thead>${rowHtml||`<tbody><tr><td colspan="5" class="p-4 text-center text-sm font-bold text-black/40">Không có công nợ phù hợp.</td></tr></tbody>`}</table></div>`;
 }
 function renderDebts(){ const outs=accountingRows(), ins=accountingIncomingRows(); const outGroups=debtGroups(outs,'customer_name',outgoingPaid,'due_date'), inGroups=debtGroups(ins,'seller_name',incomingPaid); return `<div class="grid gap-3">${accountingFilters()}<div class="grid gap-3 xl:grid-cols-2">${debtGroupTable('Công nợ phải thu theo khách hàng',outGroups,'out')}${debtGroupTable('Công nợ phải trả theo nhà cung cấp',inGroups,'in')}</div></div>`; }
+function uniqueAccountingLinks(rows){
+  const seen=new Set();
+  return (rows||[]).filter(x=>{
+    const key=String(x?.source_pdf_url||x?.pdf_url||x?.source_file_url||x?.xml_url||x?.id||x?.invoice_number||'');
+    if(!key||seen.has(key))return false;
+    seen.add(key);
+    return true;
+  });
+}
+function productDirectInputInvoice(item){
+  const url=item?.invoiceDataUrl||inventoryInputInvoiceUrl(item)||'';
+  if(!url)return null;
+  const code=String(item.code||item.barcodeId||'');
+  return normalizeInputInvoiceRecord({
+    id:`stock-input-${code}`,
+    invoice_number:item.invoiceName||item.attributes?._inputInvoiceNumber||'HĐ vào trong kho',
+    seller_name:item.attributes?._inputInvoiceSeller||'Gắn trực tiếp trong kho',
+    source_file_name:item.invoiceName||'',
+    source_pdf_url:url,
+    source_file_url:url,
+    total_amount:Number(item.purchasePrice||0)*(Number(item.quantity||1)||1),
+    items:[normalizeInputInvoiceItem({linked_inventory_code:code,product_note:item.name||'',quantity:Number(item.quantity||1)||1,total_amount:Number(item.purchasePrice||0)*(Number(item.quantity||1)||1)})]
+  });
+}
+function productDirectOutgoingInvoice(item){
+  const url=item?.saleInvoiceDataUrl||item?.attributes?._saleInvoiceDataUrl||'';
+  if(!url)return null;
+  const code=String(item.code||item.barcodeId||'');
+  return normalizeOutgoingInvoice({
+    id:`stock-output-${code}`,
+    invoice_number:item.saleInvoiceName||'HĐ ra trong kho',
+    customer_name:'Gắn trực tiếp trong kho',
+    pdf_url:url,
+    total_amount:Number(item.price||0)*(Number(item.quantity||1)||1),
+    items:[normalizeOutgoingInvoiceItem({linked_inventory_code:code,code,name:item.name||'',quantity:Number(item.quantity||1)||1,unit_price:Number(item.price||0),amount:Number(item.price||0)*(Number(item.quantity||1)||1)})]
+  });
+}
 function productLinkedInputInvoices(item){
   const keys=[item.code,item.barcodeId].filter(Boolean).map(String);
-  return accountingInputInvoices().filter(inv=>(inv.items||[]).some(it=>keys.includes(String(it.linked_inventory_code||it.item_code||it.code||'')))||keys.some(k=>invoiceNorm([inv.accounting_description,inv.raw_item_description,inv.invoice_number].join(' ')).includes(invoiceNorm(k))));
+  const formal=accountingInputInvoices().filter(inv=>(inv.items||[]).some(it=>keys.includes(String(it.linked_inventory_code||it.item_code||it.code||'')))||keys.some(k=>invoiceNorm([inv.accounting_description,inv.raw_item_description,inv.invoice_number].join(' ')).includes(invoiceNorm(k))));
+  return uniqueAccountingLinks([productDirectInputInvoice(item),...formal].filter(Boolean));
 }
 function productLinkedOutgoingInvoices(item){
   const keys=[item.code,item.barcodeId].filter(Boolean).map(String);
-  return (state.accounting.outgoingInvoices||[]).filter(inv=>(inv.items||[]).some(it=>keys.includes(String(it.linked_inventory_code||it.code||'')))||keys.some(k=>invoiceNorm([inv.order_code,inv.item_summary,inv.quote_file_name].join(' ')).includes(invoiceNorm(k))));
+  const formal=(state.accounting.outgoingInvoices||[]).filter(inv=>(inv.items||[]).some(it=>keys.includes(String(it.linked_inventory_code||it.code||'')))||keys.some(k=>invoiceNorm([inv.order_code,inv.item_summary,inv.quote_file_name].join(' ')).includes(invoiceNorm(k))));
+  return uniqueAccountingLinks([productDirectOutgoingInvoice(item),...formal].filter(Boolean));
 }
 function productSoldQty(item,outs){
   const keys=[item.code,item.barcodeId].filter(Boolean).map(String);
