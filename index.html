@@ -2562,6 +2562,7 @@ function paymentLinkedInvoiceLabel(p){
   }
   return p.related_label||'';
 }
+function paymentRelatedLabel(p){ return paymentLinkedInvoiceLabel(p)||p?.related_label||''; }
 function paymentMonthlySummaryRows(){
   const rows=[...(state.accounting.payments||[])].sort((a,b)=>String(a.payment_date||'').localeCompare(String(b.payment_date||'')));
   const map={};
