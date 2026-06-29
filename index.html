@@ -2156,6 +2156,84 @@ function accountingLineCostKeys(line={}){
   });
   return [...new Set(out)];
 }
+
+function accountingProfitCostTextPartsFromLine(line={}){
+  const parts=[];
+  const push=v=>{v=String(v||'').trim(); if(v)parts.push(v);};
+  push(line.code); push(line.codeCustom); push(line.barcodeId); push(line.barcode_id); push(line.inventory_code); push(line.linked_inventory_code); push(line.stock_code); push(line.productId); push(line.product_id);
+  push(line.name); push(line.product_name); push(line.item_name); push(line.product_note);
+  const stock=findInventoryItem(line.code||line.barcodeId||line.inventory_code||line.linked_inventory_code||line.productId||'');
+  if(stock){ push(stock.code); push(stock.barcodeId); push(stock.name); }
+  return parts;
+}
+function accountingProfitCostToken(v){ return invoiceNorm(v||'').replace(/[^a-z0-9]/gi,'').toLowerCase(); }
+function accountingProfitCostTermsFromText(text=''){
+  const raw=String(text||'');
+  const parts=raw.split(/[,;\n\t]+/).map(x=>x.trim()).filter(Boolean);
+  const terms=new Set();
+  const add=v=>{
+    const t=accountingProfitCostToken(v);
+    if(t&&t.length>=4)terms.add(t);
+  };
+  parts.forEach(part=>{
+    add(part);
+    // Preserve product/order code fragments such as TM9990-02, OD-04, FTXFDS0000188.
+    (part.match(/[A-Z]{1,}[A-Z0-9]*(?:[-_][A-Z0-9]+)+|[A-Z]{2,}\d{2,}|\d{4,}/gi)||[]).forEach(add);
+  });
+  return [...terms];
+}
+function accountingProfitCostTermsFromQuoteSnapshot(snapshot={}){
+  const info=snapshot.info||{}, lines=Array.isArray(snapshot.lines)?snapshot.lines:[];
+  const terms=new Set();
+  accountingProfitCostTermsFromText([info.orderCode,info.quoteCode,info.fileName,info._quoteExportId].join(' ')).forEach(t=>terms.add(t));
+  lines.forEach(line=>accountingProfitCostTextPartsFromLine(line).forEach(v=>accountingProfitCostTermsFromText(v).forEach(t=>terms.add(t))));
+  return [...terms];
+}
+function accountingProfitCostTermsFromOutgoing(inv={}){
+  const terms=new Set();
+  accountingProfitCostTermsFromText([inv.order_code,inv.quote_file_name,inv.item_summary,inv.invoice_number].join(' ')).forEach(t=>terms.add(t));
+  (Array.isArray(inv.items)?inv.items:[]).forEach(line=>accountingProfitCostTextPartsFromLine(line).forEach(v=>accountingProfitCostTermsFromText(v).forEach(t=>terms.add(t))));
+  return [...terms];
+}
+function accountingInputInvoiceMatchesProfitTerms(inv={},terms=[]){
+  if(!terms.length)return false;
+  const hitText=(v)=>{
+    const t=accountingProfitCostToken(v);
+    if(!t)return false;
+    return terms.some(k=>k&&k.length>=4&&(t===k||t.includes(k)||k.includes(t)));
+  };
+  if(hitText(inv.raw_item_description)||hitText(inv.note))return true;
+  return (Array.isArray(inv.items)?inv.items:[]).some((raw,i)=>{
+    const it=normalizeInputInvoiceItem(raw,i);
+    return [it.linked_inventory_code,it.inventory_code,it.stock_code,it.product_note,it.item_name,it.description].some(hitText);
+  });
+}
+function accountingInputInvoiceCostTotalValue(inv={}){
+  const total=accountingNum(inv.total_amount||0);
+  if(total>0)return total;
+  const rows=Array.isArray(inv.items)?inv.items:[];
+  const lineTotals=inputInvoiceItemsTotals(rows);
+  if(accountingNum(lineTotals.total||0)>0)return accountingNum(lineTotals.total||0);
+  return accountingNum(inv.net_amount||0)+accountingNum(inv.vat_amount||0);
+}
+function accountingInputInvoiceTotalCostForTerms(terms=[]){
+  const matched=[];
+  (accountingInputInvoices()||[]).forEach(inv=>{
+    if(accountingInputInvoiceMatchesProfitTerms(inv,terms))matched.push(inv);
+  });
+  const seen=new Set();
+  const unique=matched.filter(inv=>{const k=String(inv.id||[inv.seller_tax_code,inv.invoice_series,inv.invoice_number,inv.invoice_date,inv.total_amount].join('|')); if(seen.has(k))return false; seen.add(k); return true;});
+  const cost=unique.reduce((s,inv)=>s+accountingInputInvoiceCostTotalValue(inv),0);
+  const sources=unique.map(inv=>`HĐ vào ${inv.invoice_number||inv.invoice_series||inv.seller_name||''}`.trim());
+  return {cost:Math.round(cost),matched:unique.length>0,sources,invoices:unique};
+}
+function accountingQuoteInputInvoiceTotalCost(snapshot={}){
+  return accountingInputInvoiceTotalCostForTerms(accountingProfitCostTermsFromQuoteSnapshot(snapshot));
+}
+function accountingOutgoingInputInvoiceTotalCost(inv={}){
+  return accountingInputInvoiceTotalCostForTerms(accountingProfitCostTermsFromOutgoing(inv));
+}
+
 function accountingInputInvoiceCostMatch(line={}){
   const qty=Math.max(0,accountingNum(line.quantity||line.qty||1))||1;
   const keys=accountingLineCostKeys(line);
@@ -2203,11 +2281,13 @@ function accountingQuoteTotals(snapshot={}){
   const afterDiscount=Math.max(0,Math.round(subtotal-discount));
   const vat=Math.round(afterDiscount*accountingNum(info.vatRate||0)/100);
   const afterVat=afterDiscount+vat;
-  const cost=lines.reduce((s,l)=>s+accountingQuoteLineCost(l,pricing),0);
+  const invoiceCost=accountingQuoteInputInvoiceTotalCost(snapshot);
+  const lineCost=lines.reduce((s,l)=>s+accountingQuoteLineCost(l,pricing),0);
+  const cost=invoiceCost.matched?invoiceCost.cost:lineCost;
   const profit=afterDiscount-cost;
-  const missingCost=lines.filter(l=>accountingQuoteLineCost(l,pricing)<=0).length;
-  const costSources=lines.map(l=>accountingInputInvoiceCostMatch(l)?.source).filter(Boolean);
-  return {productsSubtotal,shipping,subtotal,discount,afterDiscount,vat,afterVat,cost,profit,missingCost,lineCount:lines.length,costSources:[...new Set(costSources)]};
+  const missingCost=invoiceCost.matched?0:lines.filter(l=>accountingQuoteLineCost(l,pricing)<=0).length;
+  const costSources=invoiceCost.matched?invoiceCost.sources:lines.map(l=>accountingInputInvoiceCostMatch(l)?.source).filter(Boolean);
+  return {productsSubtotal,shipping,subtotal,discount,afterDiscount,vat,afterVat,cost,profit,missingCost,lineCount:lines.length,costSources:[...new Set(costSources)],costMatchedByInvoiceTotal:invoiceCost.matched};
 }
 function accountingQuoteInvoiceMatch(q={}){
   const key=invoiceNorm([q.fileName,q.firstCode,q.id,q.snapshot?.info?._quoteExportId].join(' '));
@@ -2217,6 +2297,8 @@ function accountingQuoteInvoiceMatch(q={}){
   })||null;
 }
 function accountingOutgoingCost(inv={}){
+  const invoiceCost=accountingOutgoingInputInvoiceTotalCost(inv);
+  if(invoiceCost.matched&&invoiceCost.cost>0)return invoiceCost.cost;
   const items=Array.isArray(inv.items)?inv.items:[];
   if(items.length){
     return items.reduce((s,it)=>{
@@ -2237,12 +2319,16 @@ function accountingOutgoingCost(inv={}){
 }
 
 function accountingOutgoingMissingCost(inv={}){
+  const invoiceCost=accountingOutgoingInputInvoiceTotalCost(inv);
+  if(invoiceCost.matched)return 0;
   const items=Array.isArray(inv.items)?inv.items:[];
   if(items.length)return items.filter(it=>!accountingInputInvoiceCostForLine(it).matched&&accountingOutgoingCost({items:[it]})<=0).length;
   const codes=String(inv.order_code||'').split(/[,;\n]+/).map(x=>x.trim()).filter(Boolean);
   return codes.filter(code=>!accountingInputInvoiceCostForLine({code,quantity:1}).matched).length;
 }
 function accountingOutgoingCostSources(inv={}){
+  const invoiceCost=accountingOutgoingInputInvoiceTotalCost(inv);
+  if(invoiceCost.matched)return [...new Set(invoiceCost.sources||[])];
   const src=[];
   const items=Array.isArray(inv.items)?inv.items:[];
   if(items.length){
@@ -2298,7 +2384,7 @@ function accountingProfitCostNote(r={}){
 function accountingProfitTable(){
   const rows=accountingProfitRows();
   const selectedCount=accountingSelectedProfitKeys().size;
-  return `<div class="overflow-x-auto rounded-lg border border-black/10 bg-white p-3 shadow-sm"><div class="mb-2 flex flex-wrap items-center justify-between gap-2"><div><h2 class="text-base font-extrabold">Lợi nhuận từng đơn hàng</h2><p class="mt-1 text-xs font-bold text-black/45">Chỉ hiển thị các đơn anh tự thêm. Giá vốn lấy từ hóa đơn đầu vào đã liên kết mã sản phẩm/kho. Nếu đơn chưa có hóa đơn, cột Hóa đơn sẽ ghi “Đang chờ hóa đơn”.</p></div><div class="flex flex-wrap items-center gap-2"><span class="rounded-md border border-mint/20 bg-mint/10 px-2 py-1 text-xs font-extrabold text-mint">${rows.length}/${selectedCount} đơn</span><button data-profit-add-toggle type="button" class="h-9 rounded-md bg-ink px-3 text-xs font-extrabold text-white">+ Thêm đơn hàng</button></div></div>${accountingProfitPicker()}<table class="mt-3 w-full min-w-[1260px] border-collapse text-sm"><thead><tr class="border-b border-black/10 text-left text-xs uppercase text-black/45"><th class="py-2 pr-2">Ngày</th><th class="py-2 pr-2">Khách hàng</th><th class="py-2 pr-2">Mã đơn/Báo giá</th><th class="py-2 pr-2">Hóa đơn</th><th class="py-2 pr-2 text-right">Doanh thu trước VAT</th><th class="py-2 pr-2 text-right">Giá vốn HĐ vào</th><th class="py-2 pr-2 text-right">Lợi nhuận tạm tính</th><th class="py-2 pr-2 text-right">Biên LN</th><th class="py-2">Ghi chú</th><th class="py-2 text-right">Thao tác</th></tr></thead><tbody>${rows.map(r=>{const margin=r.net>0?r.profit/r.net*100:0, good=r.profit>=0, costNote=r.missingCost?`Còn ${r.missingCost} dòng chưa liên kết hóa đơn đầu vào.`:((r.costSources&&r.costSources.length)?`Lấy từ: ${esc(r.costSources.slice(0,2).join(', '))}${r.costSources.length>2?'...':''}`:'Đã có giá vốn từ hóa đơn đầu vào.'); return `<tr class="border-b border-black/10 align-top"><td class="py-2 pr-2 font-bold">${esc(compactDate(r.date)||'--')}</td><td class="py-2 pr-2"><b>${esc(r.name)}</b><div class="text-xs text-black/45">${esc(r.kind)}</div></td><td class="py-2 pr-2"><b>${esc(r.code||'--')}</b>${r.fileName?`<div class="max-w-[260px] truncate text-xs text-black/45">${esc(r.fileName)}</div>`:''}</td><td class="py-2 pr-2"><span class="rounded-md border px-2 py-1 text-xs font-extrabold ${r.invoiceStatus==='Đang chờ hóa đơn'?'bg-gold/20 text-[#8a5a00] border-gold/30':accountingStatusClass(r.invoiceStatus)}">${esc(r.invoiceNo||r.invoiceStatus)}</span></td><td class="py-2 pr-2 text-right font-bold">${money(r.net)}</td><td class="py-2 pr-2 text-right font-bold">${r.cost>0?money(r.cost):'<span class="text-coral">Chưa có HĐ đầu vào</span>'}</td><td class="py-2 pr-2 text-right font-extrabold ${good?'text-mint':'text-coral'}">${money(r.profit)}</td><td class="py-2 pr-2 text-right font-bold">${r.net>0?`${margin.toFixed(1)}%`:'--'}</td><td class="py-2 text-xs font-bold text-black/45">${costNote}</td><td class="py-2 text-right"><button data-profit-remove="${esc(r.key)}" type="button" class="h-8 rounded-md border border-coral/30 px-2 text-xs font-extrabold text-coral">Xóa</button></td></tr>`}).join('')||'<tr><td colspan="10" class="py-6 text-center text-sm font-bold text-black/40">Chưa chọn đơn nào để thống kê lợi nhuận. Bấm “+ Thêm đơn hàng” để tự chọn đơn cần theo dõi.</td></tr>'}</tbody></table></div>`;
+  return `<div class="overflow-x-auto rounded-lg border border-black/10 bg-white p-3 shadow-sm"><div class="mb-2 flex flex-wrap items-center justify-between gap-2"><div><h2 class="text-base font-extrabold">Lợi nhuận từng đơn hàng</h2><p class="mt-1 text-xs font-bold text-black/45">Chỉ hiển thị các đơn anh tự thêm. Giá vốn lấy theo tổng tiền hóa đơn đầu vào đã liên kết mã sản phẩm/kho. Nếu đơn chưa có hóa đơn, cột Hóa đơn sẽ ghi “Đang chờ hóa đơn”.</p></div><div class="flex flex-wrap items-center gap-2"><span class="rounded-md border border-mint/20 bg-mint/10 px-2 py-1 text-xs font-extrabold text-mint">${rows.length}/${selectedCount} đơn</span><button data-profit-add-toggle type="button" class="h-9 rounded-md bg-ink px-3 text-xs font-extrabold text-white">+ Thêm đơn hàng</button></div></div>${accountingProfitPicker()}<table class="mt-3 w-full min-w-[1260px] border-collapse text-sm"><thead><tr class="border-b border-black/10 text-left text-xs uppercase text-black/45"><th class="py-2 pr-2">Ngày</th><th class="py-2 pr-2">Khách hàng</th><th class="py-2 pr-2">Mã đơn/Báo giá</th><th class="py-2 pr-2">Hóa đơn</th><th class="py-2 pr-2 text-right">Doanh thu trước VAT</th><th class="py-2 pr-2 text-right">Giá vốn HĐ vào</th><th class="py-2 pr-2 text-right">Lợi nhuận tạm tính</th><th class="py-2 pr-2 text-right">Biên LN</th><th class="py-2">Ghi chú</th><th class="py-2 text-right">Thao tác</th></tr></thead><tbody>${rows.map(r=>{const margin=r.net>0?r.profit/r.net*100:0, good=r.profit>=0, costNote=r.missingCost?`Còn ${r.missingCost} dòng chưa liên kết hóa đơn đầu vào.`:((r.costSources&&r.costSources.length)?`Lấy từ: ${esc(r.costSources.slice(0,2).join(', '))}${r.costSources.length>2?'...':''}`:'Đã có giá vốn từ hóa đơn đầu vào.'); return `<tr class="border-b border-black/10 align-top"><td class="py-2 pr-2 font-bold">${esc(compactDate(r.date)||'--')}</td><td class="py-2 pr-2"><b>${esc(r.name)}</b><div class="text-xs text-black/45">${esc(r.kind)}</div></td><td class="py-2 pr-2"><b>${esc(r.code||'--')}</b>${r.fileName?`<div class="max-w-[260px] truncate text-xs text-black/45">${esc(r.fileName)}</div>`:''}</td><td class="py-2 pr-2"><span class="rounded-md border px-2 py-1 text-xs font-extrabold ${r.invoiceStatus==='Đang chờ hóa đơn'?'bg-gold/20 text-[#8a5a00] border-gold/30':accountingStatusClass(r.invoiceStatus)}">${esc(r.invoiceNo||r.invoiceStatus)}</span></td><td class="py-2 pr-2 text-right font-bold">${money(r.net)}</td><td class="py-2 pr-2 text-right font-bold">${r.cost>0?money(r.cost):'<span class="text-coral">Chưa có HĐ đầu vào</span>'}</td><td class="py-2 pr-2 text-right font-extrabold ${good?'text-mint':'text-coral'}">${money(r.profit)}</td><td class="py-2 pr-2 text-right font-bold">${r.net>0?`${margin.toFixed(1)}%`:'--'}</td><td class="py-2 text-xs font-bold text-black/45">${costNote}</td><td class="py-2 text-right"><button data-profit-remove="${esc(r.key)}" type="button" class="h-8 rounded-md border border-coral/30 px-2 text-xs font-extrabold text-coral">Xóa</button></td></tr>`}).join('')||'<tr><td colspan="10" class="py-6 text-center text-sm font-bold text-black/40">Chưa chọn đơn nào để thống kê lợi nhuận. Bấm “+ Thêm đơn hàng” để tự chọn đơn cần theo dõi.</td></tr>'}</tbody></table></div>`;
 }
 
 function accountingOverview(){ const incoming=accountingInputInvoices().filter(x=>accountingInPeriod(x.invoice_date||x.period)), outgoing=accountingRows(), profitRows=accountingProfitRows(), revenue=outgoing.reduce((s,x)=>s+Number(x.total_amount||0),0), outVat=outgoing.reduce((s,x)=>s+Number(x.vat_amount||0),0), inVat=incoming.reduce((s,x)=>s+Number(x.vat_amount||0),0), inputCost=incoming.reduce((s,x)=>s+Number(x.total_amount||0),0), receivable=outgoing.reduce((s,x)=>s+Math.max(0,Number(x.total_amount||0)-outgoingPaid(x)),0), payable=incoming.reduce((s,x)=>s+Math.max(0,Number(x.total_amount||0)-incomingPaid(x)),0), estProfit=profitRows.reduce((s,x)=>s+Number(x.profit||0),0), needReview=incoming.filter(x=>x.validation_status!=='Hợp lệ'||!x.reviewed_by_accountant).length+outgoing.filter(x=>!x.invoice_number||!x.customer_tax_code).length; const metric=(l,v,t='')=>`<div class="rounded-lg border border-black/10 ${t||'bg-white'} p-3 shadow-sm"><div class="text-[10px] font-bold uppercase text-black/40">${l}</div><div class="mt-1 text-lg font-extrabold">${v}</div></div>`; const top=list=>Object.values(list.reduce((a,x)=>{const k=x.customer_name||x.seller_name||'Không rõ'; a[k]=a[k]||{name:k,total:0}; a[k].total+=Number(x.total_amount||0); return a;},{})).sort((a,b)=>b.total-a.total).slice(0,5); return `<div class="grid gap-3">${accountingFilters()}<div class="grid gap-2 md:grid-cols-4">${metric('Doanh thu đầu ra',money(revenue),'bg-mint/10')}${metric('VAT đầu ra',money(outVat))}${metric('VAT đầu vào',money(inVat))}${metric('VAT tạm tính',money(Math.max(0,outVat-inVat)),'bg-gold/20')}${metric('Chi phí đầu vào',money(inputCost))}${metric('Phải thu',money(receivable),'bg-coral/10')}${metric('Phải trả',money(payable))}${metric('Lợi nhuận từng đơn',money(estProfit),'bg-mint/10')}${metric('Cần kiểm tra',needReview,'bg-gold/20')}</div>${accountingProfitTable()}<div class="grid gap-3 lg:grid-cols-2"><div class="rounded-lg border border-black/10 bg-white p-3 shadow-sm"><h2 class="text-base font-extrabold">Top khách hàng</h2>${top(outgoing).map(x=>`<div class="mt-2 flex justify-between gap-3 border-b border-black/5 pb-2"><b>${esc(x.name)}</b><span>${money(x.total)}</span></div>`).join('')||'<p class="mt-2 text-sm font-bold text-black/40">Chưa có dữ liệu.</p>'}</div><div class="rounded-lg border border-black/10 bg-white p-3 shadow-sm"><h2 class="text-base font-extrabold">Top nhà cung cấp</h2>${top(incoming).map(x=>`<div class="mt-2 flex justify-between gap-3 border-b border-black/5 pb-2"><b>${esc(x.name)}</b><span>${money(x.total)}</span></div>`).join('')||'<p class="mt-2 text-sm font-bold text-black/40">Chưa có dữ liệu.</p>'}</div></div></div>`; }
