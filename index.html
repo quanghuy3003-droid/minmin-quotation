@@ -2086,19 +2086,112 @@ function accountingQuoteLineUnit(line={},pricing={}){
   }
   return accountingNum(line.price||line.sale_price||line.unit_price||0);
 }
+
+function accountingCostCode(v){
+  return invoiceNorm(v).replace(/[^a-z0-9]/gi,'').toUpperCase();
+}
+function accountingLineCostKeys(line={}){
+  const vals=[];
+  const push=v=>{v=String(v||'').trim(); if(v&&!vals.includes(v))vals.push(v);};
+  push(line.linked_inventory_code); push(line.inventory_code); push(line.stock_code); push(line.barcodeId); push(line.barcode_id); push(line.productId); push(line.product_id); push(line.code);
+  const inv=findInventoryItem(line.linked_inventory_code||line.inventory_code||line.stock_code||line.barcodeId||line.code||'');
+  if(inv){ push(inv.code); push(inv.barcodeId); push(inv.id); push(inv.name); }
+  return vals;
+}
+function accountingInputInvoiceItemUnitCost(item={}){
+  const it=inputInvoiceFinalizeLineAmount(item);
+  const qty=Math.max(0,accountingNum(it.quantity||1));
+  const net=accountingNum(it.net_amount||0);
+  const unit=accountingNum(it.unit_price||0);
+  if(unit>0)return unit;
+  if(net>0&&qty>0)return net/qty;
+  return 0;
+}
+function accountingInputInvoiceCostForLine(line={}){
+  const qty=Math.max(0,accountingNum(line.quantity||line.qty||1));
+  const keys=accountingLineCostKeys(line);
+  const keyCodes=keys.map(accountingCostCode).filter(Boolean);
+  const lineName=accountingCostCode([line.name,line.item_name,line.product_note].join(' '));
+  let best=null;
+  (accountingInputInvoices()||[]).forEach(inv=>{
+    (Array.isArray(inv.items)?inv.items:[]).forEach(raw=>{
+      const it=inputInvoiceFinalizeLineAmount(raw,inv.vat_rate);
+      const unitCost=accountingInputInvoiceItemUnitCost(it);
+      if(unitCost<=0)return;
+      const itemKeys=[it.linked_inventory_code,it.inventory_code,it.stock_code,it.product_note,it.item_name].map(accountingCostCode).filter(Boolean);
+      let score=0;
+      for(const a of keyCodes){
+        for(const b of itemKeys){
+          if(!a||!b)continue;
+          if(a===b)score=Math.max(score,100);
+          else if(a.length>=6&&b.includes(a))score=Math.max(score,80);
+          else if(b.length>=6&&a.includes(b))score=Math.max(score,70);
+        }
+      }
+      if(!score&&lineName){
+        for(const b of itemKeys){ if(b&&b.length>=6&&(lineName.includes(b)||b.includes(lineName)))score=Math.max(score,45); }
+      }
+      if(score){
+        const date=String(inv.invoice_date||inv.created_at||'');
+        if(!best||score>best.score||(score===best.score&&date>best.date))best={score,date,unitCost,item:it,invoice:inv};
+      }
+    });
+  });
+  if(!best)return {cost:0,unitCost:0,matched:false,source:''};
+  return {cost:Math.round(best.unitCost*qty),unitCost:best.unitCost,matched:true,source:`HĐ vào ${best.invoice.invoice_number||best.invoice.seller_name||''}`.trim(),invoice:best.invoice,item:best.item};
+}
+function accountingCostMatchText(v){
+  const n=invoiceNorm(v||'');
+  const compact=n.replace(/[^a-z0-9]/gi,'');
+  return {n,compact};
+}
+function accountingLineCostKeys(line={}){
+  const stock=findInventoryItem(line.code||line.barcodeId||line.inventory_code||line.linked_inventory_code||line.productId||'');
+  const raw=[line.code,line.codeCustom,line.barcodeId,line.inventory_code,line.linked_inventory_code,line.productId,line.name,line.product_name,stock?.code,stock?.barcodeId,stock?.name].filter(Boolean);
+  const out=[];
+  raw.forEach(v=>{
+    const {n,compact}=accountingCostMatchText(v);
+    if(n&&n.length>=2)out.push(n);
+    if(compact&&compact.length>=4)out.push(compact);
+  });
+  return [...new Set(out)];
+}
+function accountingInputInvoiceCostMatch(line={}){
+  const qty=Math.max(0,accountingNum(line.quantity||line.qty||1))||1;
+  const keys=accountingLineCostKeys(line);
+  if(!keys.length)return null;
+  const isHit=(raw)=>{
+    const {n,compact}=accountingCostMatchText(raw);
+    if(!n&&!compact)return false;
+    return keys.some(k=>{
+      if(!k)return false;
+      if(k===n||k===compact)return true;
+      if(k.length>=5&&((n&&n.includes(k))||(compact&&compact.includes(k))))return true;
+      if((n&&n.length>=5&&k.includes(n))||(compact&&compact.length>=5&&k.includes(compact)))return true;
+      return false;
+    });
+  };
+  for(const inv of (state?.inputInvoices?.invoices||[])){
+    for(let i=0;i<(inv.items||[]).length;i++){
+      const it=normalizeInputInvoiceItem(inv.items[i],i);
+      if(!(isHit(it.linked_inventory_code)||isHit(it.product_note)||isHit(it.item_name)))continue;
+      const invQty=Math.max(0,accountingNum(it.quantity||1))||1;
+      const unit=accountingNum(it.unit_price||0)|| (accountingNum(it.net_amount||0)>0?accountingNum(it.net_amount||0)/invQty:0);
+      const total=unit>0?Math.round(unit*qty):0;
+      if(total>0)return {total,unit,invoice:inv,item:it,qty,source:`${inv.invoice_number||'HĐ đầu vào'}${it.linked_inventory_code?' · '+it.linked_inventory_code:''}`};
+    }
+  }
+  return null;
+}
 function accountingQuoteLineCost(line={},pricing={}){
-  const qty=Math.max(0,accountingNum(line.quantity||1));
+  const qty=Math.max(0,accountingNum(line.quantity||line.qty||1));
+  const inputCost=accountingInputInvoiceCostForLine(line);
+  if(inputCost.matched&&inputCost.cost>0)return inputCost.cost;
   const direct=accountingNum(line.purchasePrice||line.purchase_price||line.cost_price||line.cost||0);
   if(direct>0)return direct*qty;
-  const inv=findInventoryItem(line.code||line.barcodeId||line.productId||'');
+  const inv=findInventoryItem(line.code||line.barcodeId||line.productId||line.linked_inventory_code||'');
   const invCost=accountingNum(inv?.purchasePrice||inv?.purchase_price||inv?.cost_price||0);
   if(invCost>0)return invCost*qty;
-  const china=accountingNum(line.chinaPrice), weight=accountingNum(line.weight), p={...(state.pricing||{}),...(pricing||{})};
-  if(china>0&&weight>0){
-    const exchange=accountingNum(p.exchangeRate||4000), chinaVn=accountingNum(p.chinaVnRate||33000), bubbleBase=accountingNum(p.bubbleBaseCny||20), bubbleExtra=accountingNum(p.bubbleExtraCny||1.5), bubbleRate=accountingNum(p.bubbleRate||3700), buyFeePct=accountingNum(p.buyFeePercent||5), inland=accountingNum(p.inlandShip||0), vnShip=accountingNum(p.vnShip||0), vatBufferPct=accountingNum(p.vatBufferPercent||20);
-    const giaVn=china*exchange, vcTqVn=chinaVn*weight, bubble=((bubbleBase*bubbleRate)+(bubbleExtra*bubbleRate*Math.max(weight-1,0)))*2, buyFee=buyFeePct/100*giaVn, logistic=vcTqVn+bubble+buyFee+inland+vnShip, invoiceBase=giaVn+vcTqVn+bubble+buyFee+inland, vatBuffer=vatBufferPct/100*invoiceBase;
-    return (giaVn+logistic+vatBuffer)*qty;
-  }
   return 0;
 }
 function accountingQuoteTotals(snapshot={}){
@@ -2113,7 +2206,8 @@ function accountingQuoteTotals(snapshot={}){
   const cost=lines.reduce((s,l)=>s+accountingQuoteLineCost(l,pricing),0);
   const profit=afterDiscount-cost;
   const missingCost=lines.filter(l=>accountingQuoteLineCost(l,pricing)<=0).length;
-  return {productsSubtotal,shipping,subtotal,discount,afterDiscount,vat,afterVat,cost,profit,missingCost,lineCount:lines.length};
+  const costSources=lines.map(l=>accountingInputInvoiceCostMatch(l)?.source).filter(Boolean);
+  return {productsSubtotal,shipping,subtotal,discount,afterDiscount,vat,afterVat,cost,profit,missingCost,lineCount:lines.length,costSources:[...new Set(costSources)]};
 }
 function accountingQuoteInvoiceMatch(q={}){
   const key=invoiceNorm([q.fileName,q.firstCode,q.id,q.snapshot?.info?._quoteExportId].join(' '));
@@ -2124,14 +2218,41 @@ function accountingQuoteInvoiceMatch(q={}){
 }
 function accountingOutgoingCost(inv={}){
   const items=Array.isArray(inv.items)?inv.items:[];
-  return items.reduce((s,it)=>{
-    const qty=accountingNum(it.quantity||it.qty||1);
-    const direct=accountingNum(it.purchase_price||it.purchasePrice||it.cost||it.cost_price||0);
-    if(direct>0)return s+direct*qty;
-    const stock=findInventoryItem(it.code||it.inventory_code||it.linked_inventory_code||'');
-    return s+accountingNum(stock?.purchasePrice||stock?.purchase_price||stock?.cost_price||0)*qty;
-  },0);
+  if(items.length){
+    return items.reduce((s,it)=>{
+      const qty=accountingNum(it.quantity||it.qty||1);
+      const inputCost=accountingInputInvoiceCostForLine({...it,quantity:qty});
+      if(inputCost.matched&&inputCost.cost>0)return s+inputCost.cost;
+      const direct=accountingNum(it.purchase_price||it.purchasePrice||it.cost||it.cost_price||0);
+      if(direct>0)return s+direct*qty;
+      const stock=findInventoryItem(it.code||it.inventory_code||it.linked_inventory_code||'');
+      return s+accountingNum(stock?.purchasePrice||stock?.purchase_price||stock?.cost_price||0)*qty;
+    },0);
+  }
+  const codes=String(inv.order_code||'').split(/[,;\n]+/).map(x=>x.trim()).filter(Boolean);
+  if(codes.length){
+    return codes.reduce((s,code)=>s+accountingInputInvoiceCostForLine({code,quantity:1}).cost,0);
+  }
+  return 0;
 }
+
+function accountingOutgoingMissingCost(inv={}){
+  const items=Array.isArray(inv.items)?inv.items:[];
+  if(items.length)return items.filter(it=>!accountingInputInvoiceCostForLine(it).matched&&accountingOutgoingCost({items:[it]})<=0).length;
+  const codes=String(inv.order_code||'').split(/[,;\n]+/).map(x=>x.trim()).filter(Boolean);
+  return codes.filter(code=>!accountingInputInvoiceCostForLine({code,quantity:1}).matched).length;
+}
+function accountingOutgoingCostSources(inv={}){
+  const src=[];
+  const items=Array.isArray(inv.items)?inv.items:[];
+  if(items.length){
+    items.forEach(it=>{const m=accountingInputInvoiceCostForLine(it); if(m.matched&&m.source)src.push(m.source);});
+  }else{
+    String(inv.order_code||'').split(/[,;\n]+/).map(x=>x.trim()).filter(Boolean).forEach(code=>{const m=accountingInputInvoiceCostForLine({code,quantity:1}); if(m.matched&&m.source)src.push(m.source);});
+  }
+  return [...new Set(src)];
+}
+
 function accountingProfitCandidateRows(){
   const rows=[], used=new Set();
   (state.history||[]).forEach(h=>{
@@ -2141,12 +2262,13 @@ function accountingProfitCandidateRows(){
     const name=info.client||h.client||inv?.customer_name||'Không rõ';
     const code=h.firstCode||inv?.order_code||'';
     const status=inv?(inv.invoice_number?'Đã có hóa đơn':'Đang chờ số HĐ'):'Đang chờ hóa đơn';
-    rows.push({key:`quote:${h.id}`,sourceType:'quote',sourceId:h.id,kind:'Báo giá',date,name,code,fileName:h.fileName||info.fileName||'',invoiceNo:inv?.invoice_number||'',invoiceStatus:status,total:t.afterVat||accountingNum(h.total||inv?.total_amount||0),net:t.afterDiscount||accountingNum(inv?.net_amount||0),cost:t.cost,profit:t.profit,missingCost:t.missingCost,lineCount:t.lineCount,paid:inv?outgoingPaid(inv):0,invoice:inv});
+    rows.push({key:`quote:${h.id}`,sourceType:'quote',sourceId:h.id,kind:'Báo giá',date,name,code,fileName:h.fileName||info.fileName||'',invoiceNo:inv?.invoice_number||'',invoiceStatus:status,total:t.afterVat||accountingNum(h.total||inv?.total_amount||0),net:t.afterDiscount||accountingNum(inv?.net_amount||0),cost:t.cost,profit:t.profit,missingCost:t.missingCost,lineCount:t.lineCount,costSources:t.costSources||[],paid:inv?outgoingPaid(inv):0,invoice:inv});
   });
   (state.accounting.outgoingInvoices||[]).forEach(inv=>{
     if(used.has(inv.id))return;
     const cost=accountingOutgoingCost(inv), net=accountingNum(inv.net_amount||0), total=accountingNum(inv.total_amount||0);
-    rows.push({key:`invoice:${inv.id}`,sourceType:'invoice',sourceId:inv.id,kind:'Hóa đơn',date:inv.request_date||inv.invoice_date||'',name:inv.customer_name||'Không rõ',code:inv.order_code||'',fileName:inv.quote_file_name||'',invoiceNo:inv.invoice_number||'',invoiceStatus:inv.invoice_number?'Đã có hóa đơn':'Đang chờ hóa đơn',total,net,cost,profit:net-cost,missingCost:cost>0?0:1,lineCount:(inv.items||[]).length,paid:outgoingPaid(inv),invoice:inv});
+    const missingCost=accountingOutgoingMissingCost(inv);
+    rows.push({key:`invoice:${inv.id}`,sourceType:'invoice',sourceId:inv.id,kind:'Hóa đơn',date:inv.request_date||inv.invoice_date||'',name:inv.customer_name||'Không rõ',code:inv.order_code||'',fileName:inv.quote_file_name||'',invoiceNo:inv.invoice_number||'',invoiceStatus:inv.invoice_number?'Đã có hóa đơn':'Đang chờ hóa đơn',total,net,cost,profit:net-cost,missingCost,lineCount:(inv.items||[]).length,costSources:accountingOutgoingCostSources(inv),paid:outgoingPaid(inv),invoice:inv});
   });
   return rows.sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
 }
@@ -2165,11 +2287,20 @@ function accountingProfitPicker(){
   if(!state.ui.showProfitOrderPicker)return '';
   return `<div class="mt-3 grid gap-2 rounded-lg border border-gold/30 bg-gold/10 p-3 md:grid-cols-[minmax(0,1fr)_140px]"><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/45">Chọn đơn hàng / báo giá cần thống kê</span><select id="profitOrderSelect" class="h-10 min-w-0 rounded-md border border-black/15 bg-white px-2 text-xs font-bold"><option value="">-- Chọn đơn --</option>${candidates.map(r=>`<option value="${esc(r.key)}">${esc(compactDate(r.date)||'--')} · ${esc(r.name)} · ${esc(r.code||r.fileName||'Chưa có mã')} · ${moneyPlain(r.net)} đ · ${esc(r.invoiceNo||r.invoiceStatus)}</option>`).join('')}</select></label><button id="profitOrderAddSelected" type="button" class="h-10 self-end rounded-md bg-mint px-3 text-xs font-extrabold text-white">Thêm vào thống kê</button>${candidates.length?'':`<div class="text-xs font-bold text-black/45 md:col-span-2">Tất cả đơn/báo giá hiện có đã được thêm vào bảng thống kê.</div>`}</div>`;
 }
+
+function accountingProfitCostNote(r={}){
+  if(r.missingCost)return `Còn ${r.missingCost} dòng chưa liên kết hóa đơn đầu vào.`;
+  const src=Array.isArray(r.costSources)?r.costSources.filter(Boolean):[];
+  if(src.length)return `Lấy từ: ${src.slice(0,2).join(', ')}${src.length>2?'...':''}`;
+  return 'Đã có giá vốn từ hóa đơn đầu vào/kho.';
+}
+
 function accountingProfitTable(){
   const rows=accountingProfitRows();
   const selectedCount=accountingSelectedProfitKeys().size;
-  return `<div class="overflow-x-auto rounded-lg border border-black/10 bg-white p-3 shadow-sm"><div class="mb-2 flex flex-wrap items-center justify-between gap-2"><div><h2 class="text-base font-extrabold">Lợi nhuận từng đơn hàng</h2><p class="mt-1 text-xs font-bold text-black/45">Chỉ hiển thị các đơn anh tự thêm. Nếu đơn chưa có hóa đơn, cột Hóa đơn sẽ ghi “Đang chờ hóa đơn”.</p></div><div class="flex flex-wrap items-center gap-2"><span class="rounded-md border border-mint/20 bg-mint/10 px-2 py-1 text-xs font-extrabold text-mint">${rows.length}/${selectedCount} đơn</span><button data-profit-add-toggle type="button" class="h-9 rounded-md bg-ink px-3 text-xs font-extrabold text-white">+ Thêm đơn hàng</button></div></div>${accountingProfitPicker()}<table class="mt-3 w-full min-w-[1260px] border-collapse text-sm"><thead><tr class="border-b border-black/10 text-left text-xs uppercase text-black/45"><th class="py-2 pr-2">Ngày</th><th class="py-2 pr-2">Khách hàng</th><th class="py-2 pr-2">Mã đơn/Báo giá</th><th class="py-2 pr-2">Hóa đơn</th><th class="py-2 pr-2 text-right">Doanh thu trước VAT</th><th class="py-2 pr-2 text-right">Giá vốn</th><th class="py-2 pr-2 text-right">Lợi nhuận tạm tính</th><th class="py-2 pr-2 text-right">Biên LN</th><th class="py-2">Ghi chú</th><th class="py-2 text-right">Thao tác</th></tr></thead><tbody>${rows.map(r=>{const margin=r.net>0?r.profit/r.net*100:0, good=r.profit>=0; return `<tr class="border-b border-black/10 align-top"><td class="py-2 pr-2 font-bold">${esc(compactDate(r.date)||'--')}</td><td class="py-2 pr-2"><b>${esc(r.name)}</b><div class="text-xs text-black/45">${esc(r.kind)}</div></td><td class="py-2 pr-2"><b>${esc(r.code||'--')}</b>${r.fileName?`<div class="max-w-[260px] truncate text-xs text-black/45">${esc(r.fileName)}</div>`:''}</td><td class="py-2 pr-2"><span class="rounded-md border px-2 py-1 text-xs font-extrabold ${r.invoiceStatus==='Đang chờ hóa đơn'?'bg-gold/20 text-[#8a5a00] border-gold/30':accountingStatusClass(r.invoiceStatus)}">${esc(r.invoiceNo||r.invoiceStatus)}</span></td><td class="py-2 pr-2 text-right font-bold">${money(r.net)}</td><td class="py-2 pr-2 text-right font-bold">${r.cost>0?money(r.cost):'<span class="text-coral">Chưa có giá vốn</span>'}</td><td class="py-2 pr-2 text-right font-extrabold ${good?'text-mint':'text-coral'}">${money(r.profit)}</td><td class="py-2 pr-2 text-right font-bold">${r.net>0?`${margin.toFixed(1)}%`:'--'}</td><td class="py-2 text-xs font-bold text-black/45">${r.missingCost?`Còn ${r.missingCost} dòng chưa có giá vốn.`:'Đã có dữ liệu giá vốn.'}</td><td class="py-2 text-right"><button data-profit-remove="${esc(r.key)}" type="button" class="h-8 rounded-md border border-coral/30 px-2 text-xs font-extrabold text-coral">Xóa</button></td></tr>`}).join('')||'<tr><td colspan="10" class="py-6 text-center text-sm font-bold text-black/40">Chưa chọn đơn nào để thống kê lợi nhuận. Bấm “+ Thêm đơn hàng” để tự chọn đơn cần theo dõi.</td></tr>'}</tbody></table></div>`;
+  return `<div class="overflow-x-auto rounded-lg border border-black/10 bg-white p-3 shadow-sm"><div class="mb-2 flex flex-wrap items-center justify-between gap-2"><div><h2 class="text-base font-extrabold">Lợi nhuận từng đơn hàng</h2><p class="mt-1 text-xs font-bold text-black/45">Chỉ hiển thị các đơn anh tự thêm. Giá vốn lấy từ hóa đơn đầu vào đã liên kết mã sản phẩm/kho. Nếu đơn chưa có hóa đơn, cột Hóa đơn sẽ ghi “Đang chờ hóa đơn”.</p></div><div class="flex flex-wrap items-center gap-2"><span class="rounded-md border border-mint/20 bg-mint/10 px-2 py-1 text-xs font-extrabold text-mint">${rows.length}/${selectedCount} đơn</span><button data-profit-add-toggle type="button" class="h-9 rounded-md bg-ink px-3 text-xs font-extrabold text-white">+ Thêm đơn hàng</button></div></div>${accountingProfitPicker()}<table class="mt-3 w-full min-w-[1260px] border-collapse text-sm"><thead><tr class="border-b border-black/10 text-left text-xs uppercase text-black/45"><th class="py-2 pr-2">Ngày</th><th class="py-2 pr-2">Khách hàng</th><th class="py-2 pr-2">Mã đơn/Báo giá</th><th class="py-2 pr-2">Hóa đơn</th><th class="py-2 pr-2 text-right">Doanh thu trước VAT</th><th class="py-2 pr-2 text-right">Giá vốn HĐ vào</th><th class="py-2 pr-2 text-right">Lợi nhuận tạm tính</th><th class="py-2 pr-2 text-right">Biên LN</th><th class="py-2">Ghi chú</th><th class="py-2 text-right">Thao tác</th></tr></thead><tbody>${rows.map(r=>{const margin=r.net>0?r.profit/r.net*100:0, good=r.profit>=0, costNote=r.missingCost?`Còn ${r.missingCost} dòng chưa liên kết hóa đơn đầu vào.`:((r.costSources&&r.costSources.length)?`Lấy từ: ${esc(r.costSources.slice(0,2).join(', '))}${r.costSources.length>2?'...':''}`:'Đã có giá vốn từ hóa đơn đầu vào.'); return `<tr class="border-b border-black/10 align-top"><td class="py-2 pr-2 font-bold">${esc(compactDate(r.date)||'--')}</td><td class="py-2 pr-2"><b>${esc(r.name)}</b><div class="text-xs text-black/45">${esc(r.kind)}</div></td><td class="py-2 pr-2"><b>${esc(r.code||'--')}</b>${r.fileName?`<div class="max-w-[260px] truncate text-xs text-black/45">${esc(r.fileName)}</div>`:''}</td><td class="py-2 pr-2"><span class="rounded-md border px-2 py-1 text-xs font-extrabold ${r.invoiceStatus==='Đang chờ hóa đơn'?'bg-gold/20 text-[#8a5a00] border-gold/30':accountingStatusClass(r.invoiceStatus)}">${esc(r.invoiceNo||r.invoiceStatus)}</span></td><td class="py-2 pr-2 text-right font-bold">${money(r.net)}</td><td class="py-2 pr-2 text-right font-bold">${r.cost>0?money(r.cost):'<span class="text-coral">Chưa có HĐ đầu vào</span>'}</td><td class="py-2 pr-2 text-right font-extrabold ${good?'text-mint':'text-coral'}">${money(r.profit)}</td><td class="py-2 pr-2 text-right font-bold">${r.net>0?`${margin.toFixed(1)}%`:'--'}</td><td class="py-2 text-xs font-bold text-black/45">${costNote}</td><td class="py-2 text-right"><button data-profit-remove="${esc(r.key)}" type="button" class="h-8 rounded-md border border-coral/30 px-2 text-xs font-extrabold text-coral">Xóa</button></td></tr>`}).join('')||'<tr><td colspan="10" class="py-6 text-center text-sm font-bold text-black/40">Chưa chọn đơn nào để thống kê lợi nhuận. Bấm “+ Thêm đơn hàng” để tự chọn đơn cần theo dõi.</td></tr>'}</tbody></table></div>`;
 }
+
 function accountingOverview(){ const incoming=accountingInputInvoices().filter(x=>accountingInPeriod(x.invoice_date||x.period)), outgoing=accountingRows(), profitRows=accountingProfitRows(), revenue=outgoing.reduce((s,x)=>s+Number(x.total_amount||0),0), outVat=outgoing.reduce((s,x)=>s+Number(x.vat_amount||0),0), inVat=incoming.reduce((s,x)=>s+Number(x.vat_amount||0),0), inputCost=incoming.reduce((s,x)=>s+Number(x.total_amount||0),0), receivable=outgoing.reduce((s,x)=>s+Math.max(0,Number(x.total_amount||0)-outgoingPaid(x)),0), payable=incoming.reduce((s,x)=>s+Math.max(0,Number(x.total_amount||0)-incomingPaid(x)),0), estProfit=profitRows.reduce((s,x)=>s+Number(x.profit||0),0), needReview=incoming.filter(x=>x.validation_status!=='Hợp lệ'||!x.reviewed_by_accountant).length+outgoing.filter(x=>!x.invoice_number||!x.customer_tax_code).length; const metric=(l,v,t='')=>`<div class="rounded-lg border border-black/10 ${t||'bg-white'} p-3 shadow-sm"><div class="text-[10px] font-bold uppercase text-black/40">${l}</div><div class="mt-1 text-lg font-extrabold">${v}</div></div>`; const top=list=>Object.values(list.reduce((a,x)=>{const k=x.customer_name||x.seller_name||'Không rõ'; a[k]=a[k]||{name:k,total:0}; a[k].total+=Number(x.total_amount||0); return a;},{})).sort((a,b)=>b.total-a.total).slice(0,5); return `<div class="grid gap-3">${accountingFilters()}<div class="grid gap-2 md:grid-cols-4">${metric('Doanh thu đầu ra',money(revenue),'bg-mint/10')}${metric('VAT đầu ra',money(outVat))}${metric('VAT đầu vào',money(inVat))}${metric('VAT tạm tính',money(Math.max(0,outVat-inVat)),'bg-gold/20')}${metric('Chi phí đầu vào',money(inputCost))}${metric('Phải thu',money(receivable),'bg-coral/10')}${metric('Phải trả',money(payable))}${metric('Lợi nhuận từng đơn',money(estProfit),'bg-mint/10')}${metric('Cần kiểm tra',needReview,'bg-gold/20')}</div>${accountingProfitTable()}<div class="grid gap-3 lg:grid-cols-2"><div class="rounded-lg border border-black/10 bg-white p-3 shadow-sm"><h2 class="text-base font-extrabold">Top khách hàng</h2>${top(outgoing).map(x=>`<div class="mt-2 flex justify-between gap-3 border-b border-black/5 pb-2"><b>${esc(x.name)}</b><span>${money(x.total)}</span></div>`).join('')||'<p class="mt-2 text-sm font-bold text-black/40">Chưa có dữ liệu.</p>'}</div><div class="rounded-lg border border-black/10 bg-white p-3 shadow-sm"><h2 class="text-base font-extrabold">Top nhà cung cấp</h2>${top(incoming).map(x=>`<div class="mt-2 flex justify-between gap-3 border-b border-black/5 pb-2"><b>${esc(x.name)}</b><span>${money(x.total)}</span></div>`).join('')||'<p class="mt-2 text-sm font-bold text-black/40">Chưa có dữ liệu.</p>'}</div></div></div>`; }
 
 function outgoingForm(inv){
