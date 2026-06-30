@@ -213,14 +213,20 @@ function normalizeWebsiteProducts(data={}){
 }
 function loadWebsiteProducts(){ try{ return normalizeWebsiteProducts(JSON.parse(localStorage.getItem(WEBSITE_PRODUCTS_KEY)||'null')||{}); }catch(e){ console.warn('Không đọc được module Website sản phẩm:', e); return websiteProductsDefaults(); } }
 function lightWebsiteProducts(data=state.website){ return normalizeWebsiteProducts(data||websiteProductsDefaults()); }
+function freeWebsiteStorageRoom(){
+  try{ localStorage.removeItem(WORKING_STATE_CACHE_KEY); }catch{}
+  try{ localStorage.removeItem(INVENTORY_BACKUP_KEY); }catch{}
+}
 function saveWebsiteProducts(){
   state.website=normalizeWebsiteProducts(state.website||websiteProductsDefaults());
   state.website.updatedAt=new Date().toISOString();
   const payload=JSON.stringify(lightWebsiteProducts());
   try{
+    freeWebsiteStorageRoom();
     localStorage.setItem(WEBSITE_PRODUCTS_KEY,payload);
   }catch(e){
     try{
+      freeWebsiteStorageRoom();
       localStorage.removeItem(WEBSITE_PRODUCTS_KEY);
       localStorage.setItem(WEBSITE_PRODUCTS_KEY,payload);
     }catch(e2){
@@ -1180,13 +1186,10 @@ function workingStateSnapshot(){
   });
 }
 function writeWorkingStateLocal(snapshot){
-  try{ localStorage.setItem(WORKING_STATE_CACHE_KEY, JSON.stringify(snapshot)); }catch(e){ console.warn('Không lưu cache working state:', e); }
+  const meta={version:snapshot?.version||2,savedAt:snapshot?.savedAt||new Date().toISOString(),activeTab:snapshot?.activeTab||state.activeTab||'',sheetInput:snapshot?.sheetInput||state.sheetInput||''};
+  try{ localStorage.setItem(WORKING_STATE_CACHE_KEY, JSON.stringify(meta)); }catch(e){ console.warn('Không lưu cache working state nhẹ:', e); }
   try{ localStorage.setItem(DRAFT_KEY, JSON.stringify(lightQuoteSnapshot(snapshot))); }catch{}
   try{ localStorage.setItem(HISTORY_KEY, JSON.stringify(snapshot.history||[])); }catch{}
-  try{ localStorage.setItem(INVENTORY_KEY, JSON.stringify(snapshot.inventory||{})); localStorage.setItem(INVENTORY_BACKUP_KEY, JSON.stringify(snapshot.inventory||{})); }catch{}
-  try{ localStorage.setItem(INPUT_INVOICE_KEY, JSON.stringify(snapshot.inputInvoices||inputInvoiceDefaults())); }catch{}
-  try{ localStorage.setItem(ACCOUNTING_KEY, JSON.stringify(snapshot.accounting||accountingDefaults())); }catch{}
-  try{ localStorage.setItem(WEBSITE_PRODUCTS_KEY, JSON.stringify(snapshot.website||websiteProductsDefaults())); }catch{}
 }
 function applyWorkingStateSnapshot(data){
   if(!data||typeof data!=='object')return false;
