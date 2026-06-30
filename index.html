@@ -350,6 +350,31 @@ async function testWebsiteWooConnection(){
 function websiteSetCurrent(patch){ state.website=normalizeWebsiteProducts(state.website||websiteProductsDefaults()); state.website.current=normalizeWebsiteProduct({...state.website.current,...patch}); }
 function websiteStockItems(){ return (state.inventory?.items||[]).map(normalizeInventoryItem).filter(item=>/^STK/i.test(String(item.code||item.barcodeId||''))); }
 function websiteLinkedStock(code){ const key=String(code||'').trim(); return key?websiteStockItems().find(item=>String(item.code||'')===key||String(item.barcodeId||'')===key):null; }
+const WEBSITE_SHORT_NAMES=['Remi','Dover','Scope','Cam','Yake','Luna','Mira','Nori','Alba','Milo','Ori','Sol','Nami','Kumo','Eden','Romi','Luce','Aria','Nova','Halo','Sora','Mono'];
+function websiteTypeFromCategory(category){
+  const c=String(category||'').toLowerCase();
+  if(c.includes('decor'))return{prefix:'DC',label:'Decoration'};
+  if(c.includes('ceiling')||c.includes('chandelier'))return{prefix:'CD',label:'Ceiling Lamp'};
+  if(c.includes('floor'))return{prefix:'FL',label:'Floor Lamp'};
+  if(c.includes('table'))return{prefix:'TL',label:'Table Lamp'};
+  if(c.includes('pendant')||c.includes('wabisabi'))return{prefix:'PL',label:'Pendant Lamp'};
+  if(c.includes('wall')||c.includes('classic')||c.includes('re.lamp'))return{prefix:'WL',label:'Wall Lamp'};
+  return{prefix:'WL',label:'Wall Lamp'};
+}
+function websiteNextSku(prefix,currentId=''){
+  const used=new Set((state.website?.products||[]).filter(p=>String(p.id)!==String(currentId||state.website?.editingId||'')).map(p=>String(p.sku||'').toUpperCase()));
+  for(let i=1;i<=99;i++){ const sku=`${prefix}-${String(i).padStart(2,'0')}`; if(!used.has(sku))return sku; }
+  return `${prefix}-${Date.now().toString().slice(-2)}`;
+}
+function websiteAutoNameProduct(){
+  state.website=normalizeWebsiteProducts(state.website||websiteProductsDefaults());
+  const p=normalizeWebsiteProduct(state.website.current||{}), type=websiteTypeFromCategory(p.category||p.product_type||p.product_name_en||p.product_name_vi);
+  const sku=websiteNextSku(type.prefix,p.id);
+  const name=WEBSITE_SHORT_NAMES[Math.floor(Math.random()*WEBSITE_SHORT_NAMES.length)];
+  websiteSetCurrent({sku,product_name_en:`${sku} ${name}`,product_name_vi:`${sku} ${name}`,slug:slugifyWebsite(`${sku}-${name}`),product_type:type.label});
+  saveWebsiteProducts();
+  render();
+}
 function websiteApplyStockLink(force=false){
   const p=normalizeWebsiteProduct(state.website?.current||{}), item=websiteLinkedStock(p.stock_code);
   if(!item)return;
@@ -3012,7 +3037,7 @@ function renderWebsiteWooConfig(){
 function renderWebsiteProductsTab(){
   state.website=normalizeWebsiteProducts(state.website||websiteProductsDefaults());
   const p=normalizeWebsiteProduct(state.website.current||{}), editing=!!state.website.editingId, ready=state.website.products.filter(x=>x.featured_image_url&&websiteMoneyNumber(x.regular_price)).length;
-  return `<section class="mx-auto grid max-w-7xl gap-4 px-4 py-4 sm:px-6 lg:px-8">${renderWebsiteWooConfig()}<div class="rounded-lg border border-black/10 bg-white p-3 shadow-sm"><div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between"><div><h1 class="text-xl font-extrabold">Website sản phẩm</h1><p class="mt-1 text-sm text-black/55">Module này dùng để tạo sản phẩm mới cho website, có thể link về kho bằng mã Stock STK. Ảnh đại diện crop 1:1; gallery giữ tỷ lệ gốc.</p><p class="mt-1 text-xs font-bold text-black/40">${ready}/${state.website.products.length} sản phẩm đủ ảnh và giá để xuất WooCommerce.</p><p class="mt-1 text-xs font-bold text-sky-700">${state.website.lastWooSyncAt?'Đã đồng bộ Woo: '+new Date(state.website.lastWooSyncAt).toLocaleString('vi-VN'):'Chưa tải sản phẩm từ WooCommerce vào app.'}</p></div><div class="flex flex-wrap gap-2"><button id="websiteNew" type="button" class="h-10 rounded-md border border-black/10 bg-white px-3 text-sm font-extrabold text-ink">Tạo mới</button><button id="websiteSave" type="button" class="h-10 rounded-md bg-gold px-4 text-sm font-extrabold text-ink hover:bg-[#ffd76a]">${editing?'Lưu chỉnh sửa':'Lưu sản phẩm'}</button><button id="exportWooCsv" type="button" class="h-10 rounded-md bg-ink px-4 text-sm font-extrabold text-white hover:bg-black">Xuất CSV đang lọc</button><button id="exportWooCsvAll" type="button" class="h-10 rounded-md border border-mint/25 bg-white px-3 text-sm font-extrabold text-mint">Xuất tất cả</button></div></div></div><div class="grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(360px,0.75fr)]"><div class="grid gap-3"><div class="rounded-lg border border-black/10 bg-white p-3 shadow-sm"><h2 class="text-base font-extrabold">${editing?'Sửa sản phẩm':'Tạo sản phẩm mới'}</h2><div class="mt-3 grid gap-3 lg:grid-cols-3">${websiteField('SKU / Mã website','sku')}${websiteStockField()}${websiteField('Tên EN','product_name_en')}${websiteField('Tên VI','product_name_vi')}${websiteField('Slug','slug')}${websiteCategorySelect()}${websiteStatusSelect()}${websiteField('Tags','tags', 'text', true)}${websiteField('Website URL','website_product_url')}</div></div><div class="rounded-lg border border-black/10 bg-white p-3 shadow-sm"><h2 class="text-base font-extrabold">Product attributes</h2><div class="mt-3 grid gap-3 lg:grid-cols-3">${websiteSimpleAttributeFields()}</div></div>${websiteImagesPanel()}</div><div class="grid content-start gap-3">${websitePreviewPanel()}</div></div>${websiteProductsTable()}</section>`;
+  return `<section class="mx-auto grid max-w-7xl gap-4 px-4 py-4 sm:px-6 lg:px-8">${renderWebsiteWooConfig()}<div class="rounded-lg border border-black/10 bg-white p-3 shadow-sm"><div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between"><div><h1 class="text-xl font-extrabold">Website sản phẩm</h1><p class="mt-1 text-sm text-black/55">Module này dùng để tạo sản phẩm mới cho website, có thể link về kho bằng mã Stock STK. Ảnh đại diện crop 1:1; gallery giữ tỷ lệ gốc.</p><p class="mt-1 text-xs font-bold text-black/40">${ready}/${state.website.products.length} sản phẩm đủ ảnh và giá để xuất WooCommerce.</p><p class="mt-1 text-xs font-bold text-sky-700">${state.website.lastWooSyncAt?'Đã đồng bộ Woo: '+new Date(state.website.lastWooSyncAt).toLocaleString('vi-VN'):'Chưa tải sản phẩm từ WooCommerce vào app.'}</p></div><div class="flex flex-wrap gap-2"><button id="websiteNew" type="button" class="h-10 rounded-md border border-black/10 bg-white px-3 text-sm font-extrabold text-ink">Tạo mới</button><button id="websiteAutoName" type="button" class="h-10 rounded-md border border-mint/25 bg-mint/10 px-3 text-sm font-extrabold text-mint">Tự đặt mã/tên</button><button id="websiteSave" type="button" class="h-10 rounded-md bg-gold px-4 text-sm font-extrabold text-ink hover:bg-[#ffd76a]">${editing?'Hoàn tất':'Lưu sản phẩm'}</button><button id="exportWooCsv" type="button" class="h-10 rounded-md bg-ink px-4 text-sm font-extrabold text-white hover:bg-black">Xuất CSV đang lọc</button><button id="exportWooCsvAll" type="button" class="h-10 rounded-md border border-mint/25 bg-white px-3 text-sm font-extrabold text-mint">Xuất tất cả</button></div></div></div><div class="grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(360px,0.75fr)]"><div class="grid gap-3"><div class="rounded-lg border border-black/10 bg-white p-3 shadow-sm"><h2 class="text-base font-extrabold">${editing?'Sửa sản phẩm':'Tạo sản phẩm mới'}</h2><div class="mt-3 grid gap-3 lg:grid-cols-3">${websiteField('SKU / Mã website','sku')}${websiteStockField()}${websiteField('Tên EN','product_name_en')}${websiteField('Tên VI','product_name_vi')}${websiteField('Slug','slug')}${websiteCategorySelect()}${websiteStatusSelect()}${websiteField('Tags','tags', 'text', true)}${websiteField('Website URL','website_product_url')}</div></div><div class="rounded-lg border border-black/10 bg-white p-3 shadow-sm"><h2 class="text-base font-extrabold">Product attributes</h2><div class="mt-3 grid gap-3 lg:grid-cols-3">${websiteSimpleAttributeFields()}</div></div>${websiteImagesPanel()}</div><div class="grid content-start gap-3">${websitePreviewPanel()}</div></div>${websiteProductsTable()}</section>`;
 }
 function bindWebsiteProducts(){
   document.querySelectorAll('[data-woo-config]').forEach(el=>{ const update=()=>{ state.websiteWoo=normalizeWebsiteWooConfig(state.websiteWoo||websiteWooDefaults()); state.websiteWoo[el.dataset.wooConfig]=el.value; saveWebsiteWooConfig(); }; el.oninput=update; el.onchange=()=>{update(); render();}; });
@@ -3026,6 +3051,7 @@ function bindWebsiteProducts(){
   document.querySelectorAll('[data-website-category-option]').forEach(el=>{ el.onchange=()=>{ const current=new Set(websiteCategoryList(state.website?.current?.category)); if(el.checked)current.add(el.value); else current.delete(el.value); websiteSetCurrent({category:websiteCategoryString([...current])}); saveWebsiteProducts(); render(); }; });
   const applyStock=document.getElementById('websiteApplyStock'); if(applyStock)applyStock.onclick=()=>{websiteApplyStockLink(true); saveWebsiteProducts(); render();};
   const newBtn=document.getElementById('websiteNew'); if(newBtn)newBtn.onclick=websiteNewProduct;
+  const autoNameBtn=document.getElementById('websiteAutoName'); if(autoNameBtn)autoNameBtn.onclick=websiteAutoNameProduct;
   const saveBtn=document.getElementById('websiteSave'); if(saveBtn)saveBtn.onclick=websiteSaveProduct;
   document.querySelectorAll('[data-website-complete]').forEach(btn=>btn.onclick=websiteSaveProduct);
   document.querySelectorAll('[data-website-cancel-edit]').forEach(btn=>btn.onclick=websiteCancelEdit);
