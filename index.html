@@ -182,7 +182,10 @@ function normalizeWebsiteProduct(p={}){
 }
 function websiteIsPlaceholderProduct(p){
   const x=normalizeWebsiteProduct(p);
-  return !x.wooProductId && /^\d+$/.test(String(x.sku||x.id||'')) && !x.product_name_en && !x.product_name_vi && !websiteMoneyNumber(x.regular_price) && !x.featured_image_url && !(x.gallery_image_urls||[]).length;
+  const noName=!String(x.product_name_en||'').trim()&&!String(x.product_name_vi||'').trim();
+  const noImage=!x.featured_image_url&&!(x.gallery_image_urls||[]).length;
+  if(noName&&noImage)return true;
+  return !x.wooProductId && /^\d+$/.test(String(x.sku||x.id||'')) && noName && !websiteMoneyNumber(x.regular_price) && noImage;
 }
 function normalizeWebsiteProducts(data={}){
   const base=websiteProductsDefaults();
