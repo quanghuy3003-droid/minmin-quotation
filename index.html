@@ -236,19 +236,32 @@ function saveWebsiteProducts(){
   }
   scheduleWorkingStateSave();
 }
-function websiteWooDefaults(){ return {siteUrl:'https://minminlifestyle.com',consumerKey:'',consumerSecret:'',status:''}; }
-function normalizeWebsiteWooConfig(data={}){ return {...websiteWooDefaults(),...(data||{}),siteUrl:String(data?.siteUrl||'').trim().replace(/\/+$/,'')}; }
+function websiteWooDefaults(){ return {siteUrl:'https://minmin-lifestyle.com',consumerKey:'',consumerSecret:'',status:''}; }
+function normalizeWebsiteSiteUrl(value){
+  let url=String(value||'').trim().replace(/\/+$/,'');
+  if(!url)return '';
+  if(!/^https?:\/\//i.test(url))url='https://'+url;
+  url=url.replace(/^https?:\/\/(www\.)?minminlifestyle\.com$/i,'https://minmin-lifestyle.com');
+  return url;
+}
+function normalizeWebsiteWooConfig(data={}){ return {...websiteWooDefaults(),...(data||{}),siteUrl:normalizeWebsiteSiteUrl(data?.siteUrl||websiteWooDefaults().siteUrl)}; }
 function loadWebsiteWooConfig(){ try{ return normalizeWebsiteWooConfig(JSON.parse(localStorage.getItem(WEBSITE_WOO_KEY)||'null')||{}); }catch{return websiteWooDefaults();} }
 function saveWebsiteWooConfig(){ state.websiteWoo=normalizeWebsiteWooConfig(state.websiteWoo||websiteWooDefaults()); try{ localStorage.setItem(WEBSITE_WOO_KEY,JSON.stringify(state.websiteWoo)); }catch(e){ console.warn('Không lưu được cấu hình WooCommerce:', e); } }
 function websiteWooReady(){ const c=normalizeWebsiteWooConfig(state.websiteWoo||{}); return !!(c.siteUrl&&c.consumerKey&&c.consumerSecret); }
-function websiteWooUrl(path,params={}){
+function websiteWooUrl(path,params={},withKeys=true){
   const c=normalizeWebsiteWooConfig(state.websiteWoo||{});
   if(!websiteWooReady())throw new Error('Chưa cấu hình Website URL, Consumer Key và Consumer Secret.');
   const url=new URL(`${c.siteUrl}/wp-json/wc/v3/${String(path||'').replace(/^\/+/,'')}`);
-  url.searchParams.set('consumer_key',c.consumerKey);
-  url.searchParams.set('consumer_secret',c.consumerSecret);
+  if(withKeys){
+    url.searchParams.set('consumer_key',c.consumerKey);
+    url.searchParams.set('consumer_secret',c.consumerSecret);
+  }
   Object.entries(params).forEach(([k,v])=>{ if(v!==undefined&&v!==null&&v!=='')url.searchParams.set(k,v); });
   return url.toString();
+}
+function websiteWooAuthHeaders(){
+  const c=normalizeWebsiteWooConfig(state.websiteWoo||{});
+  try{return {Authorization:'Basic '+btoa(`${c.consumerKey}:${c.consumerSecret}`)};}catch{return {};}
 }
 function websiteProductWooUrl(data){ return data?.permalink||data?.external_url||data?.link||''; }
 function stripHtml(value){ const div=document.createElement('div'); div.innerHTML=String(value||''); return (div.textContent||div.innerText||'').trim(); }
@@ -329,18 +342,43 @@ async function websiteWooCategoryIds(category){
   return ids;
 }
 async function wooFetchJson(path,options={},params={}){
-  const res=await fetch(websiteWooUrl(path,params),{...options,headers:{'Content-Type':'application/json',...(options.headers||{})}});
-  const text=await res.text().catch(()=>'');
-  let data=null; try{ data=text?JSON.parse(text):null; }catch{ data=text; }
-  if(!res.ok)throw new Error((data&&data.message)||text||`WooCommerce lỗi ${res.status}`);
-  return {data,res};
+  const cleanOptions={...options,headers:{'Content-Type':'application/json',...(options.headers||{})}};
+  const attempts=[
+    {url:websiteWooUrl(path,params,false),options:{...cleanOptions,headers:{...cleanOptions.headers,...websiteWooAuthHeaders()}}},
+    {url:websiteWooUrl(path,params,true),options:cleanOptions}
+  ];
+  let lastError=null;
+  for(const attempt of attempts){
+    try{
+      const res=await fetch(attempt.url,attempt.options);
+      const text=await res.text().catch(()=>'');
+      let data=null; try{ data=text?JSON.parse(text):null; }catch{ data=text; }
+      if(res.ok)return {data,res};
+      const msg=(data&&data.message)||text||`WooCommerce lỗi ${res.status}`;
+      const code=(data&&data.code)||'';
+      lastError=new Error(`${msg}${code?` (${code})`:''}`);
+      lastError.status=res.status;
+      lastError.code=code;
+      lastError.data=data;
+    }catch(e){
+      lastError=e;
+    }
+  }
+  const raw=String(lastError?.message||lastError||'Không kết nối được WooCommerce.');
+  if(/cannot list resources|không thể liệt kê tài nguyên|rest_cannot_view|woocommerce_rest_cannot_view/i.test(raw)){
+    throw new Error('WooCommerce từ chối quyền đọc sản phẩm. Kiểm tra đúng domain https://minmin-lifestyle.com và key phải có quyền Read/Write.');
+  }
+  if(/401|consumer|signature|invalid|unauthorized/i.test(raw)){
+    throw new Error('WooCommerce không nhận key. Kiểm tra Consumer Key/Secret có đúng site https://minmin-lifestyle.com và quyền Read/Write.');
+  }
+  throw lastError||new Error('Không kết nối được WooCommerce.');
 }
 async function wooRequest(path,options={},params={}){
   const {data}=await wooFetchJson(path,options,params);
   return data;
 }
 async function testWebsiteWooConnection(){
-  const {data,res}=await wooFetchJson('products',{method:'GET'},{per_page:1,status:'any'});
+  const {data,res}=await wooFetchJson('products',{method:'GET'},{per_page:1});
   const total=Number(res.headers.get('x-wp-total')||0);
   state.websiteWoo.status=`Kết nối WooCommerce OK. Website hiện có ${total||'nhiều'} sản phẩm. Đang tải về app...`;
   saveWebsiteWooConfig();
@@ -478,7 +516,7 @@ async function importWooProductsToWebsite(){
   render();
   const imported=[];
   for(let page=1;page<=50;page++){
-    const batch=await wooRequest('products',{method:'GET'},{per_page:100,page,status:'any'});
+    const batch=await wooRequest('products',{method:'GET'},{per_page:100,page});
     if(!Array.isArray(batch)||!batch.length)break;
     imported.push(...batch.map(websiteProductFromWoo));
     if(batch.length<100)break;
@@ -3032,7 +3070,7 @@ function websiteProductsTable(){
 }
 function renderWebsiteWooConfig(){
   const c=normalizeWebsiteWooConfig(state.websiteWoo||websiteWooDefaults());
-  return `<div class="rounded-lg border border-sky-200 bg-sky-50 p-3 shadow-sm"><div class="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between"><div><h2 class="text-base font-extrabold text-ink">Kết nối WooCommerce</h2><p class="mt-1 text-xs font-bold text-black/45">Website URL và key được tự lưu trên máy này ngay khi nhập.</p><p class="mt-1 text-xs font-extrabold ${websiteWooReady()?'text-mint':'text-coral'}">${esc(c.status||(websiteWooReady()?'Đã nhập đủ thông tin. Bấm “Kết nối + tải web” để kéo sản phẩm từ website về app.':'Chưa cấu hình WooCommerce.'))}</p></div><div class="flex flex-wrap gap-2"><button id="testWooConnection" type="button" class="h-10 rounded-md border border-sky-300 bg-white px-3 text-sm font-extrabold text-sky-800 hover:bg-sky-100">Kết nối + tải web</button><button id="importWooProducts" type="button" class="h-10 rounded-md border border-sky-300 bg-white px-3 text-sm font-extrabold text-sky-800 hover:bg-sky-100">Đồng bộ lại</button><button id="uploadAllWoo" type="button" class="h-10 rounded-md bg-sky-600 px-3 text-sm font-extrabold text-white hover:bg-sky-700">Đồng bộ lên web</button></div></div><div class="mt-3 grid gap-2 lg:grid-cols-3"><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/45">Website URL</span><input data-woo-config="siteUrl" value="${esc(c.siteUrl||'https://minminlifestyle.com')}" placeholder="https://minminlifestyle.com" class="h-10 rounded-md border border-black/15 bg-white px-3 text-sm font-bold outline-none focus:border-sky-400"/></label><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/45">Consumer Key</span><input data-woo-config="consumerKey" type="password" value="${esc(c.consumerKey)}" placeholder="ck_..." autocomplete="off" class="h-10 rounded-md border border-black/15 bg-white px-3 text-sm font-bold outline-none focus:border-sky-400"/></label><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/45">Consumer Secret</span><input data-woo-config="consumerSecret" type="password" value="${esc(c.consumerSecret)}" placeholder="cs_..." autocomplete="off" class="h-10 rounded-md border border-black/15 bg-white px-3 text-sm font-bold outline-none focus:border-sky-400"/></label></div></div>`;
+  return `<div class="rounded-lg border border-sky-200 bg-sky-50 p-3 shadow-sm"><div class="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between"><div><h2 class="text-base font-extrabold text-ink">Kết nối WooCommerce</h2><p class="mt-1 text-xs font-bold text-black/45">Website URL và key được tự lưu trên máy này ngay khi nhập.</p><p class="mt-1 text-xs font-extrabold ${websiteWooReady()?'text-mint':'text-coral'}">${esc(c.status||(websiteWooReady()?'Đã nhập đủ thông tin. Bấm “Kết nối + tải web” để kéo sản phẩm từ website về app.':'Chưa cấu hình WooCommerce.'))}</p></div><div class="flex flex-wrap gap-2"><button id="testWooConnection" type="button" class="h-10 rounded-md border border-sky-300 bg-white px-3 text-sm font-extrabold text-sky-800 hover:bg-sky-100">Kết nối + tải web</button><button id="importWooProducts" type="button" class="h-10 rounded-md border border-sky-300 bg-white px-3 text-sm font-extrabold text-sky-800 hover:bg-sky-100">Đồng bộ lại</button><button id="uploadAllWoo" type="button" class="h-10 rounded-md bg-sky-600 px-3 text-sm font-extrabold text-white hover:bg-sky-700">Đồng bộ lên web</button></div></div><div class="mt-3 grid gap-2 lg:grid-cols-3"><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/45">Website URL</span><input data-woo-config="siteUrl" value="${esc(c.siteUrl||'https://minmin-lifestyle.com')}" placeholder="https://minmin-lifestyle.com" class="h-10 rounded-md border border-black/15 bg-white px-3 text-sm font-bold outline-none focus:border-sky-400"/></label><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/45">Consumer Key</span><input data-woo-config="consumerKey" type="password" value="${esc(c.consumerKey)}" placeholder="ck_..." autocomplete="off" class="h-10 rounded-md border border-black/15 bg-white px-3 text-sm font-bold outline-none focus:border-sky-400"/></label><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/45">Consumer Secret</span><input data-woo-config="consumerSecret" type="password" value="${esc(c.consumerSecret)}" placeholder="cs_..." autocomplete="off" class="h-10 rounded-md border border-black/15 bg-white px-3 text-sm font-bold outline-none focus:border-sky-400"/></label></div></div>`;
 }
 function renderWebsiteProductsTab(){
   state.website=normalizeWebsiteProducts(state.website||websiteProductsDefaults());
