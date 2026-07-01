@@ -6589,6 +6589,102 @@ function renderContractPages(){
 }
 
 
+/* MINMIN PATCH 2026-07-02P: Hợp đồng - canh đều chữ, giãn nội dung hết chiều ngang trang */
+const __minminDocumentPrintCssJustifyBase = documentPrintCss;
+function documentPrintCss(){
+  return __minminDocumentPrintCssJustifyBase() + `
+/* Canh đều chữ riêng cho phần Hợp đồng, không ảnh hưởng bảng và các tab khác */
+.doc-page.contract-cover .doc-p,
+.doc-page.contract-cover .doc-bullets li,
+.doc-page.contract-terms .doc-p,
+.doc-page.contract-terms .doc-bullets li,
+.doc-page.contract-terms .doc-letter-list li{
+  text-align:justify;
+  text-justify:inter-word;
+  text-align-last:auto;
+  width:100%;
+}
+.doc-page.contract-terms{padding-left:32px;padding-right:32px}
+.doc-page.contract-terms.terms-last{padding-left:32px;padding-right:32px}
+.doc-page.contract-terms .doc-tight{width:100%}
+.doc-page.contract-terms .doc-section-title,
+.doc-page.contract-cover .doc-title,
+.doc-page.contract-cover .doc-subtitle,
+.doc-page.contract-cover .doc-center,
+.doc-page.contract-terms .doc-signatures,
+.doc-page.contract-terms .doc-signatures *{
+  text-align:center;
+}
+.doc-page.contract-cover .doc-party-block,
+.doc-page.contract-cover .doc-party-row,
+.doc-page.contract-cover .doc-party-row *,
+.doc-page.contract-terms .doc-table,
+.doc-page.contract-terms .doc-table *{
+  text-align:initial;
+}
+.doc-page.contract-cover .doc-party-row{display:grid}
+.doc-page.contract-cover .doc-party-row div:first-child{text-align:left}
+.doc-page.contract-cover .doc-party-row div:last-child{text-align:left}
+.doc-page.contract-terms .doc-p{letter-spacing:.01px;word-spacing:.7px}
+.doc-page.contract-terms .doc-bullets li{word-spacing:.65px}
+@media print{
+  .doc-page.contract-terms{padding-left:8.2mm;padding-right:8.2mm}
+  .doc-page.contract-terms.terms-last{padding-left:8.2mm;padding-right:8.2mm}
+}`;
+}
+
+
+
+/* MINMIN PATCH 2026-07-02Q: Hợp đồng - giãn nội dung theo chiều cao trang A4 để hết khoảng trắng cuối trang */
+const __minminDocumentPrintCssVerticalFillBase = documentPrintCss;
+function documentPrintCss(){
+  return __minminDocumentPrintCssVerticalFillBase() + `
+/* Giãn riêng phần điều khoản hợp đồng theo chiều cao tờ giấy */
+.doc-page.contract-terms{
+  display:flex;
+  flex-direction:column;
+}
+.doc-page.contract-terms > .doc-tight{
+  flex:1 1 auto;
+  min-height:1036px;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+}
+.doc-page.contract-terms > .doc-tight > *{
+  margin-top:0 !important;
+  margin-bottom:0 !important;
+}
+.doc-page.contract-terms .doc-section-title{
+  line-height:1.18;
+}
+.doc-page.contract-terms .doc-p,
+.doc-page.contract-terms .doc-bullets li,
+.doc-page.contract-terms .doc-letter-list li{
+  line-height:1.24;
+}
+.doc-page.contract-terms .doc-bullets,
+.doc-page.contract-terms .doc-letter-list{
+  margin-left:15px !important;
+  padding-left:0 !important;
+}
+.doc-page.contract-terms.terms-last > .doc-tight{
+  min-height:1038px;
+}
+.doc-page.contract-terms .doc-signatures{
+  margin-top:0 !important;
+  padding-top:4px;
+}
+@media print{
+  .doc-page.contract-terms > .doc-tight{
+    min-height:calc(297mm - 6.5mm - 8mm - 12mm);
+  }
+  .doc-page.contract-terms.terms-last > .doc-tight{
+    min-height:calc(297mm - 6.2mm - 8mm - 12mm);
+  }
+}`;
+}
+
 initApp();
     </script>
   </body>
