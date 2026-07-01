@@ -5044,9 +5044,9 @@ async function initApp(){
 }
 
 
-/* MINMIN PATCH 2026-07-01E: Product Attributes chỉ lưu khi hoàn tất sản phẩm + chỉ giữ Wall Lamp */
+/* MINMIN PATCH 2026-07-01E2: Product Attributes chỉ lưu khi hoàn tất + mở khóa danh mục sản phẩm */
 (function(){
-  const MINMIN_ONLY_WEBSITE_CATEGORY = 'Wall Lamp';
+  const MINMIN_DEFAULT_WEBSITE_CATEGORY = 'Wall Lamp';
   const MINMIN_ATTR_COMMIT_FLAG = '__minminWebsiteAttrCommitNow';
 
   function minminAttrCleanValue(key, value){
@@ -5104,48 +5104,70 @@ async function initApp(){
     return minminBuildCompletedAttributeOptions();
   };
 
-  // Chỉ giữ danh mục Wall Lamp trong module website.
-  websiteNormalizeCategoryName = function(value){
-    const v = String(value || '').trim();
+  // Mở khóa danh mục: vẫn mặc định Wall Lamp, nhưng có thể chọn danh mục khác.
+  // Đồng thời tự rút gọn "Lightings > Wall Lamp" / "Lighting / Wall Lamp" thành "Wall Lamp" khi import từ Woo.
+  function minminCanonicalCategory(value){
+    let v = String(value || '').replace(/\s+/g, ' ').trim();
     if(!v) return '';
-    return MINMIN_ONLY_WEBSITE_CATEGORY;
+    v = v.replace(/^Lightings?\s*(>|\/|\\)\s*/i, '').trim();
+    if(/^Lightings?$/i.test(v)) return '';
+    const option = (WEBSITE_CATEGORY_OPTIONS || []).find(x => String(x.value || '').toLowerCase() === v.toLowerCase() || String(x.label || '').toLowerCase() === v.toLowerCase());
+    return option ? option.value : v;
+  }
+
+  websiteNormalizeCategoryName = function(value){
+    return minminCanonicalCategory(value);
   };
   websiteCategoryList = function(value){
-    const raw = String(value || '').trim();
-    return raw ? [MINMIN_ONLY_WEBSITE_CATEGORY] : [];
+    return [...new Set(String(value || '').split(/[,;]+/).map(minminCanonicalCategory).filter(Boolean))];
   };
   websiteCategoryString = function(value){
-    if(Array.isArray(value)) return value.length ? MINMIN_ONLY_WEBSITE_CATEGORY : '';
-    return String(value || '').trim() ? MINMIN_ONLY_WEBSITE_CATEGORY : '';
+    const list = Array.isArray(value) ? value : websiteCategoryList(value);
+    return [...new Set((list || []).map(minminCanonicalCategory).filter(Boolean))].join(', ');
   };
   websiteCategoryLabel = function(value){ return websiteCategoryString(value); };
   websiteCategoryIncludes = function(value, category){
-    return !!String(value || '').trim() && websiteNormalizeCategoryName(category) === MINMIN_ONLY_WEBSITE_CATEGORY;
+    const target = minminCanonicalCategory(category);
+    return !!target && websiteCategoryList(value).includes(target);
   };
   websiteCategoryCsvValue = function(value){ return websiteCategoryString(value); };
-  websiteCategories = function(){ return [MINMIN_ONLY_WEBSITE_CATEGORY]; };
+  websiteCategories = function(){
+    const fromOptions = (WEBSITE_CATEGORY_OPTIONS || []).map(x => x.value).filter(Boolean);
+    const fromProducts = (state.website?.products || []).flatMap(p => websiteCategoryList(p.category));
+    const all = [...new Set([MINMIN_DEFAULT_WEBSITE_CATEGORY, ...fromOptions, ...fromProducts].map(minminCanonicalCategory).filter(Boolean))];
+    return all.sort((a,b)=>String(a).localeCompare(String(b),'vi'));
+  };
+
+  websiteCategorySelect = function(){
+    const p = normalizeWebsiteProduct(state.website?.current || {});
+    const current = websiteCategoryList(p.category)[0] || MINMIN_DEFAULT_WEBSITE_CATEGORY;
+    const opts = websiteCategories();
+    const optionsHtml = opts.map(v => `<option value="${esc(v)}" ${current===v?'selected':''}>${esc(v)}</option>`).join('');
+    return `<label class="grid min-w-0 gap-1 lg:col-span-2"><span class="text-[11px] font-extrabold uppercase tracking-wide text-black/45">Danh mục sản phẩm</span><select data-website-field="category" class="h-10 rounded-md border border-black/15 bg-white px-3 text-sm font-bold outline-none focus:border-mint focus:ring-4 focus:ring-mint/10">${optionsHtml}</select><span class="text-[11px] font-bold text-mint">Đang chọn: ${esc(current)}. Danh mục đã mở khóa, không còn bị ép cố định.</span></label>`;
+  };
 
   const previousWebsiteProductDefaultsFinal = websiteProductDefaults;
   websiteProductDefaults = function(){
-    return {...previousWebsiteProductDefaultsFinal(), category: MINMIN_ONLY_WEBSITE_CATEGORY};
+    return {...previousWebsiteProductDefaultsFinal(), category: MINMIN_DEFAULT_WEBSITE_CATEGORY};
   };
 
   const previousNormalizeWebsiteProductFinal = normalizeWebsiteProduct;
   normalizeWebsiteProduct = function(product = {}){
     const out = previousNormalizeWebsiteProductFinal(product || {});
-    out.category = websiteCategoryString(out.category || MINMIN_ONLY_WEBSITE_CATEGORY);
+    out.category = websiteCategoryString(out.category) || MINMIN_DEFAULT_WEBSITE_CATEGORY;
     return out;
   };
 
   const previousWebsiteProductPayloadFinal = websiteProductPayload;
   websiteProductPayload = function(item, categoryIds = [], options = {}){
-    return previousWebsiteProductPayloadFinal({...item, category: MINMIN_ONLY_WEBSITE_CATEGORY}, categoryIds, options);
+    const cleanCategory = websiteCategoryString(item?.category) || MINMIN_DEFAULT_WEBSITE_CATEGORY;
+    return previousWebsiteProductPayloadFinal({...item, category: cleanCategory}, categoryIds, options);
   };
 
   const previousWebsiteSaveProductFinal = websiteSaveProduct;
   websiteSaveProduct = function(){
     state.website = normalizeWebsiteProducts(state.website || websiteProductsDefaults());
-    state.website.current = normalizeWebsiteProduct({...state.website.current, category: MINMIN_ONLY_WEBSITE_CATEGORY});
+    state.website.current = normalizeWebsiteProduct({...state.website.current, category: websiteCategoryString(state.website?.current?.category) || MINMIN_DEFAULT_WEBSITE_CATEGORY});
     window[MINMIN_ATTR_COMMIT_FLAG] = true;
     try{
       const result = previousWebsiteSaveProductFinal.apply(this, arguments);
@@ -5159,7 +5181,7 @@ async function initApp(){
   const previousUploadWebsiteProductToWooFinal = uploadWebsiteProductToWoo;
   uploadWebsiteProductToWoo = async function(id, options = {}){
     state.website = normalizeWebsiteProducts(state.website || websiteProductsDefaults());
-    state.website.products = (state.website.products || []).map(p => normalizeWebsiteProduct({...p, category: MINMIN_ONLY_WEBSITE_CATEGORY}));
+    state.website.products = (state.website.products || []).map(p => normalizeWebsiteProduct(p));
     saveWebsiteProducts();
     return previousUploadWebsiteProductToWooFinal.apply(this, arguments);
   };
@@ -5169,19 +5191,18 @@ async function initApp(){
     const result = await previousInitAppForAttrClean.apply(this, arguments);
     try{
       state.website = normalizeWebsiteProducts(state.website || websiteProductsDefaults());
-      state.website.products = (state.website.products || []).map(p => normalizeWebsiteProduct({...p, category: MINMIN_ONLY_WEBSITE_CATEGORY}));
-      state.website.current = normalizeWebsiteProduct({...state.website.current, category: MINMIN_ONLY_WEBSITE_CATEGORY});
+      state.website.products = (state.website.products || []).map(p => normalizeWebsiteProduct(p));
+      state.website.current = normalizeWebsiteProduct({...state.website.current, category: websiteCategoryString(state.website?.current?.category) || MINMIN_DEFAULT_WEBSITE_CATEGORY});
       try{ if(window.minminRefreshOldWebsiteAutoNames) window.minminRefreshOldWebsiteAutoNames(); }catch(renameErr){ console.warn('Không đổi được tên tự động cũ:', renameErr); }
       minminBuildCompletedAttributeOptions();
       saveWebsiteProducts();
       render();
     }catch(e){
-      console.warn('Không dọn được dropdown Product Attributes:', e);
+      console.warn('Không dọn được dropdown Product Attributes / danh mục:', e);
     }
     return result;
   };
 })();
-
 initApp();
     </script>
   </body>
