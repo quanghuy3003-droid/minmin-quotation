@@ -4100,6 +4100,272 @@ renderWebsiteWooConfig = function(){
   return `<div class="rounded-lg border border-sky-200 bg-sky-50 p-3 shadow-sm"><div class="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between"><div><h2 class="text-base font-extrabold text-ink">Kết nối WooCommerce</h2><p class="mt-1 text-xs font-bold text-black/45">Website URL và key được tự lưu trên máy này ngay khi nhập.</p><p class="mt-1 text-xs font-extrabold ${websiteWooReady()?'text-mint':'text-coral'}">${esc(c.status||(websiteWooReady()?'Đã nhập đủ thông tin. Bấm “Kết nối + tải web” để kéo sản phẩm từ website về app.':'Chưa cấu hình WooCommerce.'))}</p><p class="mt-1 text-[11px] font-bold text-sky-800">Nút đồng bộ nhanh không gửi ảnh để tránh WooCommerce kẹt ở 10%. Muốn cập nhật ảnh thì bấm Woo từng dòng hoặc nút kèm ảnh.</p></div><div class="flex flex-wrap gap-2"><button id="testWooConnection" type="button" class="h-10 rounded-md border border-sky-300 bg-white px-3 text-sm font-extrabold text-sky-800 hover:bg-sky-100">Kết nối + tải web</button><button id="importWooProducts" type="button" class="h-10 rounded-md border border-sky-300 bg-white px-3 text-sm font-extrabold text-sky-800 hover:bg-sky-100">Đồng bộ lại</button><button id="uploadAllWoo" type="button" class="h-10 rounded-md bg-sky-600 px-3 text-sm font-extrabold text-white hover:bg-sky-700">Đồng bộ nhanh không ảnh</button><button id="uploadAllWooImages" type="button" class="h-10 rounded-md border border-orange-300 bg-orange-50 px-3 text-sm font-extrabold text-orange-700 hover:bg-orange-100">Đồng bộ kèm ảnh</button></div></div><div class="mt-3 grid gap-2 lg:grid-cols-3"><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/45">Website URL</span><input data-woo-config="siteUrl" value="${esc(c.siteUrl||'https://minmin-lifestyle.com')}" placeholder="https://minmin-lifestyle.com" class="h-10 rounded-md border border-black/15 bg-white px-3 text-sm font-bold outline-none focus:border-sky-400"/></label><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/45">Consumer Key</span><input data-woo-config="consumerKey" type="password" value="${esc(c.consumerKey)}" placeholder="ck_..." autocomplete="off" class="h-10 rounded-md border border-black/15 bg-white px-3 text-sm font-bold outline-none focus:border-sky-400"/></label><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/45">Consumer Secret</span><input data-woo-config="consumerSecret" type="password" value="${esc(c.consumerSecret)}" placeholder="cs_..." autocomplete="off" class="h-10 rounded-md border border-black/15 bg-white px-3 text-sm font-bold outline-none focus:border-sky-400"/></label></div></div>`;
 };
 
+
+/* MINMIN PATCH 2026-07-01C: chống kẹt 10% thật sự
+   - Đồng bộ siêu nhanh không ảnh + không quét/tạo danh mục trước khi gửi.
+   - Xóa trạng thái Đang gửi bị lưu kẹt từ phiên cũ.
+   - Nút Woo từng dòng mặc định cũng không gửi ảnh để tránh treo hosting WooCommerce.
+*/
+const MINMIN_WOO_FAST_TIMEOUT_MS = 25000;
+let __minminWooSyncRunning = false;
+
+function minminWooNow(){ return new Date().toISOString(); }
+function minminWooIsSendingStatus(p){ return /đang gửi|dang gui|syncing|uploading/i.test(String(p?.wooStatus||'')); }
+function minminWooSetStatusText(text){
+  state.websiteWoo = normalizeWebsiteWooConfig(state.websiteWoo || websiteWooDefaults());
+  state.websiteWoo.status = text;
+  saveWebsiteWooConfig();
+}
+function minminClearStuckWooSync(silent=false){
+  state.website = normalizeWebsiteProducts(state.website || websiteProductsDefaults());
+  let fixed = 0;
+  state.website.products.forEach(p=>{
+    const stuck = minminWooIsSendingStatus(p) || (Number(p.wooProgress||0)>0 && Number(p.wooProgress||0)<100 && !String(p.wooStatus||'').startsWith('Lỗi'));
+    if(!stuck) return;
+    fixed++;
+    if(p.wooProductId || p.website_status === 'Đã đăng website'){
+      p.wooStatus = 'Đã đồng bộ WooCommerce';
+      p.wooProgress = 100;
+      p.wooUploadedAt = p.wooUploadedAt || minminWooNow();
+    }else{
+      p.wooStatus = 'Chưa đồng bộ sau chỉnh sửa';
+      p.wooProgress = 0;
+    }
+  });
+  if(fixed){
+    saveWebsiteProducts();
+    minminWooSetStatusText(`Đã hủy ${fixed} trạng thái WooCommerce bị kẹt từ phiên cũ.`);
+    if(!silent) alert(`Đã hủy ${fixed} dòng bị kẹt 10%. Bấm Đồng bộ siêu nhanh để gửi lại phần cần thiết.`);
+  }else if(!silent){
+    minminWooSetStatusText('Không có dòng nào đang bị kẹt WooCommerce.');
+    alert('Không có dòng nào đang bị kẹt WooCommerce.');
+  }
+  return fixed;
+}
+
+wooFetchJson = async function(path, options={}, params={}){
+  const timeoutMs = Number(options.timeoutMs || MINMIN_WOO_FAST_TIMEOUT_MS);
+  const optCopy = {...options};
+  delete optCopy.timeoutMs;
+  const cleanOptions = {...optCopy, headers:{'Content-Type':'application/json', ...(optCopy.headers||{})}};
+  const attempts = [
+    { url: websiteWooUrl(path, params, true), options: cleanOptions },
+    { url: websiteWooUrl(path, params, false), options: {...cleanOptions, headers:{...cleanOptions.headers, ...websiteWooAuthHeaders()}} }
+  ];
+  let lastError = null;
+  for(const attempt of attempts){
+    const controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+    const timer = controller ? setTimeout(()=>controller.abort(), timeoutMs) : null;
+    try{
+      const res = await fetch(attempt.url, {...attempt.options, signal: controller ? controller.signal : attempt.options.signal});
+      const text = await res.text().catch(()=>'');
+      let data = null;
+      try{ data = text ? JSON.parse(text) : null; }catch{ data = text; }
+      if(res.ok) return {data, res};
+      const msg = (data && data.message) || text || `WooCommerce lỗi ${res.status}`;
+      lastError = new Error(msg);
+      lastError.status = res.status;
+      lastError.data = data;
+    }catch(e){
+      lastError = (e && e.name === 'AbortError')
+        ? new Error(`WooCommerce phản hồi quá ${Math.round(timeoutMs/1000)} giây, app đã ngắt để không treo ở 10%.`)
+        : e;
+    }finally{
+      if(timer) clearTimeout(timer);
+    }
+  }
+  throw lastError || new Error('Không kết nối được WooCommerce.');
+};
+wooRequest = async function(path, options={}, params={}){
+  const {data} = await wooFetchJson(path, options, params);
+  return data;
+};
+
+function minminWooFastPayload(item, opts={}){
+  const p = normalizeWebsiteProduct(item);
+  const includeImages = !!opts.includeImages;
+  const includeCategories = !!opts.includeCategories;
+  const attributes = websiteSimpleAttributePairs(p).map(([name,value])=>({name, visible:true, variation:false, options:[String(value)]}));
+  const payload = {
+    name: p.product_name_en || p.product_name_vi || p.sku,
+    type: 'simple',
+    sku: p.sku,
+    status: p.website_status === 'Tạm ẩn' ? 'draft' : 'publish',
+    attributes,
+    meta_data: [
+      ...(p.stock_code ? [{key:'stock_code', value:p.stock_code}] : []),
+      ...(p.category ? [{key:'website_category_path', value:websiteCategoryString(websiteCategoryList(p.category))}] : [])
+    ]
+  };
+  const regular = websiteMoneyNumber(p.regular_price);
+  const sale = websiteMoneyNumber(p.sale_price);
+  if(regular) payload.regular_price = String(regular);
+  if(sale) payload.sale_price = String(sale); else payload.sale_price = '';
+  if(p.slug) payload.slug = p.slug;
+  if(p.short_description) payload.short_description = p.short_description;
+  if(p.long_description || attributes.length) payload.description = websiteWooDescription(p);
+  if(includeImages){
+    payload.images = [p.featured_image_url, ...(p.gallery_image_urls||[])].filter(Boolean).map(src=>({src}));
+  }
+  if(includeCategories && Array.isArray(opts.categoryIds) && opts.categoryIds.length){
+    payload.categories = opts.categoryIds.map(id=>({id}));
+  }
+  return payload;
+}
+
+function minminWooNeedsUpload(p){
+  const x = normalizeWebsiteProduct(p);
+  if(!x.sku || (!x.product_name_en && !x.product_name_vi)) return false;
+  if(!x.wooProductId) return true;
+  if(String(x.wooStatus||'') === 'Chưa đồng bộ sau chỉnh sửa') return true;
+  if(String(x.wooStatus||'').startsWith('Lỗi')) return true;
+  const updated = Date.parse(x.updated_at || 0) || 0;
+  const uploaded = Date.parse(x.wooUploadedAt || 0) || 0;
+  return !!(uploaded && updated > uploaded && String(x.wooStatus||'') !== 'Đã đồng bộ WooCommerce');
+}
+
+async function minminUploadOneWooFast(id, opts={}){
+  state.website = normalizeWebsiteProducts(state.website || websiteProductsDefaults());
+  if(!websiteWooReady()) throw new Error('Chưa nhập đủ Website URL, Consumer Key và Consumer Secret.');
+  const item = state.website.products.find(x=>String(x.id)===String(id)||String(x.sku)===String(id));
+  if(!item) throw new Error('Không tìm thấy sản phẩm website.');
+  const includeImages = !!opts.includeImages;
+  const bulk = !!opts.bulk;
+  item.wooStatus = includeImages ? 'Đang gửi WooCommerce kèm ảnh' : 'Đang gửi WooCommerce nhanh';
+  item.wooProgress = Math.max(Number(item.wooProgress||0), 10);
+  if(!bulk) { saveWebsiteProducts(); render(); }
+  try{
+    const payload = minminWooFastPayload(item, {includeImages, includeCategories:false});
+    if(includeImages && (!payload.images || !payload.images.length)) throw new Error('Sản phẩm chưa có ảnh để gửi kèm.');
+    item.wooProgress = 50;
+    if(!bulk){ saveWebsiteProducts(); render(); }
+    const data = item.wooProductId
+      ? await wooRequest(`products/${item.wooProductId}`, {method:'PUT', timeoutMs: includeImages ? 90000 : MINMIN_WOO_FAST_TIMEOUT_MS, body:JSON.stringify(payload)})
+      : await wooRequest('products', {method:'POST', timeoutMs: includeImages ? 90000 : MINMIN_WOO_FAST_TIMEOUT_MS, body:JSON.stringify(payload)});
+    Object.assign(item, {
+      wooProductId: data?.id || item.wooProductId || '',
+      wooProductUrl: websiteProductWooUrl(data) || item.wooProductUrl,
+      website_product_url: websiteProductWooUrl(data) || item.website_product_url,
+      wooStatus: 'Đã đồng bộ WooCommerce',
+      wooProgress: 100,
+      wooUploadedAt: minminWooNow(),
+      website_status: 'Đã đăng website',
+      updated_at: minminWooNow()
+    });
+    saveWebsiteProducts();
+    if(!bulk) render();
+    return data;
+  }catch(e){
+    const msg = String(e?.message || e || 'Không rõ lỗi');
+    item.wooStatus = 'Lỗi: ' + msg;
+    item.wooProgress = 1;
+    saveWebsiteProducts();
+    if(!bulk) render();
+    throw new Error(msg);
+  }
+}
+uploadWebsiteProductToWoo = function(id, options={}){
+  return minminUploadOneWooFast(id, {includeImages: !!options.includeImages, bulk: !!options.bulk});
+};
+
+async function minminUploadAllWooSuperFast(options={}){
+  if(__minminWooSyncRunning) throw new Error('Đang có một lượt đồng bộ WooCommerce chạy. Hãy chờ xong hoặc tải lại trang rồi bấm Hủy kẹt 10%.');
+  __minminWooSyncRunning = true;
+  try{
+    state.website = normalizeWebsiteProducts(state.website || websiteProductsDefaults());
+    if(!websiteWooReady()) throw new Error('Chưa nhập đủ Website URL, Consumer Key và Consumer Secret.');
+    minminClearStuckWooSync(true);
+    const includeImages = !!options.includeImages;
+    const items = websiteProductsForExport(state.website.products || []).filter(minminWooNeedsUpload);
+    if(!items.length){
+      minminWooSetStatusText('Không có sản phẩm mới hoặc sản phẩm vừa chỉnh sửa cần đồng bộ.');
+      saveWebsiteProducts(); render();
+      alert('Không có sản phẩm mới hoặc sản phẩm vừa chỉnh sửa cần đồng bộ. Các dòng kẹt 10% đã được xóa trạng thái.');
+      return;
+    }
+    if(options.ask !== false){
+      const msg = includeImages
+        ? `Có ${items.length} sản phẩm cần đồng bộ KÈM ẢNH. Chế độ này vẫn có thể chậm do WooCommerce phải tải ảnh. Tiếp tục?`
+        : `Có ${items.length} sản phẩm cần đồng bộ SIÊU NHANH. App sẽ KHÔNG gửi ảnh và KHÔNG quét danh mục trước, nên không còn kẹt ở 10%. Tiếp tục?`;
+      if(!confirm(msg)) return;
+    }
+    let ok=0, fail=0, last='';
+    const chunkSize = includeImages ? 1 : 20;
+    for(let start=0; start<items.length; start+=chunkSize){
+      const chunk = items.slice(start,start+chunkSize);
+      minminWooSetStatusText(`Đang đồng bộ ${start+1}-${Math.min(start+chunk.length,items.length)}/${items.length}${includeImages?' kèm ảnh':' siêu nhanh'}...`);
+      chunk.forEach((it,idx)=>{
+        const live = state.website.products.find(x=>String(x.id)===String(it.id));
+        if(live){ live.wooStatus = includeImages ? 'Đang gửi WooCommerce kèm ảnh' : 'Đang gửi WooCommerce nhanh'; live.wooProgress = Math.max(10, Math.round(((start+idx)/items.length)*100)); }
+      });
+      saveWebsiteProducts(); render();
+      if(includeImages){
+        try{ await minminUploadOneWooFast(chunk[0].id,{includeImages:true,bulk:true}); ok++; }
+        catch(e){ fail++; last=e.message||String(e); }
+      }else{
+        const create=[], update=[], createRefs=[], updateRefs=[];
+        chunk.forEach(item=>{
+          const payload = minminWooFastPayload(item, {includeImages:false, includeCategories:false});
+          if(item.wooProductId){ payload.id = Number(item.wooProductId); update.push(payload); updateRefs.push(item); }
+          else{ create.push(payload); createRefs.push(item); }
+        });
+        try{
+          const data = await wooRequest('products/batch', {method:'POST', timeoutMs: MINMIN_WOO_FAST_TIMEOUT_MS, body: JSON.stringify({create, update})});
+          const created = Array.isArray(data?.create) ? data.create : [];
+          const updated = Array.isArray(data?.update) ? data.update : [];
+          created.forEach((res,i)=>{
+            const item=createRefs[i], live=state.website.products.find(x=>String(x.id)===String(item.id));
+            if(res?.id && live){ Object.assign(live,{wooProductId:res.id, wooProductUrl:websiteProductWooUrl(res)||live.wooProductUrl, website_product_url:websiteProductWooUrl(res)||live.website_product_url, wooStatus:'Đã đồng bộ WooCommerce', wooProgress:100, wooUploadedAt:minminWooNow(), website_status:'Đã đăng website', updated_at:minminWooNow()}); ok++; }
+            else{ fail++; last=String(res?.message||res?.error?.message||'Không tạo được sản phẩm'); if(live){ live.wooStatus='Lỗi: '+last; live.wooProgress=1; } }
+          });
+          updated.forEach((res,i)=>{
+            const item=updateRefs[i], live=state.website.products.find(x=>String(x.id)===String(item.id));
+            if(res?.id && live){ Object.assign(live,{wooProductId:res.id, wooProductUrl:websiteProductWooUrl(res)||live.wooProductUrl, website_product_url:websiteProductWooUrl(res)||live.website_product_url, wooStatus:'Đã đồng bộ WooCommerce', wooProgress:100, wooUploadedAt:minminWooNow(), website_status:'Đã đăng website', updated_at:minminWooNow()}); ok++; }
+            else{ fail++; last=String(res?.message||res?.error?.message||'Không cập nhật được sản phẩm'); if(live){ live.wooStatus='Lỗi: '+last; live.wooProgress=1; } }
+          });
+        }catch(e){
+          fail += chunk.length;
+          last = e.message || String(e);
+          chunk.forEach(item=>{ const live=state.website.products.find(x=>String(x.id)===String(item.id)); if(live){ live.wooStatus='Lỗi: '+last; live.wooProgress=1; } });
+        }
+      }
+      minminWooSetStatusText(`Đã xử lý ${Math.min(start+chunk.length,items.length)}/${items.length}. Thành công ${ok}, lỗi ${fail}.`);
+      saveWebsiteProducts(); render();
+      if(fail && /quá \d+ giây|timed out|timeout/i.test(last)) break;
+    }
+    minminWooSetStatusText(`Xong WooCommerce: ${ok} thành công, ${fail} lỗi${last?'. Lỗi cuối: '+last:''}${includeImages?'':' · Không gửi ảnh/không quét danh mục.'}`);
+    saveWebsiteProducts(); render(); alert(state.websiteWoo.status);
+  }finally{
+    __minminWooSyncRunning = false;
+  }
+}
+uploadAllWebsiteProductsToWoo = function(options={}){
+  return minminUploadAllWooSuperFast({includeImages:false, ...options});
+};
+
+(function(){
+  const previousBindWebsiteProducts = bindWebsiteProducts;
+  bindWebsiteProducts = function(){
+    previousBindWebsiteProducts();
+    document.querySelectorAll('[data-website-upload-woo]').forEach(btn=>{
+      const id = btn.dataset.websiteUploadWoo;
+      btn.onclick = ()=>minminUploadOneWooFast(id,{includeImages:false}).catch(e=>alert('Chưa đồng bộ được dòng này: '+(e.message||e)));
+    });
+    const cancel = document.getElementById('cancelStuckWoo');
+    if(cancel) cancel.onclick = ()=>{ minminClearStuckWooSync(false); render(); };
+    const uploadAll = document.getElementById('uploadAllWoo');
+    if(uploadAll) uploadAll.onclick = ()=>minminUploadAllWooSuperFast({includeImages:false}).catch(e=>alert('Chưa upload được WooCommerce: '+(e.message||e)));
+    const uploadAllImages = document.getElementById('uploadAllWooImages');
+    if(uploadAllImages) uploadAllImages.onclick = ()=>minminUploadAllWooSuperFast({includeImages:true}).catch(e=>alert('Chưa upload được WooCommerce kèm ảnh: '+(e.message||e)));
+  };
+})();
+
+renderWebsiteWooConfig = function(){
+  const c = normalizeWebsiteWooConfig(state.websiteWoo || websiteWooDefaults());
+  return `<div class="rounded-lg border border-sky-200 bg-sky-50 p-3 shadow-sm"><div class="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between"><div><h2 class="text-base font-extrabold text-ink">Kết nối WooCommerce</h2><p class="mt-1 text-xs font-bold text-black/45">Website URL và key được tự lưu trên máy này ngay khi nhập.</p><p class="mt-1 text-xs font-extrabold ${websiteWooReady()?'text-mint':'text-coral'}">${esc(c.status||(websiteWooReady()?'Đã nhập đủ thông tin.':'Chưa cấu hình WooCommerce.'))}</p><p class="mt-1 text-[11px] font-bold text-sky-800">Đồng bộ siêu nhanh: không gửi ảnh và không quét danh mục trước nên không bị đứng 10%. Nút Woo từng dòng cũng mặc định không gửi ảnh.</p></div><div class="flex flex-wrap gap-2"><button id="testWooConnection" type="button" class="h-10 rounded-md border border-sky-300 bg-white px-3 text-sm font-extrabold text-sky-800 hover:bg-sky-100">Kết nối + tải web</button><button id="importWooProducts" type="button" class="h-10 rounded-md border border-sky-300 bg-white px-3 text-sm font-extrabold text-sky-800 hover:bg-sky-100">Đồng bộ lại</button><button id="cancelStuckWoo" type="button" class="h-10 rounded-md border border-coral/30 bg-white px-3 text-sm font-extrabold text-coral hover:bg-coral hover:text-white">Hủy kẹt 10%</button><button id="uploadAllWoo" type="button" class="h-10 rounded-md bg-sky-600 px-3 text-sm font-extrabold text-white hover:bg-sky-700">Đồng bộ siêu nhanh</button><button id="uploadAllWooImages" type="button" class="h-10 rounded-md border border-orange-300 bg-orange-50 px-3 text-sm font-extrabold text-orange-700 hover:bg-orange-100">Kèm ảnh</button></div></div><div class="mt-3 grid gap-2 lg:grid-cols-3"><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/45">Website URL</span><input data-woo-config="siteUrl" value="${esc(c.siteUrl||'https://minmin-lifestyle.com')}" placeholder="https://minmin-lifestyle.com" class="h-10 rounded-md border border-black/15 bg-white px-3 text-sm font-bold outline-none focus:border-sky-400"/></label><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/45">Consumer Key</span><input data-woo-config="consumerKey" type="password" value="${esc(c.consumerKey)}" placeholder="ck_..." autocomplete="off" class="h-10 rounded-md border border-black/15 bg-white px-3 text-sm font-bold outline-none focus:border-sky-400"/></label><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/45">Consumer Secret</span><input data-woo-config="consumerSecret" type="password" value="${esc(c.consumerSecret)}" placeholder="cs_..." autocomplete="off" class="h-10 rounded-md border border-black/15 bg-white px-3 text-sm font-bold outline-none focus:border-sky-400"/></label></div></div>`;
+};
+try{ minminClearStuckWooSync(true); }catch(e){ console.warn(e); }
+
 window.addEventListener('hashchange',()=>{ if(inventoryLookupKey())state.activeTab='stock'; render(); });
 async function initApp(){
   try{
