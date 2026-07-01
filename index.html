@@ -3900,6 +3900,206 @@ async function exportPdfA4(options={}){
   pdf.save(quotationFileName(quoteDateObject(),'pdf'));
 }
 function downloadBlob(blob,name){ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.click(); URL.revokeObjectURL(a.href); }
+
+
+/* MINMIN PATCH 2026-07-01B: sửa đồng bộ Woo bị kẹt 10% và thêm đồng bộ nhanh không ảnh */
+const MINMIN_WOO_TIMEOUT_MS=120000;
+wooFetchJson = async function(path,options={},params={}){
+  const timeoutMs=Number(options.timeoutMs||MINMIN_WOO_TIMEOUT_MS);
+  const optCopy={...options}; delete optCopy.timeoutMs;
+  const cleanOptions={...optCopy,headers:{'Content-Type':'application/json',...(optCopy.headers||{})}};
+  const attempts=[
+    {url:websiteWooUrl(path,params,false),options:{...cleanOptions,headers:{...cleanOptions.headers,...websiteWooAuthHeaders()}}},
+    {url:websiteWooUrl(path,params,true),options:cleanOptions}
+  ];
+  let lastError=null;
+  for(const attempt of attempts){
+    const controller=(typeof AbortController!=='undefined')?new AbortController():null;
+    const timer=controller?setTimeout(()=>controller.abort(),timeoutMs):null;
+    try{
+      const res=await fetch(attempt.url,{...attempt.options,signal:controller?controller.signal:attempt.options.signal});
+      const text=await res.text().catch(()=>'');
+      let data=null; try{ data=text?JSON.parse(text):null; }catch{ data=text; }
+      if(res.ok)return {data,res};
+      const msg=(data&&data.message)||text||`WooCommerce lỗi ${res.status}`;
+      const code=(data&&data.code)||'';
+      lastError=new Error(`${msg}${code?` (${code})`:''}`);
+      lastError.status=res.status;
+      lastError.code=code;
+      lastError.data=data;
+    }catch(e){
+      lastError=(e&&e.name==='AbortError')?new Error(`WooCommerce phản hồi quá ${Math.round(timeoutMs/1000)} giây. App đã ngắt để không bị treo ở 10%. Thường do WooCommerce đang tải ảnh quá chậm hoặc hosting/API bị nghẽn.`):e;
+    }finally{
+      if(timer)clearTimeout(timer);
+    }
+  }
+  const raw=String(lastError?.message||lastError||'Không kết nối được WooCommerce.');
+  if(/cannot list resources|không thể liệt kê tài nguyên|rest_cannot_view|woocommerce_rest_cannot_view/i.test(raw)){
+    throw new Error('WooCommerce từ chối quyền đọc sản phẩm. Kiểm tra đúng domain https://minmin-lifestyle.com và key phải có quyền Read/Write.');
+  }
+  if(/401|consumer|signature|invalid|unauthorized/i.test(raw)){
+    throw new Error('WooCommerce không nhận key. Kiểm tra Consumer Key/Secret có đúng site https://minmin-lifestyle.com và quyền Read/Write.');
+  }
+  throw lastError||new Error('Không kết nối được WooCommerce.');
+};
+wooRequest = async function(path,options={},params={}){
+  const {data}=await wooFetchJson(path,options,params);
+  return data;
+};
+
+let __minminWooCatLoadedAt=0;
+async function minminPrefetchWooCategories(force=false){
+  if(!force && __minminWooCatLoadedAt && Date.now()-__minminWooCatLoadedAt<5*60*1000 && websiteWooCategoryCache.size)return;
+  for(let page=1;page<=20;page++){
+    const batch=await wooRequest('products/categories',{method:'GET',timeoutMs:45000},{per_page:100,page,hide_empty:false});
+    if(!Array.isArray(batch)||!batch.length)break;
+    batch.forEach(c=>{
+      const key=`${Number(c.parent||0)}:${String(c.name||'').trim().toLowerCase()}`;
+      if(c?.id&&c?.name)websiteWooCategoryCache.set(key,c.id);
+    });
+    if(batch.length<100)break;
+  }
+  __minminWooCatLoadedAt=Date.now();
+}
+websiteFindOrCreateWooCategory = async function(name,parent=0){
+  const clean=websiteNormalizeCategoryName(name);
+  if(!clean)return 0;
+  await minminPrefetchWooCategories(false);
+  const key=`${Number(parent||0)}:${clean.toLowerCase()}`;
+  if(websiteWooCategoryCache.has(key))return websiteWooCategoryCache.get(key);
+  const created=await wooRequest('products/categories',{method:'POST',timeoutMs:45000,body:JSON.stringify({name:clean,parent:Number(parent||0)})});
+  if(!created?.id)throw new Error(`Không tạo được danh mục WooCommerce: ${clean}`);
+  websiteWooCategoryCache.set(key,created.id);
+  return created.id;
+};
+websiteWooCategoryIds = async function(category){
+  const ids=[];
+  const paths=websiteCategoryList(category);
+  if(!paths.length)return ids;
+  await minminPrefetchWooCategories(false);
+  for(const path of paths){
+    const parts=websiteCategoryParts(path).map(websiteNormalizeCategoryName).filter(Boolean);
+    let parent=0;
+    for(const part of parts){
+      parent=await websiteFindOrCreateWooCategory(part,parent);
+      if(parent&&!ids.includes(parent))ids.push(parent);
+    }
+  }
+  return ids;
+};
+
+websiteNeedsBulkUpload = function(p){
+  const x=normalizeWebsiteProduct(p);
+  if(!x.sku || (!x.product_name_en&&!x.product_name_vi))return false;
+  if(!x.wooProductId)return true;
+  if(String(x.wooStatus||'')==='Chưa đồng bộ sau chỉnh sửa')return true;
+  if(['Đã đồng bộ WooCommerce','Đã tải từ WooCommerce'].includes(String(x.wooStatus||'')))return false;
+  const updated=Date.parse(x.updated_at||0)||0, uploaded=Date.parse(x.wooUploadedAt||0)||0;
+  return updated>uploaded;
+};
+
+function minminWooBulkCandidates(){
+  return websiteProductsForExport(state.website?.products||[]).filter(websiteNeedsBulkUpload);
+}
+function minminWooSetStatus(text){
+  state.websiteWoo=normalizeWebsiteWooConfig(state.websiteWoo||websiteWooDefaults());
+  state.websiteWoo.status=text;
+  saveWebsiteWooConfig();
+}
+function minminWooMarkItem(id,patch){
+  const live=state.website.products.find(x=>String(x.id)===String(id)||String(x.sku)===String(id));
+  if(live){ Object.assign(live,patch,{updated_at:patch.updated_at||new Date().toISOString()}); saveWebsiteProducts(); }
+  return live;
+}
+function minminWooBatchPayload(item,categoryIds,includeImages=false){
+  const normalizedCategory=websiteCategoryString(websiteCategoryList(item.category));
+  const payload=websiteProductPayload({...item,category:normalizedCategory,website_status:'Đã đăng website'},categoryIds,{includeImages});
+  if(item.wooProductId)payload.id=Number(item.wooProductId);
+  return payload;
+}
+async function minminUploadAllWebsiteProductsFast(options={}){
+  state.website=normalizeWebsiteProducts(state.website||websiteProductsDefaults());
+  if(!websiteWooReady())throw new Error('Chưa nhập đủ Website URL, Consumer Key và Consumer Secret.');
+  const includeImages=!!options.includeImages;
+  const items=minminWooBulkCandidates();
+  if(!items.length)throw new Error('Không có sản phẩm mới hoặc sản phẩm đã chỉnh sửa cần đồng bộ.');
+  const confirmText=includeImages
+    ? `Có ${items.length} sản phẩm cần đồng bộ. Chế độ này GỬI KÈM ẢNH nên WooCommerce có thể rất chậm. Vẫn tiếp tục?`
+    : `Có ${items.length} sản phẩm cần đồng bộ nhanh. Chế độ này KHÔNG gửi ảnh để tránh kẹt 10%. Ảnh có thể cập nhật từng dòng bằng nút Woo. Tiếp tục?`;
+  if(options.ask!==false && !confirm(confirmText))return;
+  minminWooSetStatus(`Đang chuẩn bị danh mục WooCommerce cho ${items.length} sản phẩm...`);
+  render();
+  const categoryIdsByItem=new Map();
+  for(const item of items){
+    const normalizedCategory=websiteCategoryString(websiteCategoryList(item.category));
+    const ids=await websiteWooCategoryIds(normalizedCategory);
+    categoryIdsByItem.set(String(item.id),ids);
+  }
+  let ok=0,fail=0,last='';
+  const chunkSize=includeImages?1:10;
+  for(let start=0;start<items.length;start+=chunkSize){
+    const chunk=items.slice(start,start+chunkSize);
+    chunk.forEach((item,idx)=>minminWooMarkItem(item.id,{wooStatus:'Đang gửi WooCommerce',wooProgress:Math.max(5,Math.round(((start+idx)/items.length)*100))}));
+    minminWooSetStatus(`Đang đồng bộ ${start+1}-${Math.min(start+chunk.length,items.length)}/${items.length}${includeImages?' kèm ảnh':' nhanh không ảnh'}...`);
+    render();
+    try{
+      if(includeImages){
+        const item=chunk[0];
+        await uploadWebsiteProductToWoo(item.id,{bulk:false,includeImages:true});
+        ok++;
+      }else{
+        const create=[],update=[],createRefs=[],updateRefs=[];
+        chunk.forEach(item=>{
+          const payload=minminWooBatchPayload(item,categoryIdsByItem.get(String(item.id))||[],false);
+          if(item.wooProductId){ update.push(payload); updateRefs.push(item); }
+          else{ create.push(payload); createRefs.push(item); }
+        });
+        const data=await wooRequest('products/batch',{method:'POST',timeoutMs:120000,body:JSON.stringify({create,update})});
+        const created=Array.isArray(data?.create)?data.create:[];
+        const updated=Array.isArray(data?.update)?data.update:[];
+        created.forEach((res,i)=>{
+          const item=createRefs[i], live=minminWooMarkItem(item.id,{});
+          if(res?.id&&live){ Object.assign(live,{wooProductId:res.id,wooProductUrl:websiteProductWooUrl(res),website_product_url:websiteProductWooUrl(res)||live.website_product_url,wooStatus:'Đã đồng bộ WooCommerce',wooProgress:100,wooUploadedAt:new Date().toISOString(),website_status:'Đã đăng website',updated_at:new Date().toISOString()}); ok++; }
+          else{ fail++; last=String(res?.message||res?.error?.message||'Không tạo được sản phẩm WooCommerce'); if(live){ live.wooStatus='Lỗi: '+last; live.wooProgress=1; } }
+        });
+        updated.forEach((res,i)=>{
+          const item=updateRefs[i], live=minminWooMarkItem(item.id,{});
+          if(res?.id&&live){ Object.assign(live,{wooProductId:res.id,wooProductUrl:websiteProductWooUrl(res)||live.wooProductUrl,website_product_url:websiteProductWooUrl(res)||live.website_product_url,wooStatus:'Đã đồng bộ WooCommerce',wooProgress:100,wooUploadedAt:new Date().toISOString(),website_status:'Đã đăng website',updated_at:new Date().toISOString()}); ok++; }
+          else{ fail++; last=String(res?.message||res?.error?.message||'Không cập nhật được sản phẩm WooCommerce'); if(live){ live.wooStatus='Lỗi: '+last; live.wooProgress=1; } }
+        });
+        saveWebsiteProducts();
+      }
+    }catch(e){
+      fail+=chunk.length;
+      last=e.message||String(e);
+      chunk.forEach(item=>minminWooMarkItem(item.id,{wooStatus:'Lỗi: '+last,wooProgress:1}));
+      console.warn(e);
+    }
+    minminWooSetStatus(`Đã xử lý ${Math.min(start+chunk.length,items.length)}/${items.length}. Thành công ${ok}, lỗi ${fail}.`);
+    saveWebsiteProducts(); render();
+  }
+  minminWooSetStatus(`Upload WooCommerce xong: ${ok} thành công, ${fail} lỗi${last?'. Lỗi cuối: '+last:''}${includeImages?'':' · Chế độ nhanh không gửi ảnh.'}`);
+  saveWebsiteProducts(); render(); alert(state.websiteWoo.status);
+}
+uploadAllWebsiteProductsToWoo = function(options={}){
+  return minminUploadAllWebsiteProductsFast({includeImages:false,...options});
+};
+
+(function(){
+  const oldBindWebsiteProducts=bindWebsiteProducts;
+  bindWebsiteProducts=function(){
+    oldBindWebsiteProducts();
+    const uploadAll=document.getElementById('uploadAllWoo');
+    if(uploadAll)uploadAll.onclick=()=>uploadAllWebsiteProductsToWoo({includeImages:false}).catch(e=>alert('Chưa upload được WooCommerce: '+(e.message||e)));
+    const uploadAllImages=document.getElementById('uploadAllWooImages');
+    if(uploadAllImages)uploadAllImages.onclick=()=>uploadAllWebsiteProductsToWoo({includeImages:true}).catch(e=>alert('Chưa upload được WooCommerce kèm ảnh: '+(e.message||e)));
+  };
+})();
+renderWebsiteWooConfig = function(){
+  const c=normalizeWebsiteWooConfig(state.websiteWoo||websiteWooDefaults());
+  return `<div class="rounded-lg border border-sky-200 bg-sky-50 p-3 shadow-sm"><div class="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between"><div><h2 class="text-base font-extrabold text-ink">Kết nối WooCommerce</h2><p class="mt-1 text-xs font-bold text-black/45">Website URL và key được tự lưu trên máy này ngay khi nhập.</p><p class="mt-1 text-xs font-extrabold ${websiteWooReady()?'text-mint':'text-coral'}">${esc(c.status||(websiteWooReady()?'Đã nhập đủ thông tin. Bấm “Kết nối + tải web” để kéo sản phẩm từ website về app.':'Chưa cấu hình WooCommerce.'))}</p><p class="mt-1 text-[11px] font-bold text-sky-800">Nút đồng bộ nhanh không gửi ảnh để tránh WooCommerce kẹt ở 10%. Muốn cập nhật ảnh thì bấm Woo từng dòng hoặc nút kèm ảnh.</p></div><div class="flex flex-wrap gap-2"><button id="testWooConnection" type="button" class="h-10 rounded-md border border-sky-300 bg-white px-3 text-sm font-extrabold text-sky-800 hover:bg-sky-100">Kết nối + tải web</button><button id="importWooProducts" type="button" class="h-10 rounded-md border border-sky-300 bg-white px-3 text-sm font-extrabold text-sky-800 hover:bg-sky-100">Đồng bộ lại</button><button id="uploadAllWoo" type="button" class="h-10 rounded-md bg-sky-600 px-3 text-sm font-extrabold text-white hover:bg-sky-700">Đồng bộ nhanh không ảnh</button><button id="uploadAllWooImages" type="button" class="h-10 rounded-md border border-orange-300 bg-orange-50 px-3 text-sm font-extrabold text-orange-700 hover:bg-orange-100">Đồng bộ kèm ảnh</button></div></div><div class="mt-3 grid gap-2 lg:grid-cols-3"><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/45">Website URL</span><input data-woo-config="siteUrl" value="${esc(c.siteUrl||'https://minmin-lifestyle.com')}" placeholder="https://minmin-lifestyle.com" class="h-10 rounded-md border border-black/15 bg-white px-3 text-sm font-bold outline-none focus:border-sky-400"/></label><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/45">Consumer Key</span><input data-woo-config="consumerKey" type="password" value="${esc(c.consumerKey)}" placeholder="ck_..." autocomplete="off" class="h-10 rounded-md border border-black/15 bg-white px-3 text-sm font-bold outline-none focus:border-sky-400"/></label><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/45">Consumer Secret</span><input data-woo-config="consumerSecret" type="password" value="${esc(c.consumerSecret)}" placeholder="cs_..." autocomplete="off" class="h-10 rounded-md border border-black/15 bg-white px-3 text-sm font-bold outline-none focus:border-sky-400"/></label></div></div>`;
+};
+
 window.addEventListener('hashchange',()=>{ if(inventoryLookupKey())state.activeTab='stock'; render(); });
 async function initApp(){
   try{
