@@ -5627,13 +5627,14 @@ async function initApp(){
 
 function documentSuiteDefaults(){
   return {
-    activeTask:'handover',
+    activeTask:'contract',
     contractNo:'',
     contractDate:todayIso(),
     handoverDate:todayIso(),
     location:'Thành phố Hồ Chí Minh',
     paymentPhase:'Thanh toán phần còn lại 50%',
     warrantyMonths:12,
+    deliveryDays:40,
     quoteFileName:'',
     quoteCode:'',
     note:'',
@@ -5688,7 +5689,7 @@ function docProductRows(){
 }
 function docTotals(){
   const t=totals();
-  return {...t, deposit:t.deposit, remaining:t.remaining};
+  return {...t,deposit:t.deposit,remaining:t.remaining};
 }
 function docField(label,key,type='text'){
   const d=ensureDocumentSuite();
@@ -5702,25 +5703,55 @@ function docTaskButton(id,label){
   const d=ensureDocumentSuite(), active=d.activeTask===id;
   return `<button data-doc-task="${id}" type="button" class="h-10 rounded-md px-3 text-sm font-extrabold ${active?'bg-ink text-white':'border border-black/10 bg-white text-ink hover:border-mint'}">${label}</button>`;
 }
+function documentPrintCss(){
+  return `@page{size:A4;margin:12mm}
+html,body{margin:0;background:#fff;color:#111;font-family:Arial,Helvetica,sans-serif}
+.doc-preview-shell{max-height:78vh;overflow:auto;background:#ececea;padding:20px}
+.doc-paper{box-sizing:border-box;width:794px;min-height:1123px;margin:0 auto;background:#fff;padding:46px 42px;box-shadow:0 14px 40px rgba(0,0,0,.16);font-size:12px;line-height:1.42;color:#111}
+.doc-center{text-align:center}.doc-right{text-align:right}.doc-bold{font-weight:700}.doc-extra{font-weight:800}
+.doc-title{margin:18px 0 4px;text-align:center;font-size:24px;font-weight:800;letter-spacing:.2px}
+.doc-subtitle{text-align:center;font-size:12px;margin:0 0 18px}.doc-section-title{margin:16px 0 7px;font-size:13px;font-weight:800;text-transform:uppercase}
+.doc-small{font-size:11px}.doc-muted{color:#555}.doc-row{display:grid;grid-template-columns:1fr 1fr;gap:18px}.doc-party{display:grid;gap:4px;margin-top:10px}
+.doc-p{margin:7px 0}.doc-line{line-height:1.65}.doc-signatures{display:grid;grid-template-columns:1fr 1fr;gap:30px;margin-top:38px;text-align:center;font-weight:800}
+.doc-table{width:100%;border-collapse:collapse;table-layout:fixed;margin-top:8px;font-size:9.5px;page-break-inside:auto}.doc-table th,.doc-table td{border:1px solid #111;padding:5px;vertical-align:middle}.doc-table th{font-weight:800;text-align:center;background:#f5f5f5}.doc-table tr{page-break-inside:avoid;page-break-after:auto}
+.doc-table .num{text-align:right;white-space:nowrap}.doc-table .center{text-align:center}.doc-photo{width:78px;height:58px;object-fit:contain;display:block;margin:auto}.doc-desc{line-height:1.45}
+.doc-total-label{text-align:right;font-weight:800}.doc-total-value{text-align:right;font-weight:800;white-space:nowrap}.doc-note-list{margin:5px 0 0 0;padding-left:0;list-style:none}.doc-note-list li{margin:3px 0}
+@media print{.doc-preview-shell{max-height:none;overflow:visible;background:#fff;padding:0}.doc-paper{width:auto;min-height:auto;margin:0;padding:0;box-shadow:none}.no-print{display:none!important}}`;
+}
+function documentPaperHtml(task){
+  return `<style>${documentPrintCss()}</style><div class="doc-preview-shell"><div class="doc-paper">${renderDocumentTaskContent(task)}</div></div>`;
+}
+function documentStandaloneHtml(task){
+  const title=Object.fromEntries(docTasks())[task]||'Hồ sơ';
+  return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>${documentPrintCss()}</style></head><body><div class="doc-paper">${renderDocumentTaskContent(task)}</div></body></html>`;
+}
+function docSafeFileName(name){
+  return String(name||'minmin-ho-so').replace(/[\\/:*?"<>|]+/g,'-').replace(/\s+/g,' ').trim();
+}
+function docCurrentFileName(ext='doc'){
+  const d=ensureDocumentSuite();
+  const task=Object.fromEntries(docTasks())[d.activeTask]||'Ho so';
+  return `${docSafeFileName(task+' - '+(d.partyA.company||state.info.client||'MINMIN'))}.${ext}`;
+}
 function renderDocumentSuiteTab(){
   const d=ensureDocumentSuite(), t=docTotals(), rows=docProductRows();
   const taskTitle=Object.fromEntries(docTasks())[d.activeTask]||'Hồ sơ';
-  return `<section class="mx-auto grid max-w-7xl gap-4 px-4 py-4 sm:px-6 lg:px-8">
+  return `<section class="mx-auto grid max-w-[1600px] gap-4 px-4 py-4 sm:px-6 lg:px-8">
     <div class="rounded-lg border border-black/10 bg-white p-3 shadow-sm">
       <div class="flex flex-wrap items-center justify-between gap-3">
-        <div><h1 class="text-xl font-extrabold">Hồ sơ bán hàng</h1><p class="mt-1 text-sm font-semibold text-black/45">Dùng chung dữ liệu báo giá hiện tại: sản phẩm, giá tiền, tổng tiền, đặt cọc và còn lại.</p></div>
+        <div><h1 class="text-xl font-extrabold">Hồ sơ bán hàng</h1><p class="mt-1 text-sm font-semibold text-black/45">Preview đúng dạng bản in A4. Dữ liệu sản phẩm và giá lấy từ báo giá hiện tại hoặc file báo giá import vào.</p></div>
         <div class="flex flex-wrap gap-2">${docTasks().map(([id,label])=>docTaskButton(id,label)).join('')}</div>
       </div>
     </div>
     <div class="grid gap-4 xl:grid-cols-[420px_minmax(0,1fr)]">
-      <div class="grid gap-4">
+      <div class="grid content-start gap-4">
         <div class="rounded-lg border border-black/10 bg-white p-3 shadow-sm">
           <div class="flex items-center justify-between gap-2"><h2 class="text-base font-extrabold">Bên A</h2><button id="docPullQuote" type="button" class="h-9 rounded-md bg-gold px-3 text-xs font-extrabold text-ink">Lấy từ báo giá</button></div>
           <div class="mt-3 grid gap-3">${docPartyField('Tên công ty / khách hàng','company')}${docPartyField('Địa chỉ','address')}${docPartyField('Mã số thuế','taxCode')}<div class="grid gap-3 sm:grid-cols-2">${docPartyField('Đại diện','representative')}${docPartyField('Chức vụ','position')}</div><div class="grid gap-3 sm:grid-cols-2">${docPartyField('Điện thoại','phone')}${docPartyField('Email','email')}</div></div>
         </div>
         <div class="rounded-lg border border-black/10 bg-white p-3 shadow-sm">
-          <h2 class="text-base font-extrabold">Thông tin hồ sơ</h2>
-          <div class="mt-3 grid gap-3">${docField('Số hợp đồng','contractNo')}${docField('Ngày hợp đồng','contractDate','date')}${docField('Ngày bàn giao / đề nghị','handoverDate','date')}${docField('Địa điểm','location')}${docField('File báo giá','quoteFileName')}${docField('Mã báo giá / mã đơn','quoteCode')}${docField('Đợt thanh toán','paymentPhase')}${docField('Bảo hành (tháng)','warrantyMonths','number')}</div>
+          <div class="flex items-center justify-between gap-2"><h2 class="text-base font-extrabold">Thông tin hồ sơ</h2><label class="h-9 cursor-pointer rounded-md border border-mint/30 bg-white px-3 py-2 text-xs font-extrabold text-mint">Add file báo giá<input id="docQuoteImport" type="file" accept=".xlsx,.xls,.csv" class="hidden"/></label></div>
+          <div class="mt-3 grid gap-3">${docField('Số hợp đồng','contractNo')}${docField('Ngày hợp đồng','contractDate','date')}${docField('Ngày bàn giao / đề nghị','handoverDate','date')}${docField('Địa điểm','location')}${docField('File báo giá','quoteFileName')}${docField('Mã báo giá / mã đơn','quoteCode')}${docField('Đợt thanh toán','paymentPhase')}${docField('Bảo hành (tháng)','warrantyMonths','number')}${docField('Thời gian giao hàng (ngày)','deliveryDays','number')}</div>
         </div>
         <div class="rounded-lg border border-ink/10 bg-ink p-3 text-white shadow-sm">
           <div class="text-xs font-bold uppercase tracking-wide text-white/50">Tổng từ báo giá</div>
@@ -5730,8 +5761,11 @@ function renderDocumentSuiteTab(){
       </div>
       <div class="grid gap-4">
         <div class="rounded-lg border border-black/10 bg-white p-3 shadow-sm">
-          <div class="flex flex-wrap items-center justify-between gap-3"><div><h2 class="text-lg font-extrabold">${esc(taskTitle)}</h2><p class="mt-1 text-xs font-bold text-black/45">Xem trước nhanh theo mẫu. Khi cần xuất bản chuẩn Word/PDF, dùng nút In / xuất PDF.</p></div><div class="flex gap-2"><button id="docCopy" type="button" class="h-10 rounded-md border border-mint/30 bg-white px-3 text-sm font-extrabold text-mint">Sao chép nội dung</button><button id="docPrint" type="button" class="h-10 rounded-md bg-ink px-4 text-sm font-extrabold text-white">In / xuất PDF</button></div></div>
-          <div id="documentPreview" class="mt-4 overflow-hidden rounded-lg border border-black/10 bg-white">${renderDocumentTaskContent(d.activeTask,true)}</div>
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div><h2 class="text-lg font-extrabold">${esc(taskTitle)}</h2><p class="mt-1 text-xs font-bold text-black/45">Preview đang dùng đúng layout A4 của bản in và file Word.</p></div>
+            <div class="flex flex-wrap gap-2"><button id="docCopy" type="button" class="h-10 rounded-md border border-mint/30 bg-white px-3 text-sm font-extrabold text-mint">Sao chép</button><button id="docWord" type="button" class="h-10 rounded-md border border-mint/30 bg-white px-3 text-sm font-extrabold text-mint">Xuất Word</button><button id="docPrint" type="button" class="h-10 rounded-md bg-ink px-4 text-sm font-extrabold text-white">In / xuất PDF</button></div>
+          </div>
+          <div id="documentPreview" class="mt-4 overflow-hidden rounded-lg border border-black/10">${documentPaperHtml(d.activeTask)}</div>
         </div>
       </div>
     </div>
@@ -5739,24 +5773,40 @@ function renderDocumentSuiteTab(){
 }
 function docPartyHtml(){
   const d=ensureDocumentSuite(), a=d.partyA||{};
-  return `<div class="grid gap-1 text-sm"><b>BÊN MUA (BÊN A): ${esc(a.company||state.info.client||'')}</b><span>Địa chỉ: ${esc(a.address||state.info.address||'')}</span><span>Mã số thuế: ${esc(a.taxCode||'')}</span><span>Đại diện: ${esc(a.representative||state.info.representative||'')} ${a.position?`- Chức vụ: ${esc(a.position)}`:''}</span><span>Điện thoại: ${esc(a.phone||state.info.tel||'')} ${a.email?`- Email: ${esc(a.email)}`:''}</span></div>
-  <div class="mt-3 grid gap-1 text-sm"><b>BÊN BÁN (BÊN B): CÔNG TY TNHH MINMIN LIFESTYLE</b><span>Địa chỉ: 27/32 Nguyễn Công Hoan, Phường Cầu Kiệu, Thành phố Hồ Chí Minh, Việt Nam</span><span>Mã số thuế: 0319348049</span><span>Điện thoại: 0707671221</span><span>Đại diện: Ông Nguyễn Hồ Quang Huy - Chức vụ: Giám Đốc</span></div>`;
+  return `<div class="doc-party"><b>BÊN MUA (BÊN A): ${esc(a.company||state.info.client||'')}</b><span>Địa chỉ: ${esc(a.address||state.info.address||'')}</span><span>Mã số thuế: ${esc(a.taxCode||'')}</span><span>Đại diện: ${esc(a.representative||state.info.representative||'')} ${a.position?`- Chức vụ: ${esc(a.position)}`:''}</span><span>Điện thoại: ${esc(a.phone||state.info.tel||'')} ${a.email?`- Email: ${esc(a.email)}`:''}</span></div>
+  <div class="doc-party"><b>BÊN BÁN (BÊN B): CÔNG TY TNHH MINMIN LIFESTYLE</b><span>Địa chỉ: 27/32 Nguyễn Công Hoan, Phường Cầu Kiệu, Thành phố Hồ Chí Minh, Việt Nam</span><span>Mã số thuế: 0319348049</span><span>Điện thoại: 0707671221</span><span>Đại diện: Ông Nguyễn Hồ Quang Huy - Chức vụ: Giám Đốc</span></div>`;
 }
-function docProductTable(compact=false){
-  const rows=docProductRows();
-  return `<div class="overflow-x-auto"><table class="w-full min-w-[900px] border-collapse text-xs"><thead><tr class="bg-black/5">${['STT','Mã hàng','Tên sản phẩm','Hình ảnh','Kích thước','Đặc điểm','ĐVT','SL','Đơn giá','Thành tiền'].map(h=>`<th class="border border-black/20 p-2 text-left">${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr><td class="border border-black/20 p-2 text-center">${r.stt}</td><td class="border border-black/20 p-2 font-bold">${esc(r.code)}</td><td class="border border-black/20 p-2">${esc(r.name)}</td><td class="border border-black/20 p-2 text-center">${r.photo?`<img src="${esc(r.photo)}" class="mx-auto h-16 w-16 rounded object-cover"/>`:''}</td><td class="border border-black/20 p-2">${esc(r.dimension)}</td><td class="border border-black/20 p-2 leading-5">${r.desc||''}</td><td class="border border-black/20 p-2">${esc(r.unit)}</td><td class="border border-black/20 p-2 text-center font-bold">${r.qty}</td><td class="border border-black/20 p-2 text-right">${money(r.price)}</td><td class="border border-black/20 p-2 text-right font-bold">${money(r.amount)}</td></tr>`).join('')}<tr><td colspan="8" class="border border-black/20 p-2 text-right font-bold">Tổng tiền sau VAT</td><td colspan="2" class="border border-black/20 p-2 text-right font-extrabold">${money(totals().afterVat)}</td></tr></tbody></table></div>`;
+function docProductTable(mode='full'){
+  const rows=docProductRows(), t=docTotals();
+  if(mode==='warranty'){
+    return `<table class="doc-table"><colgroup><col style="width:6%"><col style="width:16%"><col style="width:17%"><col style="width:43%"><col style="width:9%"><col style="width:9%"></colgroup><thead><tr><th>STT</th><th>Mã hàng</th><th>Hình ảnh</th><th>Đặc điểm</th><th>ĐVT</th><th>Số lượng</th></tr></thead><tbody>${rows.map(r=>`<tr><td class="center">${r.stt}</td><td class="doc-bold">${esc(r.code)}</td><td>${r.photo?`<img src="${esc(r.photo)}" class="doc-photo"/>`:''}</td><td class="doc-desc"><b>${esc(r.name)}</b><br>${r.desc||''}${r.dimension?`<br>* Kích thước: ${esc(r.dimension)}`:''}</td><td class="center">${esc(r.unit)}</td><td class="center doc-bold">${r.qty}</td></tr>`).join('')}</tbody></table>`;
+  }
+  return `<table class="doc-table"><colgroup><col style="width:5%"><col style="width:10%"><col style="width:11%"><col style="width:13%"><col style="width:15%"><col style="width:11%"><col style="width:18%"><col style="width:7%"><col style="width:5%"><col style="width:10%"><col style="width:10%"></colgroup><thead><tr><th>STT</th><th>Tình trạng</th><th>Mã hàng<br>(Code)</th><th>Tên sản phẩm<br>(Items)</th><th>Hình ảnh<br>(Photo)</th><th>Kích thước<br>(Dimension)</th><th>Đặc điểm<br>(Describe)</th><th>ĐVT<br>(Unit)</th><th>SL</th><th>Đơn giá</th><th>Thành tiền</th></tr></thead><tbody>${rows.map(r=>`<tr><td class="center">${r.stt}</td><td class="center">Đặt hàng từ 30-40 ngày</td><td class="center doc-bold">${esc(r.code)}</td><td class="center">${esc(r.name)}</td><td>${r.photo?`<img src="${esc(r.photo)}" class="doc-photo"/>`:''}</td><td class="center">${esc(r.dimension)}</td><td class="doc-desc">${r.desc||''}</td><td class="center">${esc(r.unit)}</td><td class="center doc-bold">${r.qty}</td><td class="num">${money(r.price)}</td><td class="num doc-bold">${money(r.amount)}</td></tr>`).join('')}<tr><td colspan="9" class="doc-total-label">TỔNG GIÁ TRỊ SAU VAT</td><td colspan="2" class="doc-total-value">${money(t.afterVat)}</td></tr><tr><td colspan="9" class="doc-total-label">ĐẶT CỌC</td><td colspan="2" class="doc-total-value">${money(t.deposit)}</td></tr><tr><td colspan="9" class="doc-total-label">CÒN LẠI</td><td colspan="2" class="doc-total-value">${money(t.remaining)}</td></tr></tbody></table>`;
 }
-function renderDocumentTaskContent(task,screen=false){
+function docPaymentBlock(){
+  const t=docTotals();
+  return `<p class="doc-p doc-line">Bên A thanh toán cho Bên B bằng chuyển khoản theo các đợt sau:</p>
+  <ul class="doc-note-list"><li>Đợt 1: Thanh toán 50% giá trị hợp đồng trong vòng 05 ngày kể từ ngày hợp đồng có hiệu lực.</li><li>Đợt 2: Thanh toán 50% còn lại trong vòng 05 ngày làm việc sau khi hoàn tất bàn giao/nghiệm thu.</li></ul>
+  <p class="doc-p"><b>Thông tin chuyển khoản:</b><br>Tên tài khoản: CÔNG TY TNHH MINMIN LIFESTYLE<br>Số tài khoản: 388683838<br>Ngân hàng: ACB - CN Phổ Quang</p>
+  <p class="doc-p">Giá trị sau VAT: <b>${money(t.afterVat)}</b>; đặt cọc: <b>${money(t.deposit)}</b>; còn lại: <b>${money(t.remaining)}</b>.</p>`;
+}
+function renderDocumentTaskContent(task){
   const d=ensureDocumentSuite(), t=docTotals();
-  const wrap=(html)=>`<div class="${screen?'p-4':'p-8'} text-ink"><div class="text-center text-sm font-bold">CỘNG HOÀ XÃ HỘI CHỦ NGHĨA VIỆT NAM<br>Độc lập - Tự do - Hạnh phúc<br>-------------***------------</div>${html}</div>`;
-  if(task==='payment')return wrap(`<h1 class="mt-6 text-center text-2xl font-extrabold">ĐỀ NGHỊ THANH TOÁN</h1><div class="mt-6 text-sm leading-7"><p>Kính gửi: <b>${esc(d.partyA.company||state.info.client||'')}</b></p><p>Địa chỉ: ${esc(d.partyA.address||state.info.address||'')}</p><p>Chúng tôi kính gửi đề nghị thanh toán ${esc(d.paymentPhase||'')} theo hợp đồng số <b>${esc(d.contractNo||'')}</b>.</p><p>File báo giá: <b>${esc(docQuoteName())}</b></p><p>Mã đơn/báo giá: <b>${esc(d.quoteCode||docQuoteCode())}</b></p><p>Số tiền đề nghị thanh toán: <b>${money(t.remaining)}</b></p><p>Bằng chữ: <b>${esc(numberToVietnamese(t.remaining))}</b>.</p><p class="mt-3"><b>Thông tin chuyển khoản:</b><br>Tên tài khoản: CÔNG TY TNHH MINMIN LIFESTYLE<br>Tài khoản: 388683838<br>Ngân hàng: ACB</p></div><div class="mt-10 text-right font-bold">NGUYỄN HỒ QUANG HUY</div>`);
-  if(task==='warranty')return wrap(`<h1 class="mt-6 text-center text-2xl font-extrabold">CAM KẾT BẢO HÀNH</h1><div class="mt-6">${docPartyHtml()}</div><h2 class="mt-6 text-base font-extrabold">DANH MỤC CÁC SẢN PHẨM BẢO HÀNH</h2><div class="mt-3">${docProductTable(true)}</div><p class="mt-4 text-sm leading-7">Minmin Lifestyle cam kết bảo hành sản phẩm trong thời hạn <b>${esc(d.warrantyMonths)} tháng</b> kể từ ngày bàn giao/nghiệm thu, theo điều kiện sử dụng bình thường và đúng hướng dẫn kỹ thuật.</p><div class="mt-10 grid grid-cols-2 text-center font-bold"><div>ĐẠI DIỆN BÊN A<br><br><br>${esc((d.partyA.representative||'').toUpperCase())}</div><div>ĐẠI DIỆN BÊN B<br><br><br>NGUYỄN HỒ QUANG HUY</div></div>`);
-  if(task==='contract')return wrap(`<h1 class="mt-6 text-center text-2xl font-extrabold">HỢP ĐỒNG MUA BÁN</h1><p class="mt-2 text-center text-sm">(Số: ${esc(d.contractNo||'')})</p><div class="mt-6">${docPartyHtml()}</div><p class="mt-4 text-sm leading-7">Hai bên thống nhất mua bán các sản phẩm theo file báo giá <b>${esc(docQuoteName())}</b>, mã đơn/báo giá <b>${esc(d.quoteCode||docQuoteCode())}</b>, với danh mục và giá trị như sau:</p><div class="mt-3">${docProductTable()}</div><p class="mt-4 text-sm leading-7">Tổng giá trị hợp đồng sau VAT: <b>${money(t.afterVat)}</b>. Đặt cọc: <b>${money(t.deposit)}</b>. Còn lại: <b>${money(t.remaining)}</b>.</p><div class="mt-10 grid grid-cols-2 text-center font-bold"><div>ĐẠI DIỆN BÊN A<br><br><br>${esc((d.partyA.representative||'').toUpperCase())}</div><div>ĐẠI DIỆN BÊN B<br><br><br>NGUYỄN HỒ QUANG HUY</div></div>`);
-  return wrap(`<h1 class="mt-6 text-center text-2xl font-extrabold">BIÊN BẢN BÀN GIAO - NGHIỆM THU</h1><p class="mt-2 text-center text-sm">(Hợp đồng số ${esc(d.contractNo||'')})</p><p class="mt-6 text-sm">Hôm nay, ${docLongDate(d.handoverDate)}, tại ${esc(d.location||'')}, chúng tôi gồm:</p><div class="mt-4">${docPartyHtml()}</div><p class="mt-4 text-sm leading-7">Hai bên cùng tiến hành bàn giao và nghiệm thu các sản phẩm theo hợp đồng/báo giá <b>${esc(d.contractNo||docQuoteCode())}</b> với các nội dung sau:</p><h2 class="mt-4 text-base font-extrabold">1. Khối lượng công việc thực hiện</h2><p class="text-sm">Bên B đã bàn giao cho Bên A các sản phẩm bao gồm:</p><div class="mt-3">${docProductTable()}</div><h2 class="mt-4 text-base font-extrabold">2. Chất lượng công việc thực hiện</h2><p class="text-sm leading-7">Bên A đã kiểm tra và thông qua sản phẩm do Bên B thực hiện. Sản phẩm đảm bảo số lượng, chất lượng và tiến độ thời gian theo yêu cầu.</p><h2 class="mt-4 text-base font-extrabold">3. Giá trị thanh toán</h2><p class="text-sm leading-7">Bên A đã tạm ứng cho Bên B ${esc(state.info.depositRate||50)}% giá trị hợp đồng, số tiền là <b>${money(t.deposit)}</b>. Số tiền còn lại đề nghị Bên A thanh toán là <b>${money(t.remaining)}</b>.</p><h2 class="mt-4 text-base font-extrabold">4. Kết luận</h2><p class="text-sm leading-7">Hai bên thống nhất bàn giao, nghiệm thu sản phẩm đã hoàn thành theo đúng các nội dung đã ký kết.</p><div class="mt-10 grid grid-cols-2 text-center font-bold"><div>ĐẠI DIỆN BÊN A<br><br><br>${esc((d.partyA.representative||'').toUpperCase())}</div><div>ĐẠI DIỆN BÊN B<br><br><br>NGUYỄN HỒ QUANG HUY</div></div>`);
+  const national=`<div class="doc-center doc-bold">CỘNG HOÀ XÃ HỘI CHỦ NGHĨA VIỆT NAM<br>Độc lập - Tự do - Hạnh phúc<br>-------------***------------</div>`;
+  if(task==='payment'){
+    return `${national}<h1 class="doc-title">ĐỀ NGHỊ THANH TOÁN</h1><div class="doc-line"><p class="doc-p">Kính gửi: <b>${esc(d.partyA.company||state.info.client||'')}</b></p><p class="doc-p">Địa chỉ: ${esc(d.partyA.address||state.info.address||'')}</p><p class="doc-p">Chúng tôi kính gửi đề nghị thanh toán ${esc(d.paymentPhase||'')} theo hợp đồng số <b>${esc(d.contractNo||'')}</b> ngày ${docDate(d.contractDate)}.</p><p class="doc-p">Số tiền: <b>${money(t.remaining)} VNĐ</b></p><p class="doc-p">Bằng chữ: <b>${esc(numberToVietnamese(t.remaining))} đồng</b>.</p><p class="doc-p"><b>Thông tin chuyển khoản:</b><br>Tên tài khoản: CÔNG TY TNHH MINMIN LIFESTYLE<br>Số tài khoản: 388683838<br>Ngân hàng: ACB - CN Phổ Quang</p><p class="doc-p">Trân trọng.</p></div><div class="doc-right doc-bold" style="margin-top:54px">NGUYỄN HỒ QUANG HUY</div><div class="doc-muted doc-small" style="margin-top:70px">https://minmin-lifestyle.com/</div>`;
+  }
+  if(task==='warranty'){
+    return `${national}<h1 class="doc-title">CAM KẾT BẢO HÀNH</h1><p class="doc-p">Kính gửi: <b>${esc(d.partyA.company||state.info.client||'')}</b></p><div class="doc-party"><b>ĐƠN VỊ BẢO HÀNH: CÔNG TY TNHH MINMIN LIFESTYLE</b><span>Địa chỉ: 27/32 Nguyễn Công Hoan, Phường Cầu Kiệu, Thành phố Hồ Chí Minh, Việt Nam</span><span>Mã số thuế: 0319348049</span><span>Đại diện: Ông Nguyễn Hồ Quang Huy - Giám Đốc</span></div><h2 class="doc-section-title">Danh mục sản phẩm bảo hành</h2>${docProductTable('warranty')}<h2 class="doc-section-title">Nội dung cam kết</h2><p class="doc-p doc-line">Minmin Lifestyle cam kết bảo hành sản phẩm trong thời hạn <b>${esc(d.warrantyMonths)} tháng</b> kể từ ngày bàn giao/nghiệm thu đối với lỗi kỹ thuật do nhà sản xuất. Bóng đèn được bảo hành 12 tháng theo điều kiện sử dụng bình thường.</p><p class="doc-p doc-line">Không áp dụng bảo hành cho các trường hợp thiên tai, chập điện, sai điện áp, tác động ngoại lực, tự ý thay đổi kết cấu, nước/hóa chất hoặc các nguyên nhân không do lỗi nhà sản xuất.</p><p class="doc-right doc-muted" style="margin-top:24px">TP. Hồ Chí Minh, ${docLongDate(d.handoverDate)}</p><div class="doc-signatures"><div>ĐẠI DIỆN BÊN A<br><br><br>${esc((d.partyA.representative||'').toUpperCase())}</div><div>GIÁM ĐỐC<br><br><br>NGUYỄN HỒ QUANG HUY</div></div>`;
+  }
+  if(task==='contract'){
+    return `${national}<h1 class="doc-title">HỢP ĐỒNG MUA BÁN</h1><p class="doc-subtitle">Số: ${esc(d.contractNo||'')}</p><p class="doc-p doc-line">Căn cứ Bộ luật Dân sự số 91/2015/QH13; căn cứ Luật Thương mại số 36/2005/QH11; căn cứ nhu cầu và khả năng của hai bên.</p>${docPartyHtml()}<p class="doc-p doc-line">Hai bên thống nhất ký Hợp đồng mua bán sản phẩm theo file báo giá <b>${esc(docQuoteName())}</b>, mã đơn/báo giá <b>${esc(d.quoteCode||docQuoteCode())}</b>.</p><h2 class="doc-section-title">Điều 1. Sản phẩm, số lượng, quy cách, giá trị hợp đồng</h2>${docProductTable('full')}<p class="doc-p"><b>Số tiền bằng chữ:</b> ${esc(numberToVietnamese(t.afterVat))} đồng.</p><h2 class="doc-section-title">Điều 2. Giao hàng</h2><p class="doc-p doc-line">Bên B giao hàng tại địa chỉ do Bên A chỉ định. Thời gian giao hàng dự kiến trong vòng <b>${esc(d.deliveryDays||40)} ngày</b> kể từ khi Bên B nhận đủ khoản thanh toán đợt 1. Bên B thông báo cho Bên A trước khi giao hàng.</p><h2 class="doc-section-title">Điều 3. Phương thức và điều kiện thanh toán</h2>${docPaymentBlock()}<h2 class="doc-section-title">Điều 4. Bảo hành và trách nhiệm</h2><p class="doc-p doc-line">Bên B bảo hành sản phẩm trong <b>${esc(d.warrantyMonths)} tháng</b> theo điều kiện bảo hành của Minmin Lifestyle. Sản phẩm đặt theo thiết kế/kích thước/màu sắc đã xác nhận không hủy, không đổi trả, trừ trường hợp lỗi thuộc trách nhiệm Bên B.</p><h2 class="doc-section-title">Điều 5. Hiệu lực hợp đồng</h2><p class="doc-p doc-line">Hợp đồng có hiệu lực kể từ ngày ký. Hai bên cam kết thực hiện đúng các nội dung đã thỏa thuận.</p><div class="doc-signatures"><div>ĐẠI DIỆN BÊN A<br><br><br>${esc((d.partyA.representative||'').toUpperCase())}</div><div>ĐẠI DIỆN BÊN B<br>Giám đốc<br><br>NGUYỄN HỒ QUANG HUY</div></div>`;
+  }
+  return `${national}<h1 class="doc-title">BIÊN BẢN BÀN GIAO - NGHIỆM THU</h1><p class="doc-subtitle">(Hợp đồng số ${esc(d.contractNo||'')})</p><p class="doc-p">Hôm nay, ${docLongDate(d.handoverDate)}, tại ${esc(d.location||'')}, chúng tôi gồm:</p>${docPartyHtml()}<p class="doc-p doc-line">Hai bên cùng tiến hành bàn giao và nghiệm thu các sản phẩm theo hợp đồng/báo giá <b>${esc(d.contractNo||docQuoteCode())}</b> với các nội dung sau:</p><h2 class="doc-section-title">1. Khối lượng công việc thực hiện</h2><p class="doc-p">Bên B đã bàn giao cho Bên A các sản phẩm bao gồm:</p>${docProductTable('full')}<h2 class="doc-section-title">2. Chất lượng công việc thực hiện</h2><p class="doc-p doc-line">Bên A đã kiểm tra và thông qua sản phẩm do Bên B thực hiện. Sản phẩm đảm bảo số lượng, chất lượng và tiến độ thời gian theo yêu cầu.</p><h2 class="doc-section-title">3. Giá trị thanh toán</h2><p class="doc-p doc-line">Bên A đã tạm ứng cho Bên B ${esc(state.info.depositRate||50)}% giá trị hợp đồng, số tiền là <b>${money(t.deposit)}</b>. Số tiền còn lại đề nghị Bên A thanh toán là <b>${money(t.remaining)}</b>.</p><h2 class="doc-section-title">4. Kết luận</h2><p class="doc-p doc-line">Hai bên thống nhất bàn giao, nghiệm thu sản phẩm đã hoàn thành theo đúng các nội dung đã ký kết. Biên bản được lập thành 02 bản có giá trị pháp lý như nhau.</p><div class="doc-signatures"><div>ĐẠI DIỆN BÊN A<br><br><br>${esc((d.partyA.representative||'').toUpperCase())}</div><div>ĐẠI DIỆN BÊN B<br><br><br>NGUYỄN HỒ QUANG HUY</div></div>`;
 }
-function documentPullQuote(){
+function documentPullQuote(skipRender=false){
   const d=ensureDocumentSuite();
-  d.quoteFileName=docQuoteName();
+  d.quoteFileName=d.quoteFileName||docQuoteName();
   d.quoteCode=docQuoteCode();
   d.partyA.company=d.partyA.company||state.info.client||'';
   d.partyA.address=d.partyA.address||state.info.address||'';
@@ -5770,14 +5820,31 @@ function documentPullQuote(){
   state.documents=d;
   touchAppActivity();
   scheduleSave();
-  render();
+  if(!skipRender)render();
+}
+async function documentImportQuoteFile(file){
+  if(!file)return;
+  try{
+    if(typeof importQuotationExcel!=='function')throw new Error('App chưa có hàm import báo giá.');
+    await importQuotationExcel(file);
+    const d=ensureDocumentSuite();
+    d.quoteFileName=file.name;
+    documentPullQuote(true);
+    render();
+  }catch(e){
+    alert('Chưa import được file báo giá: '+(e?.message||e));
+  }
 }
 function printDocumentTask(){
   const task=ensureDocumentSuite().activeTask;
-  const html=`<!doctype html><html><head><meta charset="utf-8"><title>${esc(Object.fromEntries(docTasks())[task]||'Hồ sơ')}</title><style>@page{size:A4;margin:12mm}body{font-family:Arial,sans-serif;color:#17202A}.text-center{text-align:center}.text-right{text-align:right}.font-bold{font-weight:700}.font-extrabold{font-weight:800}.text-2xl{font-size:24px}.text-base{font-size:16px}.text-sm{font-size:13px}.text-xs{font-size:12px}.mt-2{margin-top:8px}.mt-3{margin-top:12px}.mt-4{margin-top:16px}.mt-6{margin-top:24px}.mt-10{margin-top:40px}.p-8{padding:32px}.grid{display:grid}.grid-cols-2{grid-template-columns:1fr 1fr}.gap-1{gap:4px}.leading-7{line-height:1.7}.leading-5{line-height:1.45}table{width:100%;border-collapse:collapse;page-break-inside:auto}tr{page-break-inside:avoid;page-break-after:auto}th,td{border:1px solid #333;padding:6px;vertical-align:middle}th{background:#f2f2f2;text-align:left}img{max-width:60px;max-height:60px;object-fit:cover}</style></head><body>${renderDocumentTaskContent(task,false)}</body></html>`;
   const w=window.open('','_blank');
   if(!w){alert('Trình duyệt đang chặn cửa sổ in. Anh cho phép popup rồi bấm lại.');return;}
-  w.document.open(); w.document.write(html); w.document.close(); setTimeout(()=>w.print(),500);
+  w.document.open(); w.document.write(documentStandaloneHtml(task)); w.document.close(); setTimeout(()=>w.print(),500);
+}
+function exportDocumentWord(){
+  const task=ensureDocumentSuite().activeTask;
+  const html=`\ufeff${documentStandaloneHtml(task)}`;
+  downloadBlob(new Blob([html],{type:'application/msword;charset=utf-8'}),docCurrentFileName('doc'));
 }
 function bindDocumentSuite(){
   document.querySelectorAll('[data-doc-task]').forEach(b=>b.onclick=()=>{ensureDocumentSuite().activeTask=b.dataset.docTask; touchAppActivity(); render();});
@@ -5789,10 +5856,398 @@ function bindDocumentSuite(){
     const update=()=>{const d=ensureDocumentSuite(); d.partyA=d.partyA||{}; d.partyA[el.dataset.docParty]=el.value; touchAppActivity(); scheduleSave();};
     el.oninput=update; el.onchange=()=>{update(); render();}; el.onblur=update;
   });
-  const pull=document.getElementById('docPullQuote'); if(pull)pull.onclick=documentPullQuote;
+  const pull=document.getElementById('docPullQuote'); if(pull)pull.onclick=()=>documentPullQuote(false);
+  const quote=document.getElementById('docQuoteImport'); if(quote)quote.onchange=()=>documentImportQuoteFile(quote.files?.[0]);
   const print=document.getElementById('docPrint'); if(print)print.onclick=printDocumentTask;
+  const word=document.getElementById('docWord'); if(word)word.onclick=exportDocumentWord;
   const copy=document.getElementById('docCopy'); if(copy)copy.onclick=()=>{const text=document.getElementById('documentPreview')?.innerText||''; navigator.clipboard?.writeText(text).then(()=>alert('Đã sao chép nội dung hồ sơ.')).catch(()=>alert('Không sao chép được tự động.'));};
 }
+
+/* MINMIN PATCH 2026-07-01I: Hồ sơ bán hàng - hợp đồng đầy đủ theo file gốc, preview ngắt trang thật, không render lại khi nhập */
+function documentSuiteDefaults(){
+  const info = state?.info || {};
+  return {
+    activeTask:'contract',
+    contractNo:'',
+    contractDate:todayIso(),
+    handoverDate:todayIso(),
+    location:'Thành phố Hồ Chí Minh',
+    deliveryAddress: info.delivery || info.address || '76 Giảng Võ, Hà Nội',
+    paymentPhase:'Thanh toán phần còn lại 50%',
+    warrantyMonths:12,
+    deliveryDays:40,
+    notifyBeforeDays:3,
+    acceptanceHours:24,
+    lateLimitDays:14,
+    cureDays:7,
+    warrantyResponseDays:5,
+    defectRepairDays:30,
+    quoteFileName:'',
+    quoteCode:'',
+    note:'',
+    partyA:{company:'',address:'',taxCode:'',representative:'',position:'',phone:'',email:''}
+  };
+}
+function normalizeDocumentSuite(data={}){
+  const d=documentSuiteDefaults();
+  return {...d,...(data||{}),partyA:{...d.partyA,...((data||{}).partyA||{})}};
+}
+function ensureDocumentSuite(){
+  state.documents=normalizeDocumentSuite(state.documents||{});
+  return state.documents;
+}
+function docTasks(){
+  return [
+    ['contract','Hợp đồng'],
+    ['payment','Đề nghị thanh toán'],
+    ['handover','Bàn giao / nghiệm thu'],
+    ['warranty','Cam kết bảo hành']
+  ];
+}
+function docDate(v){
+  if(!v)return'--';
+  const d=new Date(v);
+  if(Number.isNaN(d.getTime()))return v;
+  return d.toLocaleDateString('vi-VN');
+}
+function docLongDate(v){
+  const d=new Date(v||todayIso());
+  if(Number.isNaN(d.getTime()))return'ngày ... tháng ... năm ...';
+  return `ngày ${String(d.getDate()).padStart(2,'0')} tháng ${String(d.getMonth()+1).padStart(2,'0')} năm ${d.getFullYear()}`;
+}
+function docMoney(v){
+  if(typeof moneyPlain==='function')return moneyPlain(v);
+  return new Intl.NumberFormat('vi-VN',{maximumFractionDigits:0}).format(Number(v||0));
+}
+function docMoneyDong(v){ return `${docMoney(v)} đồng`; }
+function docNumberWords(v){
+  const raw=String(numberToVietnamese(Math.round(Number(v||0)))||'').trim();
+  return raw ? raw.charAt(0).toUpperCase()+raw.slice(1) : '';
+}
+function docQuoteCode(){
+  const codes=(state.lines||[]).map(l=>String(l.code||'').trim()).filter(Boolean);
+  return codes.length?codes.join(', '):(state.documents?.quoteCode||'');
+}
+function docQuoteName(){
+  const d=ensureDocumentSuite();
+  if(d.quoteFileName)return d.quoteFileName;
+  const client=state.info?.client||'Khách hàng';
+  const date=docDate(state.info?.quoteDate||todayIso()).replaceAll('/','.');
+  return `${date} - Minmin Lifestyle - Quotation - ${client}`;
+}
+function docProductRows(){
+  return (state.lines||[]).filter(l=>l.name||l.code||Number(l.quantity||0)||Number(l.price||0)).map((line,i)=>{
+    const qty=Number(line.quantity||0), unit=line.unit||'Cái (pcs)', price=lineUnitPrice(line), amount=qty*price;
+    const descText=(typeof describeForExport==='function'?describeForExport(line):[line.description,attributesDescription(line)].filter(Boolean).join('\n'));
+    return {
+      stt:i+1,
+      status:line.status||statusForLine?.(line)||'Đặt hàng từ 25-30 ngày',
+      code:line.code||'',
+      name:line.name||'',
+      photo:previewImage(line)||photoSourceValue(line),
+      dimension:line.dimension||'',
+      desc:br(descText||''),
+      unit,qty,price,amount
+    };
+  });
+}
+function docTotals(){
+  const t=totals();
+  return {...t,deposit:t.deposit,remaining:t.remaining};
+}
+function docField(label,key,type='text'){
+  const d=ensureDocumentSuite();
+  return `<label class="grid gap-1"><span class="text-[11px] font-extrabold uppercase tracking-wide text-black/45">${label}</span><input data-doc-field="${key}" type="${type}" value="${esc(d[key]??'')}" class="h-10 rounded-md border border-black/15 bg-white px-3 text-sm font-bold outline-none focus:border-mint focus:ring-4 focus:ring-mint/10"/></label>`;
+}
+function docPartyField(label,key){
+  const d=ensureDocumentSuite();
+  return `<label class="grid gap-1"><span class="text-[11px] font-extrabold uppercase tracking-wide text-black/45">${label}</span><input data-doc-party="${key}" value="${esc(d.partyA?.[key]||'')}" class="h-10 rounded-md border border-black/15 bg-white px-3 text-sm font-bold outline-none focus:border-mint focus:ring-4 focus:ring-mint/10"/></label>`;
+}
+function docTaskButton(id,label){
+  const d=ensureDocumentSuite(), active=d.activeTask===id;
+  return `<button data-doc-task="${id}" type="button" class="h-10 rounded-md px-3 text-sm font-extrabold ${active?'bg-ink text-white':'border border-black/10 bg-white text-ink hover:border-mint'}">${label}</button>`;
+}
+function documentPrintCss(){
+  return `@page{size:letter landscape;margin:0}
+html,body{margin:0;background:#fff;color:#111;font-family:"Times New Roman",Times,serif}
+.doc-preview-shell{max-height:78vh;overflow:auto;background:#ececea;padding:20px;display:grid;gap:18px;justify-items:center}
+.doc-page{box-sizing:border-box;width:1056px;min-height:816px;margin:0 auto;background:#fff;padding:40px 54px 48px;box-shadow:0 14px 40px rgba(0,0,0,.16);font-size:14px;line-height:1.34;color:#111;position:relative;break-after:page;page-break-after:always}
+.doc-page.compact{padding:24px 18px 42px}.doc-page.textpage{padding:42px 64px 48px}.doc-page:last-child{break-after:auto;page-break-after:auto}
+.doc-page-number{position:absolute;left:0;right:0;bottom:14px;text-align:center;font-size:12px;color:#111}
+.doc-center{text-align:center}.doc-right{text-align:right}.doc-bold{font-weight:700}.doc-extra{font-weight:800}.doc-italic{font-style:italic}.doc-red{color:#c00000}.doc-uppercase{text-transform:uppercase}
+.doc-title{margin:16px 0 4px;text-align:center;font-size:24px;font-weight:800;letter-spacing:.2px}.doc-subtitle{text-align:center;font-size:13px;margin:0 0 16px}.doc-section-title{margin:12px 0 8px;font-size:16px;font-weight:800;text-transform:uppercase;text-decoration:underline}.doc-section-title.no-underline{text-decoration:none}.doc-mini-title{margin:8px 0 5px;font-size:14px;font-weight:700}
+.doc-small{font-size:12px}.doc-muted{color:#555}.doc-p{margin:6px 0}.doc-line{line-height:1.55}.doc-tight p{margin:4px 0}.doc-indent{text-indent:22px}.doc-bullets{margin:4px 0 8px 20px;padding:0}.doc-bullets li{margin:3px 0}.doc-letter-list{margin:4px 0 8px 26px;padding:0}.doc-letter-list li{margin:3px 0}.doc-party-block{display:grid;gap:4px;margin-top:8px}.doc-party-row{display:grid;grid-template-columns:116px 1fr;gap:8px}.doc-signatures{display:grid;grid-template-columns:1fr 1fr;gap:60px;margin-top:44px;text-align:center;font-weight:800}.doc-sign-spacer{height:86px}
+.doc-table{width:100%;border-collapse:collapse;table-layout:fixed;margin-top:8px;page-break-inside:auto}.doc-table th,.doc-table td{border:1px solid #111;padding:5px;vertical-align:middle;overflow-wrap:break-word}.doc-table th{font-weight:800;text-align:center;background:#fff}.doc-table tr{page-break-inside:avoid;page-break-after:auto}.doc-table .num{text-align:right;white-space:nowrap}.doc-table .center{text-align:center}.doc-product-table{font-size:12px;line-height:1.17}.doc-product-table th{font-size:12px;line-height:1.08}.doc-product-table td{padding:4px}.doc-photo{width:150px;height:105px;object-fit:contain;display:block;margin:auto}.doc-desc{line-height:1.22;text-align:left}.doc-ship-row{height:56px}.doc-total-label{text-align:left;font-weight:800;background:#bfbfbf}.doc-total-value{text-align:right;font-weight:800;white-space:nowrap;background:#bfbfbf}.doc-total-lite{font-style:italic;font-weight:400}.doc-total-hot{color:#c00000;font-weight:800}.doc-empty{background:#fff}.doc-note-list{margin:5px 0 0 0;padding-left:0;list-style:none}.doc-note-list li{margin:3px 0}.doc-product-summary{margin-top:22px;font-size:15px;line-height:1.6}.doc-product-summary p{margin:8px 0}
+@media print{html,body{background:#fff}.doc-preview-shell{display:block;max-height:none;overflow:visible;background:#fff;padding:0}.doc-page{width:11in;min-height:8.5in;margin:0;box-shadow:none;padding:.38in .5in .45in}.doc-page.compact{padding:.22in .18in .38in}.doc-page.textpage{padding:.42in .62in .45in}.doc-page-number{bottom:.12in}.no-print{display:none!important}}`;
+}
+function docPageObjects(pages){
+  const total=pages.length;
+  return pages.map((p,i)=>`<div class="doc-page ${p.className||''}">${p.html}<div class="doc-page-number">${i+1}</div></div>`).join('');
+}
+function documentPaperHtml(task){
+  return `<style>${documentPrintCss()}</style><div class="doc-preview-shell">${renderDocumentTaskPages(task)}</div>`;
+}
+function documentStandaloneHtml(task){
+  const title=Object.fromEntries(docTasks())[task]||'Hồ sơ';
+  return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>${documentPrintCss()}</style></head><body>${renderDocumentTaskPages(task)}</body></html>`;
+}
+function docSafeFileName(name){
+  return String(name||'minmin-ho-so').replace(/[\\/:*?"<>|]+/g,'-').replace(/\s+/g,' ').trim();
+}
+function docCurrentFileName(ext='doc'){
+  const d=ensureDocumentSuite();
+  const task=Object.fromEntries(docTasks())[d.activeTask]||'Ho so';
+  return `${docSafeFileName(task+' - '+(d.partyA.company||state.info.client||'MINMIN'))}.${ext}`;
+}
+function renderDocumentSuiteTab(){
+  const d=ensureDocumentSuite(), t=docTotals(), rows=docProductRows();
+  const taskTitle=Object.fromEntries(docTasks())[d.activeTask]||'Hồ sơ';
+  return `<section class="mx-auto grid max-w-[1600px] gap-4 px-4 py-4 sm:px-6 lg:px-8">
+    <div class="rounded-lg border border-black/10 bg-white p-3 shadow-sm">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div><h1 class="text-xl font-extrabold">Hồ sơ bán hàng</h1><p class="mt-1 text-sm font-semibold text-black/45">Hợp đồng dùng đủ điều khoản theo file gốc, preview tách từng trang in thực tế và không render lại toàn bộ khi đang nhập.</p></div>
+        <div class="flex flex-wrap gap-2">${docTasks().map(([id,label])=>docTaskButton(id,label)).join('')}</div>
+      </div>
+    </div>
+    <div class="grid gap-4 xl:grid-cols-[420px_minmax(0,1fr)]">
+      <div class="grid content-start gap-4">
+        <div class="rounded-lg border border-black/10 bg-white p-3 shadow-sm">
+          <div class="flex items-center justify-between gap-2"><h2 class="text-base font-extrabold">Bên A</h2><button id="docPullQuote" type="button" class="h-9 rounded-md bg-gold px-3 text-xs font-extrabold text-ink">Lấy từ báo giá</button></div>
+          <div class="mt-3 grid gap-3">${docPartyField('Tên công ty / khách hàng','company')}${docPartyField('Địa chỉ','address')}${docPartyField('Mã số thuế','taxCode')}<div class="grid gap-3 sm:grid-cols-2">${docPartyField('Đại diện','representative')}${docPartyField('Chức vụ','position')}</div><div class="grid gap-3 sm:grid-cols-2">${docPartyField('Điện thoại','phone')}${docPartyField('Email','email')}</div></div>
+        </div>
+        <div class="rounded-lg border border-black/10 bg-white p-3 shadow-sm">
+          <div class="flex items-center justify-between gap-2"><h2 class="text-base font-extrabold">Thông tin hồ sơ</h2><label class="h-9 cursor-pointer rounded-md border border-mint/30 bg-white px-3 py-2 text-xs font-extrabold text-mint">Add file báo giá<input id="docQuoteImport" type="file" accept=".xlsx,.xls,.csv" class="hidden"/></label></div>
+          <div class="mt-3 grid gap-3">${docField('Số hợp đồng','contractNo')}${docField('Ngày hợp đồng','contractDate','date')}${docField('Ngày bàn giao / đề nghị','handoverDate','date')}${docField('Địa điểm ký / lập hồ sơ','location')}${docField('Địa điểm giao hàng','deliveryAddress')}${docField('File báo giá','quoteFileName')}${docField('Mã báo giá / mã đơn','quoteCode')}${docField('Đợt thanh toán','paymentPhase')}${docField('Bảo hành (tháng)','warrantyMonths','number')}${docField('Thời gian giao hàng (ngày)','deliveryDays','number')}</div>
+        </div>
+        <div class="rounded-lg border border-ink/10 bg-ink p-3 text-white shadow-sm">
+          <div class="text-xs font-bold uppercase tracking-wide text-white/50">Tổng từ báo giá</div>
+          <div id="docTotalAfterVat" class="mt-2 text-2xl font-extrabold">${money(t.afterVat)}</div>
+          <div class="mt-3 grid gap-2 text-sm"><div class="flex justify-between gap-3"><span>Đặt cọc</span><b id="docTotalDeposit">${money(t.deposit)}</b></div><div class="flex justify-between gap-3"><span>Còn lại</span><b id="docTotalRemaining">${money(t.remaining)}</b></div><div class="flex justify-between gap-3"><span>Sản phẩm</span><b id="docTotalRows">${rows.length}</b></div></div>
+        </div>
+      </div>
+      <div class="grid gap-4">
+        <div class="rounded-lg border border-black/10 bg-white p-3 shadow-sm">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div><h2 class="text-lg font-extrabold">${esc(taskTitle)}</h2><p class="mt-1 text-xs font-bold text-black/45">Preview tách trang giống bản in, nhập liệu không làm mất focus.</p></div>
+            <div class="flex flex-wrap gap-2"><button id="docCopy" type="button" class="h-10 rounded-md border border-mint/30 bg-white px-3 text-sm font-extrabold text-mint">Sao chép</button><button id="docWord" type="button" class="h-10 rounded-md border border-mint/30 bg-white px-3 text-sm font-extrabold text-mint">Xuất Word</button><button id="docPrint" type="button" class="h-10 rounded-md bg-ink px-4 text-sm font-extrabold text-white">In / xuất PDF</button></div>
+          </div>
+          <div id="documentPreview" class="mt-4 overflow-hidden rounded-lg border border-black/10">${documentPaperHtml(d.activeTask)}</div>
+        </div>
+      </div>
+    </div>
+  </section>`;
+}
+function docContractPartyBlock(){
+  const d=ensureDocumentSuite(), a=d.partyA||{};
+  const company=a.company||state.info.client||'';
+  const address=a.address||state.info.address||'';
+  const rep=a.representative||state.info.representative||'';
+  const position=a.position||'Tổng Giám Đốc';
+  return `<div class="doc-party-block">
+    <div class="doc-party-row"><b>BÊN MUA</b><div>: <b>${esc(company)}</b> (gọi tắt là “Bên A”)</div></div>
+    <div class="doc-party-row"><span>Địa chỉ</span><div>: ${esc(address)}</div></div>
+    <div class="doc-party-row"><span>Mã số thuế</span><div>: ${esc(a.taxCode||'')}</div></div>
+    <div class="doc-party-row"><span>Đại diện</span><div>: ${esc(rep)}</div></div>
+    <div class="doc-party-row"><span>Chức vụ</span><div>: ${esc(position)}</div></div>
+  </div>
+  <div class="doc-party-block">
+    <div class="doc-party-row"><b>BÊN BÁN</b><div>: <b>CÔNG TY TNHH MINMIN LIFESTYLE</b> (gọi tắt là “Bên B”)</div></div>
+    <div class="doc-party-row"><span>Địa chỉ</span><div>: 27/32 Nguyễn Công Hoan, Phường Cầu Kiệu, Thành phố Hồ Chí Minh, Việt Nam.</div></div>
+    <div class="doc-party-row"><span>Mã số thuế</span><div>: 0319348049 &nbsp;&nbsp; Điện thoại: 0707671221</div></div>
+    <div class="doc-party-row"><span>Đại diện</span><div>: Ông Nguyễn Hồ Quang Huy &nbsp;&nbsp; Chức vụ: Giám Đốc</div></div>
+  </div>`;
+}
+function docPartyHtml(){
+  const d=ensureDocumentSuite(), a=d.partyA||{};
+  return `<div class="doc-party-block"><b>BÊN MUA (BÊN A): ${esc(a.company||state.info.client||'')}</b><span>Địa chỉ: ${esc(a.address||state.info.address||'')}</span><span>Mã số thuế: ${esc(a.taxCode||'')}</span><span>Đại diện: ${esc(a.representative||state.info.representative||'')} ${a.position?`- Chức vụ: ${esc(a.position)}`:''}</span><span>Điện thoại: ${esc(a.phone||state.info.tel||'')} ${a.email?`- Email: ${esc(a.email)}`:''}</span></div>
+  <div class="doc-party-block"><b>BÊN BÁN (BÊN B): CÔNG TY TNHH MINMIN LIFESTYLE</b><span>Địa chỉ: 27/32 Nguyễn Công Hoan, Phường Cầu Kiệu, Thành phố Hồ Chí Minh, Việt Nam</span><span>Mã số thuế: 0319348049</span><span>Điện thoại: 0707671221</span><span>Đại diện: Ông Nguyễn Hồ Quang Huy - Chức vụ: Giám Đốc</span></div>`;
+}
+function docProductChunks(rows){
+  const list=rows||[];
+  if(list.length<=2)return [list];
+  const chunks=[list.slice(0,2)];
+  let i=2;
+  while(i<list.length){
+    const remain=list.length-i;
+    if(remain<=3){ chunks.push(list.slice(i)); break; }
+    chunks.push(list.slice(i,i+3));
+    i+=3;
+  }
+  return chunks;
+}
+function docProductTableSegment(segment,{first=false,last=false}={}){
+  const t=docTotals(), info=state.info||{};
+  const header=first?`<thead><tr><th>STT</th><th>Tình trạng</th><th>Mã hàng<br>(Code)</th><th>Tên sản phẩm<br>(Items)</th><th>Hình ảnh<br>(Photo)</th><th>Kích thước<br>(Dimension)<br>(LxWxH)</th><th>Đặc điểm<br>(Describe)</th><th>ĐVT<br>(Unit)</th><th>SL<br>(Q'tity)</th><th>Đơn giá<br>(Unit Price)</th><th>Thành Tiền<br>(Amount)</th></tr></thead>`:'';
+  const productRows=(segment||[]).map(r=>`<tr><td class="center">${r.stt}</td><td class="center">${br(r.status)}</td><td class="center doc-bold">${esc(r.code)}</td><td class="center">${esc(r.name)}</td><td>${r.photo?`<img src="${esc(r.photo)}" class="doc-photo"/>`:''}</td><td class="center">${esc(r.dimension)}</td><td class="doc-desc">${r.desc||''}</td><td class="center">${esc(r.unit)}</td><td class="center">${r.qty}</td><td class="num">${docMoney(r.price)}</td><td class="num doc-bold">${docMoney(r.amount)}</td></tr>`).join('');
+  const shipAmount=Number(t.shipping||0);
+  const shipRow=last?`<tr class="doc-ship-row"><td></td><td></td><td class="center">${esc(info.shipCode||'PVC')}</td><td class="center">${br(info.shipName||'Phí vận chuyển (Fee ship) (L0 x W0 x H0)')}</td><td></td><td></td><td></td><td class="center">${esc(info.shipUnit||'Kiện')}</td><td class="center">${Number(info.shipQty||0)}</td><td></td><td class="num doc-bold">${docMoney(shipAmount)}</td></tr>`:'';
+  const totalRows=last?`
+    <tr><td colspan="7" class="doc-empty"></td><td colspan="3" class="doc-total-label">TỔNG GIÁ TRỊ TRƯỚC CHIẾT KHẤU</td><td class="doc-total-value">${docMoney(t.subtotal)}</td></tr>
+    <tr><td colspan="7" class="doc-empty"></td><td colspan="3" class="doc-total-label doc-total-lite">CHIẾT KHẤU ${Number(info.discountRate||0)}%</td><td class="doc-total-value doc-total-lite">${docMoney(t.discount)}</td></tr>
+    <tr><td colspan="7" class="doc-empty"></td><td colspan="3" class="doc-total-label">TỔNG GIÁ TRỊ SAU CHIẾT KHẤU</td><td class="doc-total-value">${docMoney(t.afterDiscount)}</td></tr>
+    <tr><td colspan="7" class="doc-empty"></td><td colspan="3" class="doc-total-label doc-total-lite">VAT ${Number(info.vatRate||0)}%</td><td class="doc-total-value doc-total-lite">${docMoney(t.vat)}</td></tr>
+    <tr><td colspan="7" class="doc-empty"></td><td colspan="3" class="doc-total-label doc-total-hot">TỔNG TIỀN SAU VAT</td><td class="doc-total-value doc-total-hot">${docMoney(t.afterVat)}</td></tr>
+    <tr><td colspan="7" class="doc-empty"></td><td colspan="3" class="doc-total-label doc-total-lite doc-bold">ĐẶT CỌC</td><td class="doc-total-value doc-total-lite">${docMoney(t.deposit)}</td></tr>
+    <tr><td colspan="7" class="doc-empty"></td><td colspan="3" class="doc-total-label doc-total-lite doc-bold">CÒN LẠI</td><td class="doc-total-value doc-total-lite">${docMoney(t.remaining)}</td></tr>`:'';
+  return `<table class="doc-table doc-product-table"><colgroup><col style="width:4.1%"><col style="width:8.7%"><col style="width:6.3%"><col style="width:6.6%"><col style="width:16.8%"><col style="width:10.4%"><col style="width:18.6%"><col style="width:7.1%"><col style="width:6.7%"><col style="width:7.1%"><col style="width:7.7%"></colgroup>${header}<tbody>${productRows}${shipRow}${totalRows}</tbody></table>`;
+}
+function docContractProductPages(){
+  const rows=docProductRows();
+  const chunks=docProductChunks(rows.length?rows:[{stt:'',status:'',code:'',name:'',photo:'',dimension:'',desc:'',unit:'',qty:'',price:0,amount:0}]);
+  const pages=[];
+  chunks.forEach((chunk,i)=>{
+    const first=i===0, last=i===chunks.length-1;
+    let html='';
+    if(first){ html+=`<h2 class="doc-section-title">ĐIỀU 1: SẢN PHẨM, SỐ LƯỢNG, QUY CÁCH, GIÁ CẢ, GIÁ TRỊ CỦA HỢP ĐỒNG :</h2><p class="doc-p">1.1&nbsp;&nbsp;&nbsp; Thông tin sản phẩm và giá trị hợp đồng :</p>`; }
+    html+=docProductTableSegment(chunk,{first,last});
+    if(last){
+      const t=docTotals(), vat=Number(state.info?.vatRate||0);
+      html+=`<div class="doc-product-summary"><p><b>Tổng giá trị Hợp đồng: ${docMoneyDong(t.afterVat)}</b> <i>(Bằng chữ: ${esc(docNumberWords(t.afterVat))} đồng)</i></p><p><i>Giá đã bao gồm ${vat}% VAT</i></p></div>`;
+    }
+    pages.push({className:'compact',html});
+  });
+  return pages;
+}
+function docProductTable(mode='full'){
+  const rows=docProductRows(), t=docTotals();
+  if(mode==='warranty'){
+    return `<table class="doc-table"><colgroup><col style="width:6%"><col style="width:16%"><col style="width:17%"><col style="width:43%"><col style="width:9%"><col style="width:9%"></colgroup><thead><tr><th>STT</th><th>Mã hàng</th><th>Hình ảnh</th><th>Đặc điểm</th><th>ĐVT</th><th>Số lượng</th></tr></thead><tbody>${rows.map(r=>`<tr><td class="center">${r.stt}</td><td class="doc-bold">${esc(r.code)}</td><td>${r.photo?`<img src="${esc(r.photo)}" class="doc-photo"/>`:''}</td><td class="doc-desc"><b>${esc(r.name)}</b><br>${r.desc||''}${r.dimension?`<br>* Kích thước: ${esc(r.dimension)}`:''}</td><td class="center">${esc(r.unit)}</td><td class="center doc-bold">${r.qty}</td></tr>`).join('')}</tbody></table>`;
+  }
+  return docProductTableSegment(rows,{first:true,last:true});
+}
+function docPaymentBlock(){
+  const t=docTotals();
+  return `<p class="doc-p doc-line">Bên A thanh toán cho Bên B bằng chuyển khoản theo các đợt sau:</p>
+  <ul class="doc-note-list"><li>Đợt 1: thanh toán 50% giá trị hợp đồng, trong vòng 5 ngày kể từ ngày hợp đồng có hiệu lực và Bên B gửi Bên A Đề nghị tạm ứng.</li><li>Đợt 2: thanh toán 50% giá trị hợp đồng, trong vòng 5 ngày làm việc kể từ ngày Bên B bàn giao sản phẩm và gửi hồ sơ đề nghị thanh toán cho Bên A.</li></ul>
+  <p class="doc-p"><b>Thông tin chuyển khoản:</b><br>Tên tài khoản: CÔNG TY TNHH MINMIN LIFESTYLE<br>Số tài khoản: 388683838<br>Ngân hàng: Ngân Hàng ACB – CN Phổ Quang</p>
+  <p class="doc-p">Giá trị sau VAT: <b>${money(t.afterVat)}</b>; đặt cọc: <b>${money(t.deposit)}</b>; còn lại: <b>${money(t.remaining)}</b>.</p>`;
+}
+function docNational(){
+  return `<div class="doc-center doc-bold">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM<br>Độc lập – Tự do – Hạnh phúc<br>* * *</div>`;
+}
+function renderContractPages(){
+  const d=ensureDocumentSuite(), a=d.partyA||{}, t=docTotals();
+  const pages=[];
+  pages.push({className:'textpage',html:`${docNational()}<h1 class="doc-title">HỢP ĐỒNG MUA BÁN</h1><p class="doc-subtitle">Số: ${esc(d.contractNo||'')}</p>
+    <ul class="doc-bullets"><li>Căn cứ Bộ luật Dân sự số 91/2015/QH13 được Quốc hội nước CHXHCN Việt Nam thông qua ngày 24/11/2015 và các văn bản sửa đổi, bổ sung, hướng dẫn thi hành;</li><li>Căn cứ Luật Thương mại số 36/2005/QH11 được Quốc hội nước CHXHCN Việt Nam thông qua ngày 14/06/2005 và các văn bản sửa đổi, bổ sung, hướng dẫn thi hành;</li><li>Căn cứ Luật Doanh nghiệp số 59/2020/QH14 được Quốc hội nước CHXHCN Việt Nam thông qua ngày 17/06/2020 và các văn bản sửa đổi, bổ sung, hướng dẫn thi hành;</li><li>Căn cứ vào nhu cầu và khả năng của hai bên,</li></ul>
+    <p class="doc-p">Hợp đồng này được lập ${docLongDate(d.contractDate)} bởi và giữa:</p>${docContractPartyBlock()}
+    <p class="doc-p doc-line">Bên A và Bên B sau đây được gọi riêng là “Bên” và được gọi chung là “Các Bên”. Sau khi bàn bạc, thảo luận, hai bên thống nhất ký kết Hợp Đồng Mua Bán (sau đây gọi là “Hợp đồng”) với các điều kiện và điều khoản sau:</p>`});
+  pages.push(...docContractProductPages());
+  pages.push({className:'textpage',html:`<div class="doc-tight"><p class="doc-p doc-line">Giá trị Hợp đồng trên là trọn gói, bao gồm chi phí vận chuyển đến nơi lắp đặt do Bên A chỉ định, nguyên vật liệu để sản xuất thành sản phẩm hoàn chỉnh, không thay đổi trong suốt thời gian thực hiện hợp đồng.</p>
+    <h3 class="doc-mini-title">1.2&nbsp;&nbsp; Quy cách đóng gói sản phẩm</h3><ul class="doc-bullets"><li>Sản phẩm sản xuất mới 100%, mẫu mã đảm bảo thiết kế, quy cách, chất liệu...đã được Bên A phê duyệt.</li><li>Sản phẩm được sản xuất theo thiết kế, kích thước, màu sắc riêng theo yêu cầu của Bên A nên không được hủy đơn hàng, đổi trả dưới mọi hình thức, trừ trường hợp lỗi do Bên B.</li><li>Do đặc thù sản xuất thủ công, các sai số về kích thước, màu sắc trong phạm vi ±5% được xem là đạt yêu cầu và không được xem là lỗi sản phẩm.</li><li>Đóng gói: Sản phẩm được đóng gói đảm bảo cho vận chuyển xuất khẩu.</li></ul>
+    <p class="doc-p doc-line">1.3&nbsp;&nbsp; Tổng trách nhiệm bồi thường thiệt hại của Bên B phát sinh hoặc liên quan đến Hợp đồng này (bao gồm phạt vi phạm và bồi thường thiệt hại) sẽ không vượt quá 8% giá trị phần nghĩa vụ vi phạm theo quy định Luật Thương mại 2005.</p>
+    <h2 class="doc-section-title no-underline">ĐIỀU 2: GIAO HÀNG</h2><p class="doc-p">2.1&nbsp;&nbsp; Địa điểm giao hàng: Bên B tiến hành giao hàng cho Bên A địa chỉ tại: ${esc(d.deliveryAddress||state.info.delivery||state.info.address||'')}.</p>
+    <p class="doc-p">2.2&nbsp;&nbsp; Thời gian giao hàng:</p><ul class="doc-bullets"><li>Thời gian giao hàng: trong vòng ${esc(d.deliveryDays||40)} ngày kể từ ngày Bên B nhận đủ khoản thanh toán đợt 1.</li><li>Chậm nhất trước ${esc(d.notifyBeforeDays||3)} ngày làm việc, trước khi tiến hành giao hàng Bên B có trách nhiệm thông báo cho Bên A sắp xếp nhân sự, máy móc (nếu có), kho bãi để tiếp nhận sản phẩm.</li><li>Bên A có trách nhiệm kiểm tra tình trạng sản phẩm được giao có nguyên vẹn, không bị vỡ, bể trong vòng ${esc(d.acceptanceHours||24)} giờ. Trong trường hợp này, Bên B được xem là hoàn thành việc giao hàng; Quyền sở hữu sản phẩm chỉ được chuyển giao cho Bên A sau khi Bên A thanh toán đầy đủ 100% giá trị Hợp đồng.</li><li>Trong vòng ${esc(d.acceptanceHours||24)} giờ kể từ thời điểm nhận hàng, nếu Bên A không có ý kiến bằng văn bản về khiếm khuyết sản phẩm, sản phẩm được xem là đã nghiệm thu và chấp nhận không điều kiện.</li></ul></div>`});
+  pages.push({className:'textpage',html:`<div class="doc-tight"><p class="doc-p doc-line">2.3&nbsp;&nbsp; Chi phí xếp dỡ: Bên B chịu chi phí xếp, dỡ hàng, vận chuyển đến nơi/địa chỉ do bên A chỉ định.</p><ul class="doc-bullets"><li>Trường hợp Bên A chậm nhận hàng so với thời gian đã thỏa thuận mà không có thông báo trước bằng văn bản, Bên A phải chịu mọi chi phí phát sinh bao gồm nhưng không giới hạn: chi phí lưu kho, chi phí vận chuyển lại, chi phí bốc xếp và các chi phí liên quan khác. Mọi rủi ro đối với hàng hóa phát sinh trong thời gian chậm nhận hàng thuộc trách nhiệm của Bên A.</li></ul>
+    <h2 class="doc-section-title no-underline">ĐIỀU 3: PHƯƠNG THỨC VÀ ĐIỀU KIỆN THANH TOÁN</h2><p class="doc-p">3.1&nbsp;&nbsp; Giá trị Hợp đồng sẽ được thanh toán làm 2 đợt như sau:</p><ul class="doc-bullets"><li>Đợt 1: thanh toán 50% giá trị hợp đồng, trong vòng 5 ngày kể từ ngày hợp đồng có hiệu lực và Bên B gửi Bên A Đề nghị tạm ứng.</li><li>Đợt 2: thanh toán 50% giá trị hợp đồng, trong vòng 5 ngày làm việc kể từ ngày Bên B bàn giao sản phẩm và gửi hồ sơ đề nghị thanh toán cho Bên A, bao gồm:<br>o Đề nghị thanh toán.<br>o Biên bản bàn giao, nghiệm thu sản phẩm.<br>o Cam kết bảo hành sản phẩm.</li></ul>
+    <p class="doc-p">3.2&nbsp;&nbsp; Hình thức thanh toán: chuyển khoản:</p><ul class="doc-bullets"><li>Tên tài khoản: CÔNG TY TNHH MINMIN LIFESTYLE</li><li>Tài khoản: 388683838</li><li>Ngân hàng: Ngân Hàng ACB – CN Phổ Quang</li></ul><p class="doc-p doc-line">Bên B có quyền tạm ngừng việc giao hàng trong trường hợp Bên A không thực hiện nghĩa vụ thanh toán theo đúng thời hạn đã thỏa thuận. Thời gian tạm ngừng giao hàng sẽ không được tính là thời gian chậm giao hàng.</p>
+    <h2 class="doc-section-title no-underline">ĐIỀU 4: QUYỀN VÀ TRÁCH NHIỆM CỦA CÁC BÊN</h2><p class="doc-p"><b>4.1.Quyền và Trách nhiệm Bên B.</b></p><ul class="doc-bullets"><li>Bên B có trách nhiệm cung cấp sản phẩm theo đúng: chất liệu, màu sắc, kích cỡ, thiết kế đã được Bên A phê duyệt.</li><li>Bên B có trách nhiệm giao đúng, đủ số lượng Sản phẩm và theo đúng thời gian, địa điểm đã được thống nhất;</li><li>Bên B chịu trách nhiệm đóng gói hàng theo quy cách đảm bảo an toàn khi vận chuyển (tránh va đập, sứt sát….)</li></ul></div>`});
+  pages.push({className:'textpage',html:`<div class="doc-tight"><ul class="doc-bullets"><li>Hoàn trả tài sản Bên A giao cho Bên B, và các tài sản Bên B tạo ra theo đơn đặt hàng của Bên A. Trong thời gian là 03 (ba) ngày làm việc khi nhận được yêu cầu từ Bên A.</li><li>Bên B sẽ không được chuyển giao toàn bộ hoặc một phần nghĩa vụ của mình theo Hợp đồng cho bên thứ ba trừ khi có sự đồng ý trước bằng văn bản của bên A.</li><li>Có trách nhiệm bảo hành sản phẩm trong vòng ${esc(d.warrantyMonths||12)} tháng kể từ ngày bàn giao sản phẩm; trong thời hạn là ${esc(d.warrantyResponseDays||5)} ngày làm việc nếu nhận được thông tin yêu cầu bảo hành sản phẩm Bên B có trách nhiệm cử nhân sự xuống kiểm tra khắc phục; nếu quá thời hạn cử người xuống khắc phục mà Bên A không nhận được bất kỳ thông tin nào về việc chậm trễ này. Trường hợp Bên B không thực hiện bảo hành trong thời hạn ${esc(d.warrantyResponseDays||5)} ngày làm việc kể từ ngày nhận được yêu cầu bằng văn bản và xác định lỗi thuộc trách nhiệm của Bên B, Bên A có quyền thuê bên thứ ba sửa chữa sau khi có sự đồng ý bằng văn bản của Bên B về phương án và chi phí sửa chữa. Chi phí sửa chữa không vượt quá giá trị phần sản phẩm bị lỗi.</li><li>Bên B không chịu trách nhiệm đối với các thiệt hại gián tiếp, thiệt hại do mất lợi nhuận, mất cơ hội kinh doanh hoặc nghĩa vụ của Bên A đối với bên thứ ba.</li><li>Không bảo hành trong trường hợp: Lắp đặt sai kỹ thuật, sai điện áp, tác động ngoại lực, tự ý sửa chữa, hao mòn tự nhiên</li><li>Sau khi Bên A đã xác nhận bản vẽ, mẫu mã hoặc thông số kỹ thuật, mọi yêu cầu thay đổi (nếu có) sẽ được xem là phát sinh. Bên B có quyền điều chỉnh giá trị hợp đồng, chi phí liên quan và thời gian giao hàng tương ứng với khối lượng thay đổi.</li></ul>
+    <p class="doc-p"><b>4.2. Quyền và trách nhiệm Bên A:</b></p><ul class="doc-bullets"><li>Bên A có trách nhiệm nhận Sản phẩm theo quy định tại khoản 1.1 Điều 1. Trong trường hợp không thể nhận hàng theo thời gian và địa điểm quy định tại khoản 2.2 Điều 2, Bên A phải thông báo ngay cho Bên B bằng văn bản chậm nhất là hai mươi bốn (24) giờ trước khi kế hoạch giao hàng đã được định sẵn.</li><li>Trong trường hợp sản phẩm không bảo đảm chất lượng, quy cách, thì bên A từ chối nhận sản phẩm, và Bên B sửa chữa và thay thế lại sản phẩm hoặc đổi sản phẩm mới trong vòng ${esc(d.defectRepairDays||30)} ngày kể từ ngày hai bên nghiệm thu sản phẩm. Nếu quá thời hạn quy định tại Điều này thì bên A có quyền hủy bỏ hợp đồng và yêu cầu phạt vi phạm, bồi thường thiệt hại theo Điều 7 của Hợp đồng.</li></ul></div>`});
+  pages.push({className:'textpage',html:`<div class="doc-tight"><ul class="doc-bullets"><li>Thanh toán cho bên B đủ và đúng hạn như đã thỏa thuận ở Điều 3. Trong trường hợp bên A thanh tóan chậm phải chịu lãi suất theo mức lãi suất cho vay quá hạn của Ngân hàng Vietcombank tại thời điểm thanh toán, lãi suất được tính từ ngày bên A bắt đầu thanh toán quá hạn đến ngày bên A thanh toán hết, nhưng thời gian cũng không được kéo dài quá 30 ngày, quá thời hạn này bên A phải thanh toán cho bên B theo lãi suất thỏa thuận với bên B.</li></ul>
+    <h2 class="doc-section-title no-underline">ĐIỀU 5: BẢO HÀNH</h2><p class="doc-p doc-line">Bảo hành bóng đèn 1 năm kể từ ngày Hai Bên ký Biên bản nghiệm thu bàn giao sản phẩm. Việc bảo hành được thực hiện theo Chính sách bảo hành của Bên B.</p><p class="doc-p doc-line">Đối với thân đèn và chụp đèn, Bên A kiểm tra ngay khi giao nhận hàng và phản hồi trong vòng 24 giờ kể từ khi nhận hàng. Bên B cam kết đổi 1-1 nếu phát hiện lỗi.</p>
+    <h2 class="doc-section-title no-underline">ĐIỀU 6: TRƯỜNG HỢP BẤT KHẢ KHÁNG</h2><ul class="doc-bullets"><li>Trường hợp xảy ra sự kiện bất khả kháng bao gồm nhưng không giới hạn: thiên tai, hỏa hoạn, dịch bệnh, gián đoạn vận chuyển, thay đổi chính sách pháp luật hoặc các sự kiện nằm ngoài khả năng kiểm soát hợp lý của các Bên, thì Bên bị ảnh hưởng sẽ không bị xem là vi phạm Hợp đồng. Thời gian thực hiện nghĩa vụ sẽ được gia hạn tương ứng với thời gian bị ảnh hưởng.</li></ul>
+    <h2 class="doc-section-title no-underline">ĐIỀU 7: HỦY BỎ, CHẤM DỨT HỢP ĐỒNG</h2><p class="doc-p">6.1&nbsp;&nbsp; Hợp đồng chấm dứt khi các bên thực hiện xong toàn bộ nghĩa vụ của Hợp đồng hoặc bất cứ thời điểm nào theo thỏa thuận của các bên.</p><p class="doc-p">6.2&nbsp;&nbsp; Bên A có quyền đơn phương hủy bỏ hoặc chấm dứt hợp đồng theo một trong số các trường hợp sau:</p><ul class="doc-bullets"><li>Bên A chỉ có quyền chấm dứt hợp đồng nếu Bên B chậm giao hàng quá ${esc(d.lateLimitDays||14)} ngày và không khắc phục trong vòng ${esc(d.cureDays||7)} ngày kể từ ngày nhận được thông báo bằng văn bản của Bên A.;</li><li>Bên B giao hàng không đúng quy cách, chất lượng, số lượng quy định tại Điều 1 Hợp đồng này.</li></ul><p class="doc-p">6.3&nbsp;&nbsp; Bên B có quyền đơn phương chấm dứt hợp đồng trong các trường hợp Bên A vi phạm quá 07 ngày nghĩa vụ thanh toán theo điều 3 của Hợp đồng hoặc phát sinh các vấn đề liên quan đến bản quyền thiết kế.</p>
+    <h2 class="doc-section-title no-underline">ĐIỀU 8: PHẠT VI PHẠM</h2><p class="doc-p doc-line">8.1&nbsp;&nbsp; Nếu Bên B vì bất cứ lý do nào mà không thực hiện đúng theo thời hạn bàn giao sản phẩm quy định khi chưa được sự đồng ý của Bên A, thì Bên B phải bồi thường thiệt hại trễ hạn theo tỉ lệ 0,1 (không phẩy một) % tổng giá trị hợp đồng cho mỗi ngày</p></div>`});
+  pages.push({className:'textpage',html:`<div class="doc-tight"><p class="doc-p doc-line">(tổng mức phạt không vượt quá 8% giá trị phần nghĩa vụ vi phạm) trễ hạn nhưng không được trễ quá ${esc(d.lateLimitDays||14)} ngày, quá thời gian này bên A được quyền từ chối tiếp tục thực hiện hợp đồng này với Bên B và áp dụng theo quy định tại khoản 7.3 điều này.</p><p class="doc-p doc-line">8.2&nbsp;&nbsp; Ngược lại nếu Bên B đã thực hiện đúng hợp đồng mà Bên A vi phạm điều khoản thanh toán được quy định tại Điều 3 thuộc hợp đồng này, sau khi có sự nhắc nhở của Bên B mà Bên A vẫn không khắc phục, thì Bên A phải chịu phạt trễ hạn thanh toán cho Bên B theo quy định.</p><p class="doc-p doc-line">8.3&nbsp;&nbsp; Hai bên cam kết thực hiện nghiêm túc các điều khoản đã thoả thuận trong hợp đồng này. Trừ những trường hợp được quy định cụ thể, Bên nào vi phạm bất kì điều khoản nào quy định tại hợp đồng này mà không khắc phục trong thời hạn hợp lý (không ít hơn 02 ngày) kể từ khi nhận được yêu cầu khắc phục của Bên kia, hoặc trong thời hạn theo sự thỏa thuận của các bên nếu có, và gây thiệt hại cho bên kia, Bên bị vi phạm có quyền đơn phương từ chối tiếp tục thực hiện hợp đồng với thông báo trước bằng văn bản cho bên kia. Bên vi phạm phải chịu trách nhiệm bồi thường thiệt hại cho bên bị vi phạm theo quy định pháp luật về bồi thường.</p><ul class="doc-bullets"><li>Trường hợp Bên A vi phạm, Bên A sẽ:<br>a) Thanh toán giá trị Bên A đã thực hiện;<br>b) Phạt vi phạm 8% giá trị hợp đồng;</li><li>Trường hợp Bên B vi phạm, Bên B sẽ:<br>a) Hoàn trả lại toàn bộ số tiền tạm ứng/thanh toán cho Bên A;<br>b) Phạt vi phạm 8% giá trị hợp đồng;</li></ul><p class="doc-p doc-line">8.4&nbsp;&nbsp; Trong mọi trường hợp, tổng mức phạt vi phạm và bồi thường thiệt hại của Bên B phát sinh từ hoặc liên quan đến Hợp đồng này sẽ không vượt quá 8% giá trị phần nghĩa vụ bị vi phạm.</p>
+    <h2 class="doc-section-title no-underline">ĐIỀU 9: THANH LÝ HỢP ĐỒNG HIỆU LỰC CỦA HỢP ĐỒNG</h2><p class="doc-p doc-line">9.1&nbsp;&nbsp; Hai bên cam kết thực hiện đúng các nội dung ghi trong Hợp đồng, mọi thay đổi phải được thể hiện bằng văn bản phụ lục kèm theo. Quá trình thực hiện nếu có bất kỳ khó khăn, vướng mắc nào phải được thông báo và được sự thỏa thuận bằng văn bản của hai bên.</p><p class="doc-p doc-line">9.2&nbsp;&nbsp; Sau khi hai Bên đã thực hiện đầy đủ và nghiêm chỉnh các Điều khoản trong Hợp đồng này, mà không có vướng mắc gì thì Hợp đồng coi như đã được thanh lý.</p></div>`});
+  pages.push({className:'textpage',html:`<p class="doc-p doc-line">9.3&nbsp;&nbsp; Hợp đồng này có hiệu lực kể từ ngày ký, được lập thành 02 (hai) bản Tiếng Việt, mỗi bên giữ 01 (một) bản có giá trị như nhau.</p><div class="doc-signatures"><div>ĐẠI DIỆN BÊN A<div class="doc-sign-spacer"></div>${esc((a.representative||'').toUpperCase())}</div><div>ĐẠI DIỆN BÊN B<br>Giám đốc<div class="doc-sign-spacer"></div>NGUYỄN HỒ QUANG HUY</div></div>`});
+  return docPageObjects(pages);
+}
+function renderDocumentTaskContent(task){
+  const d=ensureDocumentSuite(), t=docTotals();
+  const national=docNational();
+  if(task==='payment'){
+    return `${national}<h1 class="doc-title">ĐỀ NGHỊ THANH TOÁN</h1><div class="doc-line"><p class="doc-p">Kính gửi: <b>${esc(d.partyA.company||state.info.client||'')}</b></p><p class="doc-p">Địa chỉ: ${esc(d.partyA.address||state.info.address||'')}</p><p class="doc-p">Chúng tôi kính gửi đề nghị thanh toán ${esc(d.paymentPhase||'')} theo hợp đồng số <b>${esc(d.contractNo||'')}</b> ngày ${docDate(d.contractDate)}.</p><p class="doc-p">Số tiền: <b>${money(t.remaining)} VNĐ</b></p><p class="doc-p">Bằng chữ: <b>${esc(docNumberWords(t.remaining))} đồng</b>.</p><p class="doc-p"><b>Thông tin chuyển khoản:</b><br>Tên tài khoản: CÔNG TY TNHH MINMIN LIFESTYLE<br>Số tài khoản: 388683838<br>Ngân hàng: ACB - CN Phổ Quang</p><p class="doc-p">Trân trọng.</p></div><div class="doc-right doc-bold" style="margin-top:54px">NGUYỄN HỒ QUANG HUY</div><div class="doc-muted doc-small" style="margin-top:70px">https://minmin-lifestyle.com/</div>`;
+  }
+  if(task==='warranty'){
+    return `${national}<h1 class="doc-title">CAM KẾT BẢO HÀNH</h1><p class="doc-p">Kính gửi: <b>${esc(d.partyA.company||state.info.client||'')}</b></p><div class="doc-party-block"><b>ĐƠN VỊ BẢO HÀNH: CÔNG TY TNHH MINMIN LIFESTYLE</b><span>Địa chỉ: 27/32 Nguyễn Công Hoan, Phường Cầu Kiệu, Thành phố Hồ Chí Minh, Việt Nam</span><span>Mã số thuế: 0319348049</span><span>Đại diện: Ông Nguyễn Hồ Quang Huy - Giám Đốc</span></div><h2 class="doc-section-title no-underline">Danh mục sản phẩm bảo hành</h2>${docProductTable('warranty')}<h2 class="doc-section-title no-underline">Nội dung cam kết</h2><p class="doc-p doc-line">Minmin Lifestyle cam kết bảo hành sản phẩm trong thời hạn <b>${esc(d.warrantyMonths)} tháng</b> kể từ ngày bàn giao/nghiệm thu đối với lỗi kỹ thuật do nhà sản xuất. Bóng đèn được bảo hành 12 tháng theo điều kiện sử dụng bình thường.</p><p class="doc-p doc-line">Không áp dụng bảo hành cho các trường hợp thiên tai, chập điện, sai điện áp, tác động ngoại lực, tự ý thay đổi kết cấu, nước/hóa chất hoặc các nguyên nhân không do lỗi nhà sản xuất.</p><p class="doc-right doc-muted" style="margin-top:24px">TP. Hồ Chí Minh, ${docLongDate(d.handoverDate)}</p><div class="doc-signatures"><div>ĐẠI DIỆN BÊN A<br><br><br>${esc((d.partyA.representative||'').toUpperCase())}</div><div>GIÁM ĐỐC<br><br><br>NGUYỄN HỒ QUANG HUY</div></div>`;
+  }
+  return `${national}<h1 class="doc-title">BIÊN BẢN BÀN GIAO - NGHIỆM THU</h1><p class="doc-subtitle">(Hợp đồng số ${esc(d.contractNo||'')})</p><p class="doc-p">Hôm nay, ${docLongDate(d.handoverDate)}, tại ${esc(d.location||'')}, chúng tôi gồm:</p>${docPartyHtml()}<p class="doc-p doc-line">Hai bên cùng tiến hành bàn giao và nghiệm thu các sản phẩm theo hợp đồng/báo giá <b>${esc(d.contractNo||docQuoteCode())}</b> với các nội dung sau:</p><h2 class="doc-section-title no-underline">1. Khối lượng công việc thực hiện</h2><p class="doc-p">Bên B đã bàn giao cho Bên A các sản phẩm bao gồm:</p>${docProductTable('full')}<h2 class="doc-section-title no-underline">2. Chất lượng công việc thực hiện</h2><p class="doc-p doc-line">Bên A đã kiểm tra và thông qua sản phẩm do Bên B thực hiện. Sản phẩm đảm bảo số lượng, chất lượng và tiến độ thời gian theo yêu cầu.</p><h2 class="doc-section-title no-underline">3. Giá trị thanh toán</h2><p class="doc-p doc-line">Bên A đã tạm ứng cho Bên B ${esc(state.info.depositRate||50)}% giá trị hợp đồng, số tiền là <b>${money(t.deposit)}</b>. Số tiền còn lại đề nghị Bên A thanh toán là <b>${money(t.remaining)}</b>.</p><h2 class="doc-section-title no-underline">4. Kết luận</h2><p class="doc-p doc-line">Hai bên thống nhất bàn giao, nghiệm thu sản phẩm đã hoàn thành theo đúng các nội dung đã ký kết. Biên bản được lập thành 02 bản có giá trị pháp lý như nhau.</p><div class="doc-signatures"><div>ĐẠI DIỆN BÊN A<br><br><br>${esc((d.partyA.representative||'').toUpperCase())}</div><div>ĐẠI DIỆN BÊN B<br><br><br>NGUYỄN HỒ QUANG HUY</div></div>`;
+}
+function renderDocumentTaskPages(task){
+  if(task==='contract')return renderContractPages();
+  return docPageObjects([{className:'textpage',html:renderDocumentTaskContent(task)}]);
+}
+function refreshDocumentPreview(){
+  const d=ensureDocumentSuite();
+  const preview=document.getElementById('documentPreview');
+  if(preview)preview.innerHTML=documentPaperHtml(d.activeTask);
+  const t=docTotals(), rows=docProductRows();
+  const total=document.getElementById('docTotalAfterVat'); if(total)total.textContent=money(t.afterVat);
+  const dep=document.getElementById('docTotalDeposit'); if(dep)dep.textContent=money(t.deposit);
+  const rem=document.getElementById('docTotalRemaining'); if(rem)rem.textContent=money(t.remaining);
+  const r=document.getElementById('docTotalRows'); if(r)r.textContent=rows.length;
+}
+let documentPreviewTimer=null;
+function scheduleDocumentPreviewRefresh(delay=350){
+  clearTimeout(documentPreviewTimer);
+  documentPreviewTimer=setTimeout(refreshDocumentPreview,delay);
+}
+function documentPullQuote(skipRender=false){
+  const d=ensureDocumentSuite();
+  d.quoteFileName=d.quoteFileName||docQuoteName();
+  d.quoteCode=docQuoteCode();
+  d.partyA.company=d.partyA.company||state.info.client||'';
+  d.partyA.address=d.partyA.address||state.info.address||'';
+  d.partyA.representative=d.partyA.representative||state.info.representative||'';
+  d.partyA.phone=d.partyA.phone||state.info.tel||'';
+  d.deliveryAddress=d.deliveryAddress||state.info.delivery||state.info.address||'';
+  if(!d.contractNo){
+    const y=new Date(state.info.quoteDate||todayIso()).getFullYear();
+    const initials=String(state.info.client||'KH').replace(/[^a-zA-Z0-9À-ỹ]/g,'').slice(0,6).toUpperCase();
+    d.contractNo=`${String(new Date().getDate()).padStart(2,'0')}${String(new Date().getMonth()+1).padStart(2,'0')}/${y}/HĐMB/${initials}-MIN`;
+  }
+  state.documents=d;
+  touchAppActivity();
+  scheduleSave();
+  if(!skipRender)render();
+}
+async function documentImportQuoteFile(file){
+  if(!file)return;
+  try{
+    if(typeof importQuotationExcel!=='function')throw new Error('App chưa có hàm import báo giá.');
+    await importQuotationExcel(file);
+    const d=ensureDocumentSuite();
+    d.quoteFileName=file.name;
+    documentPullQuote(true);
+    render();
+  }catch(e){
+    alert('Chưa import được file báo giá: '+(e?.message||e));
+  }
+}
+function printDocumentTask(){
+  const task=ensureDocumentSuite().activeTask;
+  const w=window.open('','_blank');
+  if(!w){alert('Trình duyệt đang chặn cửa sổ in. Anh cho phép popup rồi bấm lại.');return;}
+  w.document.open(); w.document.write(documentStandaloneHtml(task)); w.document.close(); setTimeout(()=>w.print(),500);
+}
+function exportDocumentWord(){
+  const task=ensureDocumentSuite().activeTask;
+  const html=`\ufeff${documentStandaloneHtml(task)}`;
+  downloadBlob(new Blob([html],{type:'application/msword;charset=utf-8'}),docCurrentFileName('doc'));
+}
+function bindDocumentSuite(){
+  document.querySelectorAll('[data-doc-task]').forEach(b=>b.onclick=()=>{ensureDocumentSuite().activeTask=b.dataset.docTask; touchAppActivity(); render();});
+  document.querySelectorAll('[data-doc-field]').forEach(el=>{
+    const update=()=>{ensureDocumentSuite()[el.dataset.docField]=el.type==='number'?Number(el.value||0):el.value; touchAppActivity(); scheduleSave();};
+    el.oninput=()=>{update(); scheduleDocumentPreviewRefresh(420);};
+    el.onchange=()=>{update(); refreshDocumentPreview();};
+    el.onblur=()=>{update(); refreshDocumentPreview();};
+  });
+  document.querySelectorAll('[data-doc-party]').forEach(el=>{
+    const update=()=>{const d=ensureDocumentSuite(); d.partyA=d.partyA||{}; d.partyA[el.dataset.docParty]=el.value; touchAppActivity(); scheduleSave();};
+    el.oninput=()=>{update(); scheduleDocumentPreviewRefresh(420);};
+    el.onchange=()=>{update(); refreshDocumentPreview();};
+    el.onblur=()=>{update(); refreshDocumentPreview();};
+  });
+  const pull=document.getElementById('docPullQuote'); if(pull)pull.onclick=()=>documentPullQuote(false);
+  const quote=document.getElementById('docQuoteImport'); if(quote)quote.onchange=()=>documentImportQuoteFile(quote.files?.[0]);
+  const print=document.getElementById('docPrint'); if(print)print.onclick=printDocumentTask;
+  const word=document.getElementById('docWord'); if(word)word.onclick=exportDocumentWord;
+  const copy=document.getElementById('docCopy'); if(copy)copy.onclick=()=>{const text=document.getElementById('documentPreview')?.innerText||''; navigator.clipboard?.writeText(text).then(()=>alert('Đã sao chép nội dung hồ sơ.')).catch(()=>alert('Không sao chép được tự động.'));};
+}
+
 
 initApp();
     </script>
