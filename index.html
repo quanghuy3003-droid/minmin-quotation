@@ -141,14 +141,14 @@ function loadAccounting(){ try{ const raw=JSON.parse(localStorage.getItem(ACCOUN
 function saveAccounting(){ try{ localStorage.setItem(ACCOUNTING_KEY, JSON.stringify(lightAccounting())); }catch(e){ alert('Dữ liệu kế toán đang quá lớn để lưu trong trình duyệt. Anh nên lưu file lên Supabase Storage.'); console.warn(e); } scheduleWorkingStateSave(); }
 const WEBSITE_PRODUCT_FIELDS=['sku','stock_code','product_name_en','product_name_vi','slug','category','tags','product_type','shade_material','body_material','color','dimensions','diameter','height','cord_length','bulb_type','bulb_count','wattage','voltage','color_temperature','dimmable','cri','cost_price','regular_price','sale_price','seo_title','seo_description','short_description','long_description','technical_specs','website_status','website_product_url'];
 const WEBSITE_CATEGORY_OPTIONS=[
-  {value:'Lightings > Wall Lamp',label:'Lightings / Wall Lamp'},
-  {value:'Lightings > Ceiling Lamp',label:'Lightings / Ceiling Lamp'},
-  {value:'Lightings > Floor Lamp',label:'Lightings / Floor Lamp'},
-  {value:'Lightings > Table Lamp',label:'Lightings / Table Lamp'},
-  {value:'Lightings > Pendant Lamp',label:'Lightings / Pendant Lamp'},
-  {value:'Lightings > Wabisabi Lamp',label:'Lightings / Wabisabi Lamp'},
-  {value:'Lightings > Re.Lamp',label:'Lightings / Re.Lamp'},
-  {value:'Lightings > Classic Lamp',label:'Lightings / Classic Lamp'},
+  {value:'Wall Lamp',label:'Wall Lamp'},
+  {value:'Ceiling Lamp',label:'Ceiling Lamp'},
+  {value:'Floor Lamp',label:'Floor Lamp'},
+  {value:'Table Lamp',label:'Table Lamp'},
+  {value:'Pendant Lamp',label:'Pendant Lamp'},
+  {value:'Wabisabi Lamp',label:'Wabisabi Lamp'},
+  {value:'Re.Lamp',label:'Re.Lamp'},
+  {value:'Classic Lamp',label:'Classic Lamp'},
   {value:'Chairs',label:'Chairs'},
   {value:'Tables',label:'Tables'},
   {value:'Decorations',label:'Decorations'},
@@ -3120,14 +3120,135 @@ function websiteProductsTable(){
   }).join('');
   return `<div class="rounded-lg border border-black/10 bg-white p-3 shadow-sm"><div class="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between"><div><h2 class="text-base font-extrabold">Danh sách sản phẩm website</h2><p class="mt-1 text-xs font-semibold text-black/45">${rows.length}/${state.website.products.length} sản phẩm đang hiển thị.</p></div><div class="grid gap-2 sm:grid-cols-4 lg:min-w-[720px]"><input id="websiteSearch" value="${esc(state.website.search||'')}" placeholder="Tìm SKU, STK, tên, danh mục" class="h-10 rounded-md border border-black/15 px-3 text-sm font-bold outline-none focus:border-mint"/><select id="websiteStatusFilter" class="h-10 rounded-md border border-black/15 px-3 text-sm font-bold"><option value="">Tất cả trạng thái</option>${['Nháp','Sẵn sàng CSV','Đã đăng website','Tạm ẩn'].map(v=>`<option value="${esc(v)}" ${state.website.statusFilter===v?'selected':''}>${esc(v)}</option>`).join('')}</select><select id="websiteCategoryFilter" class="h-10 rounded-md border border-black/15 px-3 text-sm font-bold"><option value="">Tất cả danh mục</option>${websiteCategories().map(v=>`<option value="${esc(v)}" ${state.website.categoryFilter===v?'selected':''}>${esc(v)}</option>`).join('')}</select><select id="websiteMissingFilter" class="h-10 rounded-md border border-black/15 px-3 text-sm font-bold"><option value="">Tất cả dữ liệu</option><option value="missing_required" ${state.website.missingFilter==='missing_required'?'selected':''}>Thiếu dữ liệu</option><option value="missing_image" ${state.website.missingFilter==='missing_image'?'selected':''}>Thiếu ảnh</option><option value="missing_price" ${state.website.missingFilter==='missing_price'?'selected':''}>Thiếu giá</option></select></div></div><div class="mt-3 overflow-x-auto"><table class="w-full min-w-[1180px] table-fixed border-collapse text-sm"><colgroup><col style="width:76px"><col style="width:38%"><col style="width:22%"><col style="width:120px"><col style="width:170px"><col style="width:230px"></colgroup><thead><tr class="border-b border-black/10 text-left text-[11px] uppercase tracking-wide text-black/45"><th class="py-2 pr-3">Ảnh</th><th class="py-2 pr-3">Sản phẩm</th><th class="py-2 pr-3">Danh mục</th><th class="py-2 pr-3">Giá</th><th class="py-2 pr-3">Trạng thái</th><th class="py-2 text-right">Thao tác</th></tr></thead><tbody>${rows.length?rowHtml:`<tr><td colspan="6" class="py-8 text-center text-sm font-semibold text-black/45">Chưa có sản phẩm website. Bấm “Tạo mới” rồi nhập sản phẩm.</td></tr>`}</tbody></table></div></div>`;
 }
+
+/* MINMIN PATCH 2026-07-01: rút gọn danh mục, sửa nhanh Product Attributes, tối ưu đồng bộ WooCommerce */
+function websiteNormalizeCategoryName(value){
+  let v=String(value||'').trim();
+  v=v.replace(/^Lightings\s*[>\/]\s*/i,'').trim();
+  if(/^Lightings$/i.test(v))return '';
+  return v;
+}
+function websiteCategoryList(value){
+  return [...new Set(String(value||'').split(',').map(websiteNormalizeCategoryName).filter(Boolean))];
+}
+function websiteCategoryString(list){
+  return [...new Set((list||[]).map(websiteNormalizeCategoryName).filter(Boolean))].join(', ');
+}
+function websiteCategoryLabel(value){ return websiteCategoryList(value).join(', '); }
+function websiteCategoryIncludes(value,category){ return websiteCategoryList(value).includes(websiteNormalizeCategoryName(category)); }
+function websiteCategoryCsvValue(value){ return websiteCategoryString(websiteCategoryList(value)); }
+function websiteCategories(){ return [...new Set([...WEBSITE_CATEGORY_OPTIONS.map(x=>x.value),...(state.website?.products||[]).flatMap(p=>websiteCategoryList(p.category))])].filter(Boolean).sort((a,b)=>String(a).localeCompare(String(b),'vi')); }
+function websiteMissingFields(p){
+  const x=normalizeWebsiteProduct(p), m=[];
+  if(!x.sku)m.push('SKU');
+  if(!x.product_name_en&&!x.product_name_vi)m.push('Tên');
+  if(!x.category)m.push('Danh mục');
+  if(!x.featured_image_url)m.push('Ảnh đại diện');
+  if(!x.dimensions)m.push('Kích thước');
+  return m;
+}
+function websiteInlineAttributeFields(){
+  return WEBSITE_SIMPLE_ATTRIBUTES.map(([label,key])=>websiteInlineField(label,key)).join('');
+}
+function websiteInlineEditPanel(product){
+  const p=normalizeWebsiteProduct(product||{}), isOpen=String(state.website?.editingId||'')===String(p.id||''), missing=websiteMissingFields(p);
+  if(!isOpen)return'';
+  return `<tr class="border-b border-mint/20 bg-mint/5"><td colspan="6" class="p-3"><div class="rounded-lg border border-mint/20 bg-white p-3 shadow-sm"><div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between"><div><h3 class="text-sm font-extrabold">Sửa nhanh: ${esc(p.sku||p.product_name_en||'Sản phẩm')}</h3><p class="mt-1 text-xs font-bold ${missing.length?'text-orange-600':'text-mint'}">${missing.length?`Thiếu: ${esc(missing.join(', '))}`:'Dữ liệu chính đã đủ.'}</p></div><div class="flex flex-wrap gap-2"><button data-website-complete type="button" class="h-9 rounded-md bg-mint px-3 text-xs font-extrabold text-white">Hoàn tất</button><button data-website-cancel-edit type="button" class="h-9 rounded-md border border-black/10 bg-white px-3 text-xs font-extrabold text-ink">Đóng</button><button data-website-upload-woo="${esc(p.id)}" type="button" class="h-9 rounded-md border border-sky-300 bg-sky-50 px-3 text-xs font-extrabold text-sky-800">Đồng bộ dòng này</button></div></div><div class="mt-3 grid gap-2 md:grid-cols-4">${websiteInlineField('SKU / Mã web','sku')}${websiteInlineField('Mã Stock','stock_code')}${websiteInlineField('Tên EN','product_name_en')}${websiteInlineField('Tên VI','product_name_vi')}${websiteInlineField('Slug','slug')}<label class="grid min-w-0 gap-1"><span class="text-[10px] font-extrabold uppercase text-black/45">Trạng thái</span><select data-website-field="website_status" class="h-9 rounded-md border border-black/15 bg-white px-2 text-xs font-extrabold outline-none focus:border-mint">${['Nháp','Sẵn sàng CSV','Đã đăng website','Tạm ẩn'].map(v=>`<option value="${esc(v)}" ${state.website.current.website_status===v?'selected':''}>${esc(v)}</option>`).join('')}</select></label></div><div class="mt-3">${websiteCategorySelect()}</div><div class="mt-3 rounded-lg border border-black/10 bg-white p-3"><h2 class="text-sm font-extrabold">Product attributes</h2><div class="mt-3 grid gap-2 md:grid-cols-3">${websiteInlineAttributeFields()}</div></div></div></td></tr>`;
+}
+function websiteProductPayload(item,categoryIds=[],options={}){
+  const p=normalizeWebsiteProduct(item), includeImages=options.includeImages!==false;
+  const images=[p.featured_image_url,...(p.gallery_image_urls||[])].filter(Boolean).map(src=>({src}));
+  const attributes=websiteSimpleAttributePairs(p).map(([name,value])=>({name,visible:true,variation:false,options:[String(value)]}));
+  const payload={
+    name:p.product_name_en||p.product_name_vi||p.sku,
+    type:'simple',
+    sku:p.sku,
+    regular_price:websiteMoneyNumber(p.regular_price)?String(websiteMoneyNumber(p.regular_price)):'',
+    sale_price:websiteMoneyNumber(p.sale_price)?String(websiteMoneyNumber(p.sale_price)):'',
+    status:p.website_status==='Đã đăng website'?'publish':'draft',
+    short_description:p.short_description||'',
+    description:websiteWooDescription(p),
+    categories:(categoryIds||[]).map(id=>({id})),
+    attributes,
+    meta_data:[...(p.stock_code?[{key:'stock_code',value:p.stock_code}]:[]),...(p.category?[{key:'website_category_path',value:websiteCategoryString(websiteCategoryList(p.category))}]:[])]
+  };
+  if(includeImages)payload.images=images;
+  return payload;
+}
+async function uploadWebsiteProductToWoo(id,options={}){
+  state.website=normalizeWebsiteProducts(state.website||websiteProductsDefaults());
+  const item=state.website.products.find(x=>String(x.id)===String(id)||String(x.sku)===String(id));
+  if(!item)throw new Error('Không tìm thấy sản phẩm website.');
+  const bulk=!!options.bulk;
+  const includeImages=options.includeImages!==undefined?!!options.includeImages:true;
+  const persist=()=>{ saveWebsiteProducts(); if(!bulk)render(); };
+  item.wooStatus='Đang gửi WooCommerce';
+  item.wooProgress=Math.max(Number(item.wooProgress||0),10);
+  item.updated_at=new Date().toISOString();
+  persist();
+  try{
+    item.wooProgress=25; persist();
+    const normalizedCategory=websiteCategoryString(websiteCategoryList(item.category));
+    const categoryIds=await websiteWooCategoryIds(normalizedCategory);
+    item.wooProgress=45; persist();
+    const payload=websiteProductPayload({...item,category:normalizedCategory},categoryIds,{includeImages});
+    if(includeImages&&(!payload.images||!payload.images.length))throw new Error('Sản phẩm chưa có ảnh đại diện/gallery để upload.');
+    item.wooProgress=70; persist();
+    const data=item.wooProductId?await wooRequest(`products/${item.wooProductId}`,{method:'PUT',body:JSON.stringify(payload)}):await wooRequest('products',{method:'POST',body:JSON.stringify(payload)});
+    Object.assign(item,{wooProductId:data?.id||item.wooProductId||'',wooProductUrl:websiteProductWooUrl(data),website_product_url:websiteProductWooUrl(data)||item.website_product_url,wooStatus:'Đã đồng bộ WooCommerce',wooProgress:100,wooUploadedAt:new Date().toISOString(),website_status:'Đã đăng website',category:normalizedCategory,updated_at:new Date().toISOString()});
+    saveWebsiteProducts();
+    if(!bulk)render();
+    return data;
+  }catch(e){
+    const raw=String(e?.message||e||'Không rõ lỗi');
+    const msg=/load failed/i.test(raw)?'Lỗi: WooCommerce không tải được ảnh từ URL. Cần dùng ảnh có URL public trực tiếp trước khi đồng bộ.':`Lỗi: ${raw}`;
+    item.wooStatus=msg;
+    item.wooProgress=Math.max(Number(item.wooProgress||0),1);
+    item.updated_at=new Date().toISOString();
+    saveWebsiteProducts();
+    if(!bulk)render();
+    throw new Error(msg);
+  }
+}
+function websiteNeedsBulkUpload(p){
+  const x=normalizeWebsiteProduct(p);
+  if(!x.wooProductId)return !!x.featured_image_url;
+  if(String(x.wooStatus||'')==='Chưa đồng bộ sau chỉnh sửa')return true;
+  const updated=Date.parse(x.updated_at||0)||0, uploaded=Date.parse(x.wooUploadedAt||0)||0;
+  return updated>uploaded && String(x.wooStatus||'')!=='Đã đồng bộ WooCommerce';
+}
+async function uploadAllWebsiteProductsToWoo(){
+  const items=websiteProductsForExport(state.website?.products||[]).filter(websiteNeedsBulkUpload);
+  if(!items.length)throw new Error('Không có sản phẩm mới hoặc sản phẩm đã chỉnh sửa cần đồng bộ. Sản phẩm đã đăng website sẽ không gửi lại để tránh chậm.');
+  let ok=0, fail=0, last='';
+  for(let i=0;i<items.length;i++){
+    const item=items[i], live=state.website.products.find(x=>String(x.id)===String(item.id));
+    state.websiteWoo.status=`Đang đồng bộ ${i+1}/${items.length}: ${item.sku||item.product_name_en||''}`;
+    saveWebsiteWooConfig();
+    if(live){ live.wooStatus='Đang gửi WooCommerce'; live.wooProgress=10; live.updated_at=new Date().toISOString(); saveWebsiteProducts(); }
+    render();
+    try{
+      await uploadWebsiteProductToWoo(item.id,{bulk:true,includeImages:!item.wooProductId});
+      ok++;
+    }catch(e){
+      fail++; last=e.message||String(e); console.warn(e);
+    }
+    state.websiteWoo.status=`Đã xử lý ${i+1}/${items.length}. Thành công ${ok}, lỗi ${fail}.`;
+    saveWebsiteWooConfig(); saveWebsiteProducts(); render();
+  }
+  state.websiteWoo.status=`Upload WooCommerce xong: ${ok} thành công, ${fail} lỗi${last?'. Lỗi cuối: '+last:''}`;
+  saveWebsiteWooConfig(); render();
+  alert(state.websiteWoo.status);
+}
+
 function renderWebsiteWooConfig(){
   const c=normalizeWebsiteWooConfig(state.websiteWoo||websiteWooDefaults());
   return `<div class="rounded-lg border border-sky-200 bg-sky-50 p-3 shadow-sm"><div class="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between"><div><h2 class="text-base font-extrabold text-ink">Kết nối WooCommerce</h2><p class="mt-1 text-xs font-bold text-black/45">Website URL và key được tự lưu trên máy này ngay khi nhập.</p><p class="mt-1 text-xs font-extrabold ${websiteWooReady()?'text-mint':'text-coral'}">${esc(c.status||(websiteWooReady()?'Đã nhập đủ thông tin. Bấm “Kết nối + tải web” để kéo sản phẩm từ website về app.':'Chưa cấu hình WooCommerce.'))}</p></div><div class="flex flex-wrap gap-2"><button id="testWooConnection" type="button" class="h-10 rounded-md border border-sky-300 bg-white px-3 text-sm font-extrabold text-sky-800 hover:bg-sky-100">Kết nối + tải web</button><button id="importWooProducts" type="button" class="h-10 rounded-md border border-sky-300 bg-white px-3 text-sm font-extrabold text-sky-800 hover:bg-sky-100">Đồng bộ lại</button><button id="uploadAllWoo" type="button" class="h-10 rounded-md bg-sky-600 px-3 text-sm font-extrabold text-white hover:bg-sky-700">Đồng bộ lên web</button></div></div><div class="mt-3 grid gap-2 lg:grid-cols-3"><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/45">Website URL</span><input data-woo-config="siteUrl" value="${esc(c.siteUrl||'https://minmin-lifestyle.com')}" placeholder="https://minmin-lifestyle.com" class="h-10 rounded-md border border-black/15 bg-white px-3 text-sm font-bold outline-none focus:border-sky-400"/></label><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/45">Consumer Key</span><input data-woo-config="consumerKey" type="password" value="${esc(c.consumerKey)}" placeholder="ck_..." autocomplete="off" class="h-10 rounded-md border border-black/15 bg-white px-3 text-sm font-bold outline-none focus:border-sky-400"/></label><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/45">Consumer Secret</span><input data-woo-config="consumerSecret" type="password" value="${esc(c.consumerSecret)}" placeholder="cs_..." autocomplete="off" class="h-10 rounded-md border border-black/15 bg-white px-3 text-sm font-bold outline-none focus:border-sky-400"/></label></div></div>`;
 }
 function renderWebsiteProductsTab(){
   state.website=normalizeWebsiteProducts(state.website||websiteProductsDefaults());
-  const p=normalizeWebsiteProduct(state.website.current||{}), editing=!!state.website.editingId, ready=state.website.products.filter(x=>x.featured_image_url&&websiteMoneyNumber(x.regular_price)).length;
-  return `<section class="mx-auto grid max-w-7xl gap-4 px-4 py-4 sm:px-6 lg:px-8">${renderWebsiteWooConfig()}<div class="rounded-lg border border-black/10 bg-white p-3 shadow-sm"><div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between"><div><h1 class="text-xl font-extrabold">Website sản phẩm</h1><p class="mt-1 text-sm text-black/55">Module này dùng để tạo sản phẩm mới cho website, có thể link về kho bằng mã Stock STK. Ảnh đại diện crop 1:1; gallery giữ tỷ lệ gốc.</p><p class="mt-1 text-xs font-bold text-black/40">${ready}/${state.website.products.length} sản phẩm đủ ảnh và giá để xuất WooCommerce.</p><p class="mt-1 text-xs font-bold text-sky-700">${state.website.lastWooSyncAt?'Đã đồng bộ Woo: '+new Date(state.website.lastWooSyncAt).toLocaleString('vi-VN'):'Chưa tải sản phẩm từ WooCommerce vào app.'}</p></div><div class="flex flex-wrap gap-2"><button id="websiteNew" type="button" class="h-10 rounded-md border border-black/10 bg-white px-3 text-sm font-extrabold text-ink">Tạo mới</button><button id="websiteAutoName" type="button" class="h-10 rounded-md border border-mint/25 bg-mint/10 px-3 text-sm font-extrabold text-mint">Tự đặt mã/tên</button><button id="websiteSave" type="button" class="h-10 rounded-md bg-gold px-4 text-sm font-extrabold text-ink hover:bg-[#ffd76a]">${editing?'Hoàn tất':'Lưu sản phẩm'}</button><button id="exportWooCsv" type="button" class="h-10 rounded-md bg-ink px-4 text-sm font-extrabold text-white hover:bg-black">Xuất CSV đang lọc</button><button id="exportWooCsvAll" type="button" class="h-10 rounded-md border border-mint/25 bg-white px-3 text-sm font-extrabold text-mint">Xuất tất cả</button></div></div></div><div class="grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(360px,0.75fr)]"><div class="grid gap-3"><div class="rounded-lg border border-black/10 bg-white p-3 shadow-sm"><h2 class="text-base font-extrabold">${editing?'Sửa sản phẩm':'Tạo sản phẩm mới'}</h2><div class="mt-3 grid gap-3 lg:grid-cols-3">${websiteField('SKU / Mã website','sku')}${websiteStockField()}${websiteField('Tên EN','product_name_en')}${websiteField('Tên VI','product_name_vi')}${websiteField('Slug','slug')}${websiteCategorySelect()}${websiteStatusSelect()}${websiteField('Tags','tags', 'text', true)}${websiteField('Website URL','website_product_url')}</div></div><div class="rounded-lg border border-black/10 bg-white p-3 shadow-sm"><h2 class="text-base font-extrabold">Product attributes</h2><div class="mt-3 grid gap-3 lg:grid-cols-3">${websiteSimpleAttributeFields()}</div></div>${websiteImagesPanel()}</div><div class="grid content-start gap-3">${websitePreviewPanel()}</div></div>${websiteProductsTable()}</section>`;
+  const p=normalizeWebsiteProduct(state.website.current||{}), editing=!!state.website.editingId, ready=state.website.products.filter(x=>!websiteMissingFields(x).length).length;
+  return `<section class="mx-auto grid max-w-7xl gap-4 px-4 py-4 sm:px-6 lg:px-8">${renderWebsiteWooConfig()}<div class="rounded-lg border border-black/10 bg-white p-3 shadow-sm"><div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between"><div><h1 class="text-xl font-extrabold">Website sản phẩm</h1><p class="mt-1 text-sm text-black/55">Module này dùng để tạo sản phẩm mới cho website, có thể link về kho bằng mã Stock STK. Ảnh đại diện crop 1:1; gallery giữ tỷ lệ gốc.</p><p class="mt-1 text-xs font-bold text-black/40">${ready}/${state.website.products.length} sản phẩm đủ dữ liệu chính để đồng bộ WooCommerce.</p><p class="mt-1 text-xs font-bold text-sky-700">${state.website.lastWooSyncAt?'Đã đồng bộ Woo: '+new Date(state.website.lastWooSyncAt).toLocaleString('vi-VN'):'Chưa tải sản phẩm từ WooCommerce vào app.'}</p></div><div class="flex flex-wrap gap-2"><button id="websiteNew" type="button" class="h-10 rounded-md border border-black/10 bg-white px-3 text-sm font-extrabold text-ink">Tạo mới</button><button id="websiteAutoName" type="button" class="h-10 rounded-md border border-mint/25 bg-mint/10 px-3 text-sm font-extrabold text-mint">Tự đặt mã/tên</button><button id="websiteSave" type="button" class="h-10 rounded-md bg-gold px-4 text-sm font-extrabold text-ink hover:bg-[#ffd76a]">${editing?'Hoàn tất':'Lưu sản phẩm'}</button><button id="exportWooCsv" type="button" class="h-10 rounded-md bg-ink px-4 text-sm font-extrabold text-white hover:bg-black">Xuất CSV đang lọc</button><button id="exportWooCsvAll" type="button" class="h-10 rounded-md border border-mint/25 bg-white px-3 text-sm font-extrabold text-mint">Xuất tất cả</button></div></div></div><div class="grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(360px,0.75fr)]"><div class="grid gap-3"><div class="rounded-lg border border-black/10 bg-white p-3 shadow-sm"><h2 class="text-base font-extrabold">${editing?'Sửa sản phẩm':'Tạo sản phẩm mới'}</h2><div class="mt-3 grid gap-3 lg:grid-cols-3">${websiteField('SKU / Mã website','sku')}${websiteStockField()}${websiteField('Tên EN','product_name_en')}${websiteField('Tên VI','product_name_vi')}${websiteField('Slug','slug')}${websiteCategorySelect()}${websiteStatusSelect()}${websiteField('Tags','tags', 'text', true)}${websiteField('Website URL','website_product_url')}</div></div><div class="rounded-lg border border-black/10 bg-white p-3 shadow-sm"><h2 class="text-base font-extrabold">Product attributes</h2><div class="mt-3 grid gap-3 lg:grid-cols-3">${websiteSimpleAttributeFields()}</div></div>${websiteImagesPanel()}</div><div class="grid content-start gap-3">${websitePreviewPanel()}</div></div>${websiteProductsTable()}</section>`;
 }
 function bindWebsiteProducts(){
   document.querySelectorAll('[data-woo-config]').forEach(el=>{ const update=()=>{ state.websiteWoo=normalizeWebsiteWooConfig(state.websiteWoo||websiteWooDefaults()); state.websiteWoo[el.dataset.wooConfig]=el.value; saveWebsiteWooConfig(); }; el.oninput=update; el.onchange=()=>{update(); render();}; });
