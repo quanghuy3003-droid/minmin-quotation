@@ -6954,6 +6954,369 @@ html,body{
 
 /* MINMIN PATCH 2026-07-02B: Bỏ tên đại diện Bên A dưới phần chữ ký để khách tự ký/đóng dấu. */
 
+
+/* MINMIN PATCH 2026-07-02C
+   Tăng size chữ mục Hồ sơ thêm 1 chút so với bản trước.
+   Giữ nguyên cấu trúc app, chỉ ghi đè CSS in/preview hồ sơ. */
+function documentPrintCss(){
+  return `@page{size:A4 portrait;margin:0}
+html,body{
+  margin:0;
+  background:#fff;
+  color:#111;
+  font-family:"Times New Roman",Times,serif;
+  -webkit-print-color-adjust:exact;
+  print-color-adjust:exact;
+}
+.doc-preview-shell{
+  max-height:78vh;
+  overflow:auto;
+  background:#ececea;
+  padding:14px;
+  display:grid;
+  gap:12px;
+  justify-items:center;
+}
+.doc-page{
+  box-sizing:border-box;
+  width:794px;
+  min-height:1123px;
+  margin:0 auto;
+  background:#fff;
+  padding:24px 40px 28px;
+  box-shadow:0 14px 40px rgba(0,0,0,.16);
+  font-size:13.8px;
+  line-height:1.42;
+  color:#111;
+  position:relative;
+  break-after:page;
+  page-break-after:always;
+  overflow:hidden;
+}
+
+/* Các trang chữ của hợp đồng dùng cùng cỡ chữ */
+.doc-page.contract-cover,
+.doc-page.contract-terms,
+.doc-page.contract-terms.terms-last,
+.doc-page.contract-sign,
+.doc-page.textpage{
+  padding:24px 42px 28px;
+  font-size:13.8px;
+  line-height:1.42;
+}
+
+/* Trang bảng sản phẩm riêng vì nhiều cột */
+.doc-page.contract-products,
+.doc-page.compact{
+  padding:13px 7px 23px;
+  font-size:8.45px;
+  line-height:1.12;
+}
+
+.doc-page:last-child{
+  break-after:auto;
+  page-break-after:auto;
+}
+.doc-page-number{
+  position:absolute;
+  left:0;
+  right:0;
+  bottom:7px;
+  text-align:center;
+  font-size:10.8px;
+  color:#111;
+}
+
+.doc-center{text-align:center}
+.doc-right{text-align:right}
+.doc-bold{font-weight:700}
+.doc-extra{font-weight:800}
+.doc-italic{font-style:italic}
+.doc-red{color:#c00000}
+.doc-uppercase{text-transform:uppercase}
+
+.doc-title{
+  margin:7px 0 3px;
+  text-align:center;
+  font-size:24px;
+  font-weight:800;
+  letter-spacing:.12px;
+}
+.doc-subtitle{
+  text-align:center;
+  font-size:13.8px;
+  margin:0 0 7px;
+}
+.doc-section-title,
+.doc-section-title.no-underline{
+  margin:5px 0 3px;
+  font-size:13.8px;
+  line-height:1.23;
+  font-weight:800;
+  text-transform:uppercase;
+  text-decoration:none;
+}
+.doc-mini-title{
+  margin:4px 0 2px;
+  font-size:13.8px;
+  font-weight:700;
+}
+
+.contract-cover .doc-title{
+  font-size:24px;
+  margin-top:7px;
+}
+.contract-cover .doc-bullets{
+  margin-top:7px;
+}
+.contract-cover .doc-party-block{
+  margin-top:6px;
+}
+
+.doc-small{font-size:13.8px}
+.doc-muted{color:#555}
+.doc-p{
+  margin:2.8px 0;
+  font-size:13.8px;
+}
+.doc-line{
+  line-height:1.42;
+}
+.doc-tight{
+  font-size:13.8px;
+  line-height:1.42;
+}
+.doc-tight p{
+  margin:2.8px 0;
+}
+.doc-indent{
+  text-indent:18px;
+}
+.doc-bullets{
+  margin:3px 0 5px 18px;
+  padding:0;
+}
+.doc-bullets li{
+  margin:1.8px 0;
+  font-size:13.8px;
+  line-height:1.38;
+}
+.contract-terms .doc-bullets{
+  margin:3px 0 5px 18px;
+}
+.contract-terms .doc-bullets li{
+  margin:1.8px 0;
+}
+.doc-letter-list{
+  margin:3px 0 5px 22px;
+  padding:0;
+}
+.doc-letter-list li{
+  margin:1.8px 0;
+  font-size:13.8px;
+}
+
+.doc-party-block{
+  display:grid;
+  gap:3px;
+  margin-top:5px;
+}
+.doc-party-row{
+  display:grid;
+  grid-template-columns:100px 1fr;
+  gap:6px;
+}
+.contract-cover .doc-party-row{
+  grid-template-columns:92px 1fr;
+}
+
+.doc-signatures{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:40px;
+  margin-top:34px;
+  text-align:center;
+  font-weight:800;
+  font-size:13.8px;
+}
+.doc-sign-spacer{
+  height:86px;
+}
+
+.doc-table{
+  width:100%;
+  border-collapse:collapse;
+  table-layout:fixed;
+  margin-top:5px;
+  page-break-inside:auto;
+}
+.doc-table th,
+.doc-table td{
+  border:1px solid #111;
+  padding:2px;
+  vertical-align:middle;
+  overflow-wrap:break-word;
+}
+.doc-table th{
+  font-weight:800;
+  text-align:center;
+  background:#fff;
+}
+.doc-table tr{
+  page-break-inside:avoid;
+  page-break-after:auto;
+}
+.doc-table .num{
+  text-align:right;
+  white-space:nowrap;
+}
+.doc-table .center{
+  text-align:center;
+}
+.doc-product-table{
+  font-size:8.45px;
+  line-height:1.1;
+}
+.doc-product-table th{
+  font-size:8.05px;
+  line-height:1.02;
+  padding:2px 1px;
+}
+.doc-product-table td{
+  padding:1.8px;
+}
+.doc-product-table .doc-desc{
+  font-size:8.35px;
+  line-height:1.1;
+}
+.doc-photo{
+  width:76px;
+  height:58px;
+  object-fit:contain;
+  display:block;
+  margin:auto;
+}
+.contract-products .doc-photo{
+  width:88px;
+  height:72px;
+}
+.doc-desc{
+  line-height:1.12;
+  text-align:left;
+}
+.doc-product-row{height:198px}
+.products-1 .doc-product-row{height:410px}
+.products-2 .doc-product-row{height:282px}
+.products-3 .doc-product-row{height:192px}
+.products-last.products-1 .doc-product-row{height:284px}
+.products-last.products-2 .doc-product-row{height:210px}
+.products-last.products-3 .doc-product-row{height:168px}
+.doc-ship-row{height:40px}
+.doc-total-row td{
+  padding-top:2px;
+  padding-bottom:2px;
+}
+.doc-total-label{
+  text-align:left;
+  font-weight:800;
+  background:#bfbfbf;
+}
+.doc-total-value{
+  text-align:right;
+  font-weight:800;
+  white-space:nowrap;
+  background:#bfbfbf;
+}
+.doc-total-lite{
+  font-style:italic;
+  font-weight:400;
+}
+.doc-total-hot{
+  color:#c00000;
+  font-weight:800;
+}
+.doc-empty{background:#fff}
+.doc-note-list{
+  margin:4px 0 0 0;
+  padding-left:0;
+  list-style:none;
+}
+.doc-note-list li{
+  margin:2px 0;
+}
+.doc-product-summary{
+  margin:10px 36px 0;
+  font-size:11.5px;
+  line-height:1.35;
+}
+.doc-product-summary p{
+  margin:3px 0;
+}
+.doc-contract-table-wrap{
+  width:100%;
+  overflow:hidden;
+}
+.doc-continuation-note{
+  font-size:10.4px;
+  margin:0 0 3px 30px;
+  font-style:italic;
+  color:#555;
+}
+.doc-page-break-safe{
+  break-inside:avoid;
+  page-break-inside:avoid;
+}
+
+@media print{
+  html,body{
+    background:#fff;
+    width:210mm;
+    min-height:297mm;
+  }
+  .doc-preview-shell{
+    display:block;
+    max-height:none;
+    overflow:visible;
+    background:#fff;
+    padding:0;
+  }
+  .doc-page{
+    width:210mm;
+    min-height:297mm;
+    margin:0;
+    box-shadow:none;
+    padding:6.5mm 10.5mm 7.5mm;
+    break-after:page;
+    page-break-after:always;
+    overflow:hidden;
+  }
+  .doc-page.contract-cover,
+  .doc-page.contract-terms,
+  .doc-page.contract-terms.terms-last,
+  .doc-page.contract-sign,
+  .doc-page.textpage{
+    padding:6.5mm 10.5mm 7.5mm;
+    font-size:13.8px;
+    line-height:1.42;
+  }
+  .doc-page.contract-products,
+  .doc-page.compact{
+    padding:3.8mm 1.9mm 6.8mm;
+  }
+  .doc-page:last-child{
+    break-after:auto;
+    page-break-after:auto;
+  }
+  .doc-page-number{
+    bottom:2.3mm;
+  }
+  .no-print{
+    display:none!important;
+  }
+}`;
+}
+
+
 initApp();
     </script>
   </body>
