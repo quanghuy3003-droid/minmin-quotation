@@ -5203,6 +5203,117 @@ async function initApp(){
     return result;
   };
 })();
+
+
+/* MINMIN PATCH 2026-07-01F: Đưa Product Attributes lên WooCommerce Short description */
+(function(){
+  function minminAttrTextValue(value){
+    return String(value || '').replace(/\s+/g, ' ').trim();
+  }
+  function minminWebsiteAttributeRows(product){
+    const p = normalizeWebsiteProduct(product || {});
+    return (WEBSITE_SIMPLE_ATTRIBUTES || [])
+      .map(([label, key]) => [label, minminAttrTextValue(p[key])])
+      .filter(([, value]) => value);
+  }
+  function minminProductAttributesShortHtml(product){
+    const rows = minminWebsiteAttributeRows(product);
+    if(!rows.length) return '';
+    return `<ul class="minmin-product-attributes">${rows.map(([label, value]) => `<li><strong>${esc(label)}:</strong> ${esc(value)}</li>`).join('')}</ul>`;
+  }
+  function minminProductAttributesShortPlain(product){
+    const rows = minminWebsiteAttributeRows(product);
+    return rows.map(([label, value]) => `${label}: ${value}`).join('\n');
+  }
+  function minminManualShortDescription(product){
+    return String(normalizeWebsiteProduct(product || {}).short_description || '').trim();
+  }
+  function minminWebsiteShortDescriptionForWoo(product){
+    const manual = minminManualShortDescription(product);
+    const attrs = minminProductAttributesShortHtml(product);
+    return [manual, attrs].filter(Boolean).join('\n');
+  }
+  function minminWebsiteShortDescriptionPlain(product){
+    const manual = stripHtml(minminManualShortDescription(product));
+    const attrs = minminProductAttributesShortPlain(product);
+    return [manual, attrs].filter(Boolean).join('\n');
+  }
+
+  window.minminWebsiteAttributeRows = minminWebsiteAttributeRows;
+  window.minminProductAttributesShortHtml = minminProductAttributesShortHtml;
+  window.minminWebsiteShortDescriptionForWoo = minminWebsiteShortDescriptionForWoo;
+
+  const previousWebsiteMissingFieldsAttrShort = websiteMissingFields;
+  websiteMissingFields = function(product){
+    const missing = previousWebsiteMissingFieldsAttrShort(product) || [];
+    if(minminWebsiteAttributeRows(product).length){
+      return missing.filter(x => x !== 'Mô tả ngắn');
+    }
+    return missing;
+  };
+
+  const previousWebsiteWooDescriptionAttrShort = websiteWooDescription;
+  websiteWooDescription = function(product){
+    const p = normalizeWebsiteProduct(product || {});
+    // Product Attributes đã được đưa lên Short description, nên phần Description chỉ giữ mô tả dài để tránh lặp nội dung trên website.
+    return String(p.long_description || '').trim();
+  };
+
+  const previousWebsiteProductPayloadAttrShort = websiteProductPayload;
+  websiteProductPayload = function(item, categoryIds = [], options = {}){
+    const payload = previousWebsiteProductPayloadAttrShort.apply(this, arguments) || {};
+    const shortHtml = minminWebsiteShortDescriptionForWoo(item);
+    if(shortHtml) payload.short_description = shortHtml;
+    const longHtml = websiteWooDescription(item);
+    if(longHtml) payload.description = longHtml;
+    else payload.description = '';
+    return payload;
+  };
+
+  if(typeof minminWooFastPayload === 'function'){
+    const previousMinminWooFastPayloadAttrShort = minminWooFastPayload;
+    minminWooFastPayload = function(item, opts = {}){
+      const payload = previousMinminWooFastPayloadAttrShort.apply(this, arguments) || {};
+      const shortHtml = minminWebsiteShortDescriptionForWoo(item);
+      if(shortHtml) payload.short_description = shortHtml;
+      const longHtml = websiteWooDescription(item);
+      if(longHtml) payload.description = longHtml;
+      else payload.description = '';
+      return payload;
+    };
+  }
+
+  const previousBuildWebsiteWooCsvAttrShort = buildWebsiteWooCsv;
+  buildWebsiteWooCsv = function(items){
+    const products = websiteProductsForExport(items);
+    const cols = ['Type','SKU','Name','Published','Is featured?','Visibility in catalog','Short description','Description','Tax status','In stock?','Regular price','Sale price','Categories','Tags','Images','Attribute 1 name','Attribute 1 value(s)','Attribute 1 visible','Attribute 1 global','Attribute 2 name','Attribute 2 value(s)','Attribute 2 visible','Attribute 2 global','Attribute 3 name','Attribute 3 value(s)','Attribute 3 visible','Attribute 3 global','Attribute 4 name','Attribute 4 value(s)','Attribute 4 visible','Attribute 4 global','Attribute 5 name','Attribute 5 value(s)','Attribute 5 visible','Attribute 5 global','Attribute 6 name','Attribute 6 value(s)','Attribute 6 visible','Attribute 6 global','Meta: stock_code','Meta: seo_title','Meta: seo_description'];
+    const rows = products.map(p => {
+      const images = [p.featured_image_url, ...(p.gallery_image_urls || [])].filter(Boolean).join(', ');
+      return ['simple',p.sku,p.product_name_en||p.product_name_vi||p.sku,p.website_status==='Đã đăng website'?'1':'0','0','visible',minminWebsiteShortDescriptionForWoo(p),websiteWooDescription(p),'taxable','1',websiteMoneyNumber(p.regular_price)||'',websiteMoneyNumber(p.sale_price)||'',websiteCategoryCsvValue(p.category),p.tags,images,'Lampshade material',p.shade_material,'1','0','Lamp body material',p.body_material,'1','0','Light Color',p.color_temperature,'1','0','Colors',p.color,'1','0','Light source type',p.bulb_type,'1','0','Size',p.dimensions,'1','0',p.stock_code,p.seo_title,p.seo_description];
+    });
+    return [cols.map(csvCell).join(','), ...rows.map(r => r.map(csvCell).join(','))].join('\n');
+  };
+
+  const previousWebsitePreviewPanelAttrShort = websitePreviewPanel;
+  websitePreviewPanel = function(){
+    const p = normalizeWebsiteProduct(state.website?.current || {});
+    const html = previousWebsitePreviewPanelAttrShort.apply(this, arguments);
+    const shortPlain = minminWebsiteShortDescriptionPlain(p);
+    if(!shortPlain) return html;
+    const box = `<div class="rounded-lg border border-mint/20 bg-mint/5 p-3"><div class="text-[11px] font-bold uppercase tracking-wide text-mint">Mô tả ngắn sẽ hiện trên web</div><pre class="mt-2 whitespace-pre-wrap break-words text-xs font-bold leading-relaxed text-ink">${esc(shortPlain)}</pre></div>`;
+    return String(html).replace('</div></div>', `${box}</div></div>`);
+  };
+
+  const previousRenderWebsiteProductsTabAttrShort = renderWebsiteProductsTab;
+  renderWebsiteProductsTab = function(){
+    const html = previousRenderWebsiteProductsTabAttrShort.apply(this, arguments);
+    return String(html)
+      .replace('Product attributes</h2><p class="mt-0.5 text-[11px] font-bold text-black/40">Dropdown chỉ lưu khi bấm “Lưu sản phẩm” hoặc “Hoàn tất”, không lưu từng ký tự khi đang gõ.</p>', 'Product attributes</h2><p class="mt-0.5 text-[11px] font-bold text-black/40">Các dòng này sẽ tự đưa lên website trong mục Mô tả ngắn sản phẩm khi đồng bộ Woo/CSV.</p>')
+      .replace('Product attributes</h2><div class="mt-3 grid gap-3 lg:grid-cols-3">', 'Product attributes</h2><p class="mt-1 text-xs font-bold text-mint">Các thuộc tính này sẽ hiện ở mục Mô tả ngắn trên website.</p><div class="mt-3 grid gap-3 lg:grid-cols-3">')
+      .replace('Dropdown lấy từ các sản phẩm đã bấm Lưu/Hoàn tất, không lưu từng ký tự khi đang gõ.', 'Dropdown lấy từ sản phẩm đã Lưu/Hoàn tất. Khi đồng bộ, Product Attributes sẽ tự nằm trong Mô tả ngắn trên website.');
+  };
+})();
+
 initApp();
     </script>
   </body>
