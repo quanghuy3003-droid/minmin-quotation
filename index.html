@@ -5219,11 +5219,14 @@ async function initApp(){
   function minminProductAttributesShortHtml(product){
     const rows = minminWebsiteAttributeRows(product);
     if(!rows.length) return '';
-    return `<ul class="minmin-product-attributes">${rows.map(([label, value]) => `<li><strong>${esc(label)}:</strong> ${esc(value)}</li>`).join('')}</ul>`;
+    const title = '<p class="minmin-product-attributes-title"><strong>Product Attributes</strong></p>';
+    const list = `<ul class="minmin-product-attributes">${rows.map(([label, value]) => `<li><strong>${esc(label)}:</strong> ${esc(value)}</li>`).join('')}</ul>`;
+    return title + list;
   }
   function minminProductAttributesShortPlain(product){
     const rows = minminWebsiteAttributeRows(product);
-    return rows.map(([label, value]) => `${label}: ${value}`).join('\n');
+    if(!rows.length) return '';
+    return ['Product Attributes', ...rows.map(([label, value]) => `${label}: ${value}`)].join('\n');
   }
   function minminManualShortDescription(product){
     return String(normalizeWebsiteProduct(product || {}).short_description || '').trim();
