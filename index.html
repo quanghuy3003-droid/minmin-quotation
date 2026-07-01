@@ -4576,6 +4576,390 @@ function websiteInlineEditPanel(product){
 })();
 
 
+
+/* MINMIN PATCH 2026-07-01D: 300 product names + no-duplicate auto naming */
+var MINMIN_WEBSITE_NAME_CURSOR_KEY = 'minmin-website-name-cursor-v1';
+var MINMIN_WEBSITE_NAME_POOL_300 = [
+  "Aira Arc",
+  "Aira Beam",
+  "Aira Dome",
+  "Aira Line",
+  "Aira Muse",
+  "Aira Pearl",
+  "Alva Arc",
+  "Alva Beam",
+  "Alva Dome",
+  "Alva Line",
+  "Alva Muse",
+  "Alva Pearl",
+  "Amora Arc",
+  "Amora Beam",
+  "Amora Dome",
+  "Amora Line",
+  "Amora Muse",
+  "Amora Pearl",
+  "Arlo Arc",
+  "Arlo Beam",
+  "Arlo Dome",
+  "Arlo Line",
+  "Arlo Muse",
+  "Arlo Pearl",
+  "Astra Arc",
+  "Astra Beam",
+  "Astra Dome",
+  "Astra Line",
+  "Astra Muse",
+  "Astra Pearl",
+  "Aurea Arc",
+  "Aurea Beam",
+  "Aurea Dome",
+  "Aurea Line",
+  "Aurea Muse",
+  "Aurea Pearl",
+  "Avia Arc",
+  "Avia Beam",
+  "Avia Dome",
+  "Avia Line",
+  "Avia Muse",
+  "Avia Pearl",
+  "Belia Arc",
+  "Belia Beam",
+  "Belia Dome",
+  "Belia Line",
+  "Belia Muse",
+  "Belia Pearl",
+  "Brisa Arc",
+  "Brisa Beam",
+  "Brisa Dome",
+  "Brisa Line",
+  "Brisa Muse",
+  "Brisa Pearl",
+  "Calia Arc",
+  "Calia Beam",
+  "Calia Dome",
+  "Calia Line",
+  "Calia Muse",
+  "Calia Pearl",
+  "Cielo Arc",
+  "Cielo Beam",
+  "Cielo Dome",
+  "Cielo Line",
+  "Cielo Muse",
+  "Cielo Pearl",
+  "Dalia Arc",
+  "Dalia Beam",
+  "Dalia Dome",
+  "Dalia Line",
+  "Dalia Muse",
+  "Dalia Pearl",
+  "Elara Arc",
+  "Elara Beam",
+  "Elara Dome",
+  "Elara Line",
+  "Elara Muse",
+  "Elara Pearl",
+  "Elio Arc",
+  "Elio Beam",
+  "Elio Dome",
+  "Elio Line",
+  "Elio Muse",
+  "Elio Pearl",
+  "Elys Arc",
+  "Elys Beam",
+  "Elys Dome",
+  "Elys Line",
+  "Elys Muse",
+  "Elys Pearl",
+  "Enna Arc",
+  "Enna Beam",
+  "Enna Dome",
+  "Enna Line",
+  "Enna Muse",
+  "Enna Pearl",
+  "Fira Arc",
+  "Fira Beam",
+  "Fira Dome",
+  "Fira Line",
+  "Fira Muse",
+  "Fira Pearl",
+  "Flora Arc",
+  "Flora Beam",
+  "Flora Dome",
+  "Flora Line",
+  "Flora Muse",
+  "Flora Pearl",
+  "Gaia Arc",
+  "Gaia Beam",
+  "Gaia Dome",
+  "Gaia Line",
+  "Gaia Muse",
+  "Gaia Pearl",
+  "Halo Arc",
+  "Halo Beam",
+  "Halo Dome",
+  "Halo Line",
+  "Halo Muse",
+  "Halo Pearl",
+  "Iris Arc",
+  "Iris Beam",
+  "Iris Dome",
+  "Iris Line",
+  "Iris Muse",
+  "Iris Pearl",
+  "Kaia Arc",
+  "Kaia Beam",
+  "Kaia Dome",
+  "Kaia Line",
+  "Kaia Muse",
+  "Kaia Pearl",
+  "Liora Arc",
+  "Liora Beam",
+  "Liora Dome",
+  "Liora Line",
+  "Liora Muse",
+  "Liora Pearl",
+  "Luma Arc",
+  "Luma Beam",
+  "Luma Dome",
+  "Luma Line",
+  "Luma Muse",
+  "Luma Pearl",
+  "Lyra Arc",
+  "Lyra Beam",
+  "Lyra Dome",
+  "Lyra Line",
+  "Lyra Muse",
+  "Lyra Pearl",
+  "Maia Arc",
+  "Maia Beam",
+  "Maia Dome",
+  "Maia Line",
+  "Maia Muse",
+  "Maia Pearl",
+  "Mira Arc",
+  "Mira Beam",
+  "Mira Dome",
+  "Mira Line",
+  "Mira Muse",
+  "Mira Pearl",
+  "Nara Arc",
+  "Nara Beam",
+  "Nara Dome",
+  "Nara Line",
+  "Nara Muse",
+  "Nara Pearl",
+  "Noa Arc",
+  "Noa Beam",
+  "Noa Dome",
+  "Noa Line",
+  "Noa Muse",
+  "Noa Pearl",
+  "Nora Arc",
+  "Nora Beam",
+  "Nora Dome",
+  "Nora Line",
+  "Nora Muse",
+  "Nora Pearl",
+  "Oria Arc",
+  "Oria Beam",
+  "Oria Dome",
+  "Oria Line",
+  "Oria Muse",
+  "Oria Pearl",
+  "Rhea Arc",
+  "Rhea Beam",
+  "Rhea Dome",
+  "Rhea Line",
+  "Rhea Muse",
+  "Rhea Pearl",
+  "Rina Arc",
+  "Rina Beam",
+  "Rina Dome",
+  "Rina Line",
+  "Rina Muse",
+  "Rina Pearl",
+  "Selia Arc",
+  "Selia Beam",
+  "Selia Dome",
+  "Selia Line",
+  "Selia Muse",
+  "Selia Pearl",
+  "Sola Arc",
+  "Sola Beam",
+  "Sola Dome",
+  "Sola Line",
+  "Sola Muse",
+  "Sola Pearl",
+  "Talia Arc",
+  "Talia Beam",
+  "Talia Dome",
+  "Talia Line",
+  "Talia Muse",
+  "Talia Pearl",
+  "Thea Arc",
+  "Thea Beam",
+  "Thea Dome",
+  "Thea Line",
+  "Thea Muse",
+  "Thea Pearl",
+  "Vela Arc",
+  "Vela Beam",
+  "Vela Dome",
+  "Vela Line",
+  "Vela Muse",
+  "Vela Pearl",
+  "Vera Arc",
+  "Vera Beam",
+  "Vera Dome",
+  "Vera Line",
+  "Vera Muse",
+  "Vera Pearl",
+  "Yara Arc",
+  "Yara Beam",
+  "Yara Dome",
+  "Yara Line",
+  "Yara Muse",
+  "Yara Pearl",
+  "Zena Arc",
+  "Zena Beam",
+  "Zena Dome",
+  "Zena Line",
+  "Zena Muse",
+  "Zena Pearl",
+  "Aster Arc",
+  "Aster Beam",
+  "Aster Dome",
+  "Aster Line",
+  "Aster Muse",
+  "Aster Pearl",
+  "Bloom Arc",
+  "Bloom Beam",
+  "Bloom Dome",
+  "Bloom Line",
+  "Bloom Muse",
+  "Bloom Pearl",
+  "Cedar Arc",
+  "Cedar Beam",
+  "Cedar Dome",
+  "Cedar Line",
+  "Cedar Muse",
+  "Cedar Pearl",
+  "Dawn Arc",
+  "Dawn Beam",
+  "Dawn Dome",
+  "Dawn Line",
+  "Dawn Muse",
+  "Dawn Pearl",
+  "Ember Arc",
+  "Ember Beam",
+  "Ember Dome",
+  "Ember Line",
+  "Ember Muse",
+  "Ember Pearl",
+  "Fern Arc",
+  "Fern Beam",
+  "Fern Dome",
+  "Fern Line",
+  "Fern Muse",
+  "Fern Pearl",
+  "Haven Arc",
+  "Haven Beam",
+  "Haven Dome",
+  "Haven Line",
+  "Haven Muse",
+  "Haven Pearl",
+  "Ivory Arc",
+  "Ivory Beam",
+  "Ivory Dome",
+  "Ivory Line",
+  "Ivory Muse",
+  "Ivory Pearl",
+  "Junia Arc",
+  "Junia Beam",
+  "Junia Dome",
+  "Junia Line",
+  "Junia Muse",
+  "Junia Pearl"
+];
+
+(function(){
+  try{
+    if(Array.isArray(WEBSITE_SHORT_NAMES)){
+      WEBSITE_SHORT_NAMES.splice(0, WEBSITE_SHORT_NAMES.length, ...MINMIN_WEBSITE_NAME_POOL_300);
+    }
+  }catch(e){ console.warn('Không thể thay danh sách tên sản phẩm:', e); }
+
+  function minminNormalizeProductBaseName(value){
+    return String(value || '')
+      .replace(/^\s*[A-Z]{1,5}-\d{1,4}\s+/i, '')
+      .replace(/^\s*woo-\d+\s+/i, '')
+      .trim();
+  }
+
+  function minminUsedWebsiteNames(currentId=''){
+    const used = new Set();
+    (state.website?.products || []).forEach(item => {
+      if(String(item.id || '') === String(currentId || state.website?.editingId || '')) return;
+      [item.product_name_en, item.product_name_vi].forEach(v => {
+        const base = minminNormalizeProductBaseName(v);
+        if(base) used.add(base.toLowerCase());
+      });
+    });
+    return used;
+  }
+
+  function minminNextWebsiteName(currentId=''){
+    const pool = MINMIN_WEBSITE_NAME_POOL_300;
+    const used = minminUsedWebsiteNames(currentId);
+    let cursor = 0;
+    try{
+      cursor = Math.max(0, Number(localStorage.getItem(MINMIN_WEBSITE_NAME_CURSOR_KEY) || 0) || 0) % pool.length;
+    }catch(e){ cursor = 0; }
+
+    for(let step = 0; step < pool.length; step++){
+      const index = (cursor + step) % pool.length;
+      const candidate = pool[index];
+      if(!used.has(String(candidate).toLowerCase())){
+        try{ localStorage.setItem(MINMIN_WEBSITE_NAME_CURSOR_KEY, String((index + 1) % pool.length)); }catch(e){}
+        return candidate;
+      }
+    }
+
+    let n = (state.website?.products || []).length + 1;
+    let fallback = '';
+    do {
+      fallback = `Custom ${String(n).padStart(3,'0')}`;
+      n++;
+    } while(used.has(fallback.toLowerCase()));
+    return fallback;
+  }
+
+  websiteNextSku = function(prefix,currentId=''){
+    const used=new Set((state.website?.products||[])
+      .filter(p=>String(p.id)!==String(currentId||state.website?.editingId||''))
+      .map(p=>String(p.sku||'').toUpperCase()));
+    for(let i=1;i<=300;i++){
+      const sku=`${prefix}-${String(i).padStart(2,'0')}`;
+      if(!used.has(sku)) return sku;
+    }
+    return `${prefix}-${Date.now().toString().slice(-4)}`;
+  };
+
+  websiteAutoNameProduct = function(){
+    state.website=normalizeWebsiteProducts(state.website||websiteProductsDefaults());
+    const p=normalizeWebsiteProduct(state.website.current||{});
+    const type=websiteTypeFromCategory(p.category||p.product_type||p.product_name_en||p.product_name_vi);
+    const sku=websiteNextSku(type.prefix,p.id);
+    const name=minminNextWebsiteName(p.id);
+    websiteSetCurrent({sku,product_name_en:`${sku} ${name}`,product_name_vi:`${sku} ${name}`,slug:slugifyWebsite(`${sku}-${name}`),product_type:type.label});
+    saveWebsiteProducts();
+    render();
+  };
+
+  window.minminWebsiteNamePoolCount = MINMIN_WEBSITE_NAME_POOL_300.length;
+})();
+
+
 window.addEventListener('hashchange',()=>{ if(inventoryLookupKey())state.activeTab='stock'; render(); });
 async function initApp(){
   try{
