@@ -4366,6 +4366,151 @@ renderWebsiteWooConfig = function(){
 };
 try{ minminClearStuckWooSync(true); }catch(e){ console.warn(e); }
 
+
+/* MINMIN PATCH 2026-07-01B: Product Attributes dropdown + quick auto name */
+var MINMIN_WEBSITE_ATTRIBUTE_OPTIONS_KEY = 'minmin-website-attribute-options-v1';
+
+function minminAttrOptionLabel(key){
+  const found = (WEBSITE_SIMPLE_ATTRIBUTES || []).find(x => x[1] === key);
+  return found ? found[0] : key;
+}
+function minminAttrOptionsLoad(){
+  try{
+    const localRaw = JSON.parse(localStorage.getItem(MINMIN_WEBSITE_ATTRIBUTE_OPTIONS_KEY) || '{}') || {};
+    const stateRaw = (state && state.website && state.website.attributeOptions) ? state.website.attributeOptions : {};
+    const out = {};
+    (WEBSITE_SIMPLE_ATTRIBUTES || []).forEach(([,key]) => {
+      const vals = [
+        ...(Array.isArray(stateRaw[key]) ? stateRaw[key] : []),
+        ...(Array.isArray(localRaw[key]) ? localRaw[key] : [])
+      ];
+      out[key] = [...new Set(vals.map(v => String(v || '').trim()).filter(Boolean))].slice(0,80);
+    });
+    return out;
+  }catch(e){
+    return {};
+  }
+}
+function minminAttrOptionsSave(options){
+  const clean = {};
+  (WEBSITE_SIMPLE_ATTRIBUTES || []).forEach(([,key]) => {
+    clean[key] = [...new Set((options?.[key] || []).map(v => String(v || '').trim()).filter(Boolean))].slice(0,80);
+  });
+  try{ if(state && state.website) state.website.attributeOptions = clean; }catch(e){}
+  try{ localStorage.setItem(MINMIN_WEBSITE_ATTRIBUTE_OPTIONS_KEY, JSON.stringify(clean)); }catch(e){ console.warn('Không lưu được dropdown Product Attributes:', e); }
+}
+function minminRememberAttrValue(key, value){
+  const v = String(value || '').trim();
+  if(!key || !v) return;
+  const options = minminAttrOptionsLoad();
+  options[key] = [...new Set([v, ...(options[key] || [])])].slice(0,80);
+  minminAttrOptionsSave(options);
+}
+function minminRememberWebsiteAttributes(product){
+  const p = normalizeWebsiteProduct(product || state.website?.current || {});
+  const options = minminAttrOptionsLoad();
+  (WEBSITE_SIMPLE_ATTRIBUTES || []).forEach(([,key]) => {
+    const v = String(p[key] || '').trim();
+    if(v) options[key] = [...new Set([v, ...(options[key] || [])])].slice(0,80);
+  });
+  minminAttrOptionsSave(options);
+}
+function minminWebsiteAttributeOptions(key){
+  const stored = minminAttrOptionsLoad();
+  const values = [
+    ...(stored[key] || []),
+    ...((state.website?.products || []).map(p => normalizeWebsiteProduct(p)[key]).filter(Boolean)),
+    String(normalizeWebsiteProduct(state.website?.current || {})[key] || '')
+  ];
+  return [...new Set(values.map(v => String(v || '').trim()).filter(Boolean))].slice(0,80);
+}
+function minminSeedWebsiteAttributeOptions(){
+  const options = minminAttrOptionsLoad();
+  (state.website?.products || []).forEach(product => {
+    const p = normalizeWebsiteProduct(product);
+    (WEBSITE_SIMPLE_ATTRIBUTES || []).forEach(([,key]) => {
+      const v = String(p[key] || '').trim();
+      if(v) options[key] = [...new Set([...(options[key] || []), v])].slice(0,80);
+    });
+  });
+  minminAttrOptionsSave(options);
+}
+function minminWebsiteAttributeField(label, key, compact=false){
+  const p = normalizeWebsiteProduct(state.website?.current || {});
+  const listId = `websiteAttrOptions_${key}_${compact ? 'quick' : 'main'}`;
+  const options = minminWebsiteAttributeOptions(key);
+  const inputClass = compact
+    ? 'h-9 min-w-0 rounded-md border border-black/15 bg-white px-2 text-xs font-extrabold outline-none focus:border-mint focus:ring-4 focus:ring-mint/10'
+    : 'h-10 min-w-0 rounded-md border border-black/15 bg-white px-3 text-sm font-bold outline-none focus:border-mint focus:ring-4 focus:ring-mint/10';
+  const spanClass = compact
+    ? 'text-[10px] font-extrabold uppercase text-black/45'
+    : 'text-[11px] font-extrabold uppercase tracking-wide text-black/45';
+  return `<label class="grid min-w-0 gap-1"><span class="${spanClass}">${esc(label)}</span><input data-website-field="${esc(key)}" data-website-attr-field="${esc(key)}" list="${esc(listId)}" type="text" value="${esc(p[key] || '')}" placeholder="Nhập hoặc chọn lại" class="${inputClass}"/><datalist id="${esc(listId)}">${options.map(v => `<option value="${esc(v)}"></option>`).join('')}</datalist></label>`;
+}
+function websiteSimpleAttributeFields(){
+  return (WEBSITE_SIMPLE_ATTRIBUTES || []).map(([label,key]) => minminWebsiteAttributeField(label, key, false)).join('');
+}
+function websiteInlineAttributeFields(){
+  return (WEBSITE_SIMPLE_ATTRIBUTES || []).map(([label,key]) => minminWebsiteAttributeField(label, key, true)).join('');
+}
+function websiteInlineEditPanel(product){
+  const p = normalizeWebsiteProduct(product || {}), isOpen = String(state.website?.editingId || '') === String(p.id || ''), missing = websiteMissingFields(p);
+  if(!isOpen) return '';
+  return `<tr class="border-b border-mint/20 bg-mint/5"><td colspan="6" class="p-3"><div class="rounded-lg border border-mint/20 bg-white p-3 shadow-sm"><div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between"><div><h3 class="text-sm font-extrabold">Sửa nhanh: ${esc(p.sku || p.product_name_en || 'Sản phẩm')}</h3><p class="mt-1 text-xs font-bold ${missing.length ? 'text-orange-600' : 'text-mint'}">${missing.length ? `Thiếu: ${esc(missing.join(', '))}` : 'Dữ liệu chính đã đủ.'}</p></div><div class="flex flex-wrap gap-2"><button data-website-inline-auto-name type="button" class="h-9 rounded-md border border-gold/60 bg-gold/20 px-3 text-xs font-extrabold text-ink">Đặt tên và mã</button><button data-website-complete type="button" class="h-9 rounded-md bg-mint px-3 text-xs font-extrabold text-white">Hoàn tất</button><button data-website-cancel-edit type="button" class="h-9 rounded-md border border-black/10 bg-white px-3 text-xs font-extrabold text-ink">Đóng</button><button data-website-upload-woo="${esc(p.id)}" type="button" class="h-9 rounded-md border border-sky-300 bg-sky-50 px-3 text-xs font-extrabold text-sky-800">Đồng bộ dòng này</button></div></div><div class="mt-3 grid gap-2 md:grid-cols-4">${websiteInlineField('SKU / Mã web','sku')}${websiteInlineField('Mã Stock','stock_code')}${websiteInlineField('Tên EN','product_name_en')}${websiteInlineField('Tên VI','product_name_vi')}${websiteInlineField('Slug','slug')}<label class="grid min-w-0 gap-1"><span class="text-[10px] font-extrabold uppercase text-black/45">Trạng thái</span><select data-website-field="website_status" class="h-9 rounded-md border border-black/15 bg-white px-2 text-xs font-extrabold outline-none focus:border-mint">${['Nháp','Sẵn sàng CSV','Đã đăng website','Tạm ẩn'].map(v => `<option value="${esc(v)}" ${state.website.current.website_status === v ? 'selected' : ''}>${esc(v)}</option>`).join('')}</select></label></div><div class="mt-3">${websiteCategorySelect()}</div><div class="mt-3 rounded-lg border border-black/10 bg-white p-3"><div class="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between"><div><h2 class="text-sm font-extrabold">Product attributes</h2><p class="mt-0.5 text-[11px] font-bold text-black/40">Giá trị đã nhập sẽ tự lưu để lần sau hiện trong dropdown.</p></div></div><div class="mt-3 grid gap-2 md:grid-cols-3">${websiteInlineAttributeFields()}</div></div></div></td></tr>`;
+}
+
+
+(function(){
+  const previousNormalizeWebsiteProductsForAttrOptions = normalizeWebsiteProducts;
+  normalizeWebsiteProducts = function(data={}){
+    const out = previousNormalizeWebsiteProductsForAttrOptions.apply(this, arguments);
+    const fromData = data && typeof data === 'object' && data.attributeOptions ? data.attributeOptions : {};
+    const merged = minminAttrOptionsLoad();
+    (WEBSITE_SIMPLE_ATTRIBUTES || []).forEach(([,key]) => {
+      const vals = [
+        ...(merged[key] || []),
+        ...(Array.isArray(fromData[key]) ? fromData[key] : [])
+      ];
+      merged[key] = [...new Set(vals.map(v => String(v || '').trim()).filter(Boolean))].slice(0,80);
+    });
+    out.attributeOptions = merged;
+    return out;
+  };
+  const previousLightWebsiteProductsForAttrOptions = lightWebsiteProducts;
+  lightWebsiteProducts = function(data=state.website){
+    const out = previousLightWebsiteProductsForAttrOptions.apply(this, arguments);
+    out.attributeOptions = minminAttrOptionsLoad();
+    return out;
+  };
+})();
+
+(function(){
+  const previousWebsiteSaveProduct = websiteSaveProduct;
+  websiteSaveProduct = function(){
+    minminRememberWebsiteAttributes(state.website?.current || {});
+    return previousWebsiteSaveProduct.apply(this, arguments);
+  };
+  const previousSaveWebsiteProducts = saveWebsiteProducts;
+  saveWebsiteProducts = function(){
+    minminRememberWebsiteAttributes(state.website?.current || {});
+    return previousSaveWebsiteProducts.apply(this, arguments);
+  };
+  const previousBindWebsiteProductsForAttributes = bindWebsiteProducts;
+  bindWebsiteProducts = function(){
+    previousBindWebsiteProductsForAttributes.apply(this, arguments);
+    minminSeedWebsiteAttributeOptions();
+    document.querySelectorAll('[data-website-attr-field]').forEach(el => {
+      const remember = () => minminRememberAttrValue(el.dataset.websiteAttrField, el.value);
+      el.addEventListener('input', remember);
+      el.addEventListener('change', remember);
+      el.addEventListener('blur', remember);
+    });
+    document.querySelectorAll('[data-website-inline-auto-name]').forEach(btn => {
+      btn.onclick = () => websiteAutoNameProduct();
+    });
+  };
+})();
+
 window.addEventListener('hashchange',()=>{ if(inventoryLookupKey())state.activeTab='stock'; render(); });
 async function initApp(){
   try{
