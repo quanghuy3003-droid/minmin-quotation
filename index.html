@@ -5750,7 +5750,7 @@ function renderDocumentSuiteTab(){
           <div class="mt-3 grid gap-3">${docPartyField('Tên công ty / khách hàng','company')}${docPartyField('Địa chỉ','address')}${docPartyField('Mã số thuế','taxCode')}<div class="grid gap-3 sm:grid-cols-2">${docPartyField('Đại diện','representative')}${docPartyField('Chức vụ','position')}</div><div class="grid gap-3 sm:grid-cols-2">${docPartyField('Điện thoại','phone')}${docPartyField('Email','email')}</div></div>
         </div>
         <div class="rounded-lg border border-black/10 bg-white p-3 shadow-sm">
-          <div class="flex items-center justify-between gap-2"><h2 class="text-base font-extrabold">Thông tin hồ sơ</h2><label class="h-9 cursor-pointer rounded-md border border-mint/30 bg-white px-3 py-2 text-xs font-extrabold text-mint">Add file báo giá<input id="docQuoteImport" type="file" accept=".xlsx,.xls,.csv" class="hidden"/></label></div>
+          <div class="flex items-center justify-between gap-2"><h2 class="text-base font-extrabold">Thông tin hồ sơ</h2><label class="h-9 cursor-pointer rounded-md bg-mint px-3 py-2 text-xs font-extrabold text-white shadow-sm hover:bg-[#176b58]">IMPORT BÁO GIÁ<input id="docQuoteImport" type="file" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="hidden"/></label></div>
           <div class="mt-3 grid gap-3">${docField('Số hợp đồng','contractNo')}${docField('Ngày hợp đồng','contractDate','date')}${docField('Ngày bàn giao / đề nghị','handoverDate','date')}${docField('Địa điểm','location')}${docField('File báo giá','quoteFileName')}${docField('Mã báo giá / mã đơn','quoteCode')}${docField('Đợt thanh toán','paymentPhase')}${docField('Bảo hành (tháng)','warrantyMonths','number')}${docField('Thời gian giao hàng (ngày)','deliveryDays','number')}</div>
         </div>
         <div class="rounded-lg border border-ink/10 bg-ink p-3 text-white shadow-sm">
@@ -5763,7 +5763,7 @@ function renderDocumentSuiteTab(){
         <div class="rounded-lg border border-black/10 bg-white p-3 shadow-sm">
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div><h2 class="text-lg font-extrabold">${esc(taskTitle)}</h2><p class="mt-1 text-xs font-bold text-black/45">Preview đang dùng đúng layout A4 của bản in và file Word.</p></div>
-            <div class="flex flex-wrap gap-2"><button id="docCopy" type="button" class="h-10 rounded-md border border-mint/30 bg-white px-3 text-sm font-extrabold text-mint">Sao chép</button><button id="docWord" type="button" class="h-10 rounded-md border border-mint/30 bg-white px-3 text-sm font-extrabold text-mint">Xuất Word</button><button id="docPrint" type="button" class="h-10 rounded-md bg-ink px-4 text-sm font-extrabold text-white">In / xuất PDF</button></div>
+            <div class="flex flex-wrap gap-2"><button id="docCopy" type="button" class="h-10 rounded-md border border-mint/30 bg-white px-3 text-sm font-extrabold text-mint">Sao chép</button><button id="docWord" type="button" class="h-10 rounded-md border border-mint/30 bg-white px-3 text-sm font-extrabold text-mint">Xuất Word</button><button id="docPrint" type="button" class="h-10 rounded-md bg-ink px-4 text-sm font-extrabold text-white">Xuất PDF A4 dọc</button></div>
           </div>
           <div id="documentPreview" class="mt-4 overflow-hidden rounded-lg border border-black/10">${documentPaperHtml(d.activeTask)}</div>
         </div>
@@ -5857,7 +5857,7 @@ function bindDocumentSuite(){
     el.oninput=update; el.onchange=()=>{update(); render();}; el.onblur=update;
   });
   const pull=document.getElementById('docPullQuote'); if(pull)pull.onclick=()=>documentPullQuote(false);
-  const quote=document.getElementById('docQuoteImport'); if(quote)quote.onchange=()=>documentImportQuoteFile(quote.files?.[0]);
+  ['docQuoteImport','docQuoteImportTop'].forEach(id=>{ const quote=document.getElementById(id); if(quote)quote.onchange=()=>documentImportQuoteFile(quote.files?.[0]); });
   const print=document.getElementById('docPrint'); if(print)print.onclick=printDocumentTask;
   const word=document.getElementById('docWord'); if(word)word.onclick=exportDocumentWord;
   const copy=document.getElementById('docCopy'); if(copy)copy.onclick=()=>{const text=document.getElementById('documentPreview')?.innerText||''; navigator.clipboard?.writeText(text).then(()=>alert('Đã sao chép nội dung hồ sơ.')).catch(()=>alert('Không sao chép được tự động.'));};
@@ -6006,7 +6006,7 @@ function renderDocumentSuiteTab(){
     <div class="rounded-lg border border-black/10 bg-white p-3 shadow-sm">
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div><h1 class="text-xl font-extrabold">Hồ sơ bán hàng</h1><p class="mt-1 text-sm font-semibold text-black/45">Hợp đồng dùng đủ điều khoản theo file gốc, preview tách từng trang in thực tế và không render lại toàn bộ khi đang nhập.</p></div>
-        <div class="flex flex-wrap gap-2">${docTasks().map(([id,label])=>docTaskButton(id,label)).join('')}</div>
+        <div class="flex flex-wrap gap-2">${docTasks().map(([id,label])=>docTaskButton(id,label)).join('')}<label class="flex h-10 cursor-pointer items-center justify-center rounded-md bg-mint px-4 text-sm font-extrabold text-white shadow-sm hover:bg-[#176b58]">IMPORT BÁO GIÁ<input id="docQuoteImportTop" type="file" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="hidden"/></label></div>
       </div>
     </div>
     <div class="grid gap-4 xl:grid-cols-[420px_minmax(0,1fr)]">
@@ -6029,7 +6029,7 @@ function renderDocumentSuiteTab(){
         <div class="rounded-lg border border-black/10 bg-white p-3 shadow-sm">
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div><h2 class="text-lg font-extrabold">${esc(taskTitle)}</h2><p class="mt-1 text-xs font-bold text-black/45">Preview tách trang giống bản in, nhập liệu không làm mất focus.</p></div>
-            <div class="flex flex-wrap gap-2"><button id="docCopy" type="button" class="h-10 rounded-md border border-mint/30 bg-white px-3 text-sm font-extrabold text-mint">Sao chép</button><button id="docWord" type="button" class="h-10 rounded-md border border-mint/30 bg-white px-3 text-sm font-extrabold text-mint">Xuất Word</button><button id="docPrint" type="button" class="h-10 rounded-md bg-ink px-4 text-sm font-extrabold text-white">In / xuất PDF</button></div>
+            <div class="flex flex-wrap gap-2"><button id="docCopy" type="button" class="h-10 rounded-md border border-mint/30 bg-white px-3 text-sm font-extrabold text-mint">Sao chép</button><button id="docWord" type="button" class="h-10 rounded-md border border-mint/30 bg-white px-3 text-sm font-extrabold text-mint">Xuất Word</button><button id="docPrint" type="button" class="h-10 rounded-md bg-ink px-4 text-sm font-extrabold text-white">Xuất PDF A4 dọc</button></div>
           </div>
           <div id="documentPreview" class="mt-4 overflow-hidden rounded-lg border border-black/10">${documentPaperHtml(d.activeTask)}</div>
         </div>
@@ -6242,10 +6242,61 @@ function bindDocumentSuite(){
     el.onblur=()=>{update(); refreshDocumentPreview();};
   });
   const pull=document.getElementById('docPullQuote'); if(pull)pull.onclick=()=>documentPullQuote(false);
-  const quote=document.getElementById('docQuoteImport'); if(quote)quote.onchange=()=>documentImportQuoteFile(quote.files?.[0]);
+  ['docQuoteImport','docQuoteImportTop'].forEach(id=>{ const quote=document.getElementById(id); if(quote)quote.onchange=()=>documentImportQuoteFile(quote.files?.[0]); });
   const print=document.getElementById('docPrint'); if(print)print.onclick=printDocumentTask;
   const word=document.getElementById('docWord'); if(word)word.onclick=exportDocumentWord;
   const copy=document.getElementById('docCopy'); if(copy)copy.onclick=()=>{const text=document.getElementById('documentPreview')?.innerText||''; navigator.clipboard?.writeText(text).then(()=>alert('Đã sao chép nội dung hồ sơ.')).catch(()=>alert('Không sao chép được tự động.'));};
+}
+
+
+/* MINMIN PATCH 2026-07-01J: nút IMPORT BÁO GIÁ trong tab Hồ sơ + import ít render */
+async function documentImportQuoteFile(file){
+  if(!file)return;
+  const originalRender=typeof render==='function'?render:null;
+  const originalAlert=window.alert;
+  const importMessages=[];
+  try{
+    state.status='Đang import báo giá vào tab Hồ sơ...';
+    if(originalRender) originalRender();
+    if(originalRender) render=function(){};
+    window.alert=(msg)=>{ if(msg)importMessages.push(String(msg)); };
+    if(typeof importQuotationExcel!=='function')throw new Error('App chưa có hàm import báo giá.');
+    await importQuotationExcel(file);
+    if(originalRender) render=originalRender;
+    window.alert=originalAlert;
+    const d=ensureDocumentSuite();
+    d.quoteFileName=file.name;
+    documentPullQuote(true);
+    state.activeTab='documents';
+    state.status=`Đã import báo giá ${file.name} vào Hồ sơ.`;
+    touchAppActivity();
+    scheduleSave();
+    if(originalRender) originalRender();
+    const note=importMessages.find(x=>x.includes('Supabase Storage'))||'';
+    originalAlert(note?`Đã import báo giá vào Hồ sơ. ${note}`:`Đã import báo giá vào Hồ sơ.`);
+  }catch(e){
+    if(originalRender) render=originalRender;
+    window.alert=originalAlert;
+    state.status='Import báo giá vào Hồ sơ thất bại.';
+    if(originalRender) originalRender();
+    originalAlert('Chưa import được file báo giá vào Hồ sơ: '+(e?.message||e));
+  }
+}
+
+
+/* MINMIN PATCH 2026-07-01K: Tab Hồ sơ - in/xuất PDF đúng khổ A4 chiều dọc */
+function documentPrintCss(){
+  return `@page{size:A4 portrait;margin:0}
+html,body{margin:0;background:#fff;color:#111;font-family:"Times New Roman",Times,serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.doc-preview-shell{max-height:78vh;overflow:auto;background:#ececea;padding:20px;display:grid;gap:18px;justify-items:center}
+.doc-page{box-sizing:border-box;width:794px;min-height:1123px;margin:0 auto;background:#fff;padding:46px 48px 58px;box-shadow:0 14px 40px rgba(0,0,0,.16);font-size:12px;line-height:1.36;color:#111;position:relative;break-after:page;page-break-after:always;overflow:hidden}
+.doc-page.compact{padding:24px 12px 46px}.doc-page.textpage{padding:48px 58px 58px}.doc-page:last-child{break-after:auto;page-break-after:auto}
+.doc-page-number{position:absolute;left:0;right:0;bottom:14px;text-align:center;font-size:11px;color:#111}
+.doc-center{text-align:center}.doc-right{text-align:right}.doc-bold{font-weight:700}.doc-extra{font-weight:800}.doc-italic{font-style:italic}.doc-red{color:#c00000}.doc-uppercase{text-transform:uppercase}
+.doc-title{margin:14px 0 4px;text-align:center;font-size:22px;font-weight:800;letter-spacing:.2px}.doc-subtitle{text-align:center;font-size:12px;margin:0 0 14px}.doc-section-title{margin:10px 0 7px;font-size:14px;font-weight:800;text-transform:uppercase;text-decoration:underline}.doc-section-title.no-underline{text-decoration:none}.doc-mini-title{margin:7px 0 4px;font-size:12.5px;font-weight:700}
+.doc-small{font-size:11px}.doc-muted{color:#555}.doc-p{margin:5px 0}.doc-line{line-height:1.48}.doc-tight p{margin:3.5px 0}.doc-indent{text-indent:20px}.doc-bullets{margin:4px 0 7px 18px;padding:0}.doc-bullets li{margin:2.5px 0}.doc-letter-list{margin:4px 0 7px 24px;padding:0}.doc-letter-list li{margin:2.5px 0}.doc-party-block{display:grid;gap:3px;margin-top:7px}.doc-party-row{display:grid;grid-template-columns:108px 1fr;gap:7px}.doc-signatures{display:grid;grid-template-columns:1fr 1fr;gap:44px;margin-top:38px;text-align:center;font-weight:800}.doc-sign-spacer{height:82px}
+.doc-table{width:100%;border-collapse:collapse;table-layout:fixed;margin-top:7px;page-break-inside:auto}.doc-table th,.doc-table td{border:1px solid #111;padding:4px;vertical-align:middle;overflow-wrap:break-word}.doc-table th{font-weight:800;text-align:center;background:#fff}.doc-table tr{page-break-inside:avoid;page-break-after:auto}.doc-table .num{text-align:right;white-space:nowrap}.doc-table .center{text-align:center}.doc-product-table{font-size:8px;line-height:1.08}.doc-product-table th{font-size:8px;line-height:1.04}.doc-product-table td{padding:2px}.doc-photo{width:62px;height:50px;object-fit:contain;display:block;margin:auto}.doc-desc{line-height:1.12;text-align:left}.doc-ship-row{height:42px}.doc-total-label{text-align:left;font-weight:800;background:#bfbfbf}.doc-total-value{text-align:right;font-weight:800;white-space:nowrap;background:#bfbfbf}.doc-total-lite{font-style:italic;font-weight:400}.doc-total-hot{color:#c00000;font-weight:800}.doc-empty{background:#fff}.doc-note-list{margin:5px 0 0 0;padding-left:0;list-style:none}.doc-note-list li{margin:3px 0}.doc-product-summary{margin-top:18px;font-size:11px;line-height:1.45}.doc-product-summary p{margin:6px 0}
+@media print{html,body{background:#fff;width:210mm;min-height:297mm}.doc-preview-shell{display:block;max-height:none;overflow:visible;background:#fff;padding:0}.doc-page{width:210mm;min-height:297mm;margin:0;box-shadow:none;padding:12mm 12mm 14mm;break-after:page;page-break-after:always;overflow:hidden}.doc-page.compact{padding:7mm 3.5mm 12mm}.doc-page.textpage{padding:13mm 16mm 14mm}.doc-page:last-child{break-after:auto;page-break-after:auto}.doc-page-number{bottom:4mm}.no-print{display:none!important}}`;
 }
 
 
