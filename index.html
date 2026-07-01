@@ -6396,6 +6396,62 @@ function renderContractPages(){
 }
 
 
+/* MINMIN PATCH 2026-07-01M: Hợp đồng - giảm khoảng trống trong A4 dọc, bảng sản phẩm phủ kín trang hơn */
+function documentPrintCss(){
+  return `@page{size:A4 portrait;margin:0}
+html,body{margin:0;background:#fff;color:#111;font-family:"Times New Roman",Times,serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.doc-preview-shell{max-height:78vh;overflow:auto;background:#ececea;padding:18px;display:grid;gap:14px;justify-items:center}
+.doc-page{box-sizing:border-box;width:794px;min-height:1123px;margin:0 auto;background:#fff;padding:38px 48px 50px;box-shadow:0 14px 40px rgba(0,0,0,.16);font-size:12.6px;line-height:1.42;color:#111;position:relative;break-after:page;page-break-after:always;overflow:hidden}
+.doc-page.contract-cover{padding:42px 56px 46px;font-size:13px;line-height:1.45}
+.doc-page.contract-products{padding:18px 8px 34px;font-size:8.25px;line-height:1.12}
+.doc-page.contract-text{padding:38px 54px 44px;font-size:12.8px;line-height:1.42}
+.doc-page.contract-sign{padding:42px 56px 46px;font-size:13px;line-height:1.42}
+.doc-page.textpage{padding:40px 56px 46px}.doc-page.compact{padding:18px 8px 34px}.doc-page:last-child{break-after:auto;page-break-after:auto}
+.doc-page-number{position:absolute;left:0;right:0;bottom:11px;text-align:center;font-size:11px;color:#111}
+.doc-center{text-align:center}.doc-right{text-align:right}.doc-bold{font-weight:700}.doc-extra{font-weight:800}.doc-italic{font-style:italic}.doc-red{color:#c00000}.doc-uppercase{text-transform:uppercase}
+.doc-title{margin:10px 0 3px;text-align:center;font-size:22px;font-weight:800;letter-spacing:.15px}.doc-subtitle{text-align:center;font-size:12.5px;margin:0 0 10px}.doc-section-title{margin:8px 0 5px;font-size:14px;font-weight:800;text-transform:uppercase;text-decoration:underline}.doc-section-title.no-underline{text-decoration:none}.doc-mini-title{margin:5px 0 3px;font-size:12.5px;font-weight:700}
+.contract-cover .doc-title{font-size:22px;margin-top:10px}.contract-cover .doc-bullets{margin-top:10px}.contract-cover .doc-party-block{margin-top:8px}.contract-products .doc-section-title{font-size:13px;margin:0 0 7px 34px}.contract-products .doc-p{font-size:11.5px;margin:0 0 7px 34px}.contract-text .doc-section-title{font-size:13.8px;margin:7px 0 5px}.contract-text .doc-tight{line-height:1.38}.contract-text .doc-p{margin:3.8px 0}
+.doc-small{font-size:11px}.doc-muted{color:#555}.doc-p{margin:4.5px 0}.doc-line{line-height:1.5}.doc-tight p{margin:3px 0}.doc-indent{text-indent:20px}.doc-bullets{margin:3px 0 6px 18px;padding:0}.doc-bullets li{margin:2.2px 0}.doc-letter-list{margin:3px 0 6px 24px;padding:0}.doc-letter-list li{margin:2.2px 0}.doc-party-block{display:grid;gap:3px;margin-top:6px}.doc-party-row{display:grid;grid-template-columns:104px 1fr;gap:7px}.contract-cover .doc-party-row{grid-template-columns:96px 1fr}.doc-signatures{display:grid;grid-template-columns:1fr 1fr;gap:44px;margin-top:48px;text-align:center;font-weight:800}.doc-sign-spacer{height:108px}
+.doc-table{width:100%;border-collapse:collapse;table-layout:fixed;margin-top:6px;page-break-inside:auto}.doc-table th,.doc-table td{border:1px solid #111;padding:3.2px;vertical-align:middle;overflow-wrap:break-word}.doc-table th{font-weight:800;text-align:center;background:#fff}.doc-table tr{page-break-inside:avoid;page-break-after:auto}.doc-table .num{text-align:right;white-space:nowrap}.doc-table .center{text-align:center}.doc-product-table{font-size:8.25px;line-height:1.11}.doc-product-table th{font-size:8.1px;line-height:1.02;padding:3px 1.5px}.doc-product-table td{padding:2.4px}.doc-product-table .doc-desc{font-size:8.2px;line-height:1.14}.doc-photo{width:84px;height:68px;object-fit:contain;display:block;margin:auto}.contract-products .doc-photo{width:112px;height:92px}.doc-desc{line-height:1.15;text-align:left}.doc-product-row{height:245px}.products-1 .doc-product-row{height:390px}.products-2 .doc-product-row{height:315px}.products-3 .doc-product-row{height:238px}.products-last.products-1 .doc-product-row{height:330px}.products-last.products-2 .doc-product-row{height:250px}.doc-ship-row{height:58px}.doc-total-row td{padding-top:3px;padding-bottom:3px}.doc-total-label{text-align:left;font-weight:800;background:#bfbfbf}.doc-total-value{text-align:right;font-weight:800;white-space:nowrap;background:#bfbfbf}.doc-total-lite{font-style:italic;font-weight:400}.doc-total-hot{color:#c00000;font-weight:800}.doc-empty{background:#fff}.doc-note-list{margin:5px 0 0 0;padding-left:0;list-style:none}.doc-note-list li{margin:3px 0}.doc-product-summary{margin:18px 42px 0;font-size:12.2px;line-height:1.5}.doc-product-summary p{margin:6px 0}
+.doc-contract-table-wrap{width:100%;overflow:hidden}.doc-continuation-note{font-size:10.5px;margin:0 0 4px 34px;font-style:italic;color:#555}.doc-page-break-safe{break-inside:avoid;page-break-inside:avoid}
+@media print{html,body{background:#fff;width:210mm;min-height:297mm}.doc-preview-shell{display:block;max-height:none;overflow:visible;background:#fff;padding:0}.doc-page{width:210mm;min-height:297mm;margin:0;box-shadow:none;padding:10mm 12.5mm 12mm;break-after:page;page-break-after:always;overflow:hidden}.doc-page.contract-cover{padding:11mm 14.5mm 12mm}.doc-page.contract-products,.doc-page.compact{padding:4.8mm 2.2mm 9mm}.doc-page.contract-text,.doc-page.textpage{padding:10mm 14mm 11mm}.doc-page.contract-sign{padding:11mm 14.5mm 12mm}.doc-page:last-child{break-after:auto;page-break-after:auto}.doc-page-number{bottom:3mm}.no-print{display:none!important}}`;
+}
+function docProductTableSegment(segment,{first=false,last=false}={}){
+  const t=docTotals(), info=state.info||{};
+  const header=first?`<thead><tr><th>STT</th><th>Tình trạng</th><th>Mã<br>hàng<br>(Code)</th><th>Tên sản<br>phẩm<br>(Items)</th><th>Hình ảnh<br>(Photo)</th><th>Kích thước<br>(Dimension)<br>(LxWxH)</th><th>Đặc điểm<br>(Describe)</th><th>ĐVT<br>(Unit)</th><th>SL<br>(Q'tity)</th><th>Đơn giá<br>(Unit Price)</th><th>Thành<br>Tiền<br>(Amount)</th></tr></thead>`:'';
+  const productRows=(segment||[]).map(r=>`<tr class="doc-product-row"><td class="center">${r.stt}</td><td class="center">${br(r.status)}</td><td class="center doc-bold">${esc(r.code)}</td><td class="center">${esc(r.name)}</td><td>${r.photo?`<img src="${esc(r.photo)}" class="doc-photo"/>`:''}</td><td class="center">${esc(r.dimension)}</td><td class="doc-desc">${r.desc||''}</td><td class="center">${esc(r.unit)}</td><td class="center">${r.qty}</td><td class="num">${docMoney(r.price)}</td><td class="num doc-bold">${docMoney(r.amount)}</td></tr>`).join('');
+  const shipAmount=Number(t.shipping||0);
+  const shipRow=last?`<tr class="doc-ship-row"><td></td><td></td><td class="center">${esc(info.shipCode||'PVC')}</td><td class="center">${br(info.shipName||'Phí vận chuyển<br>(Fee ship)<br>(L0 x W0 x H0)')}</td><td></td><td></td><td></td><td class="center">${esc(info.shipUnit||'Kiện')}</td><td class="center">${Number(info.shipQty||0)}</td><td></td><td class="num doc-bold">${docMoney(shipAmount)}</td></tr>`:'';
+  const totalRows=last?`
+    <tr class="doc-total-row"><td colspan="7" class="doc-empty"></td><td colspan="3" class="doc-total-label">TỔNG GIÁ TRỊ TRƯỚC CHIẾT KHẤU</td><td class="doc-total-value">${docMoney(t.subtotal)}</td></tr>
+    <tr class="doc-total-row"><td colspan="7" class="doc-empty"></td><td colspan="3" class="doc-total-label doc-total-lite">CHIẾT KHẤU ${Number(info.discountRate||0)}%</td><td class="doc-total-value doc-total-lite">${docMoney(t.discount)}</td></tr>
+    <tr class="doc-total-row"><td colspan="7" class="doc-empty"></td><td colspan="3" class="doc-total-label">TỔNG GIÁ TRỊ SAU CHIẾT KHẤU</td><td class="doc-total-value">${docMoney(t.afterDiscount)}</td></tr>
+    <tr class="doc-total-row"><td colspan="7" class="doc-empty"></td><td colspan="3" class="doc-total-label doc-total-lite">VAT ${Number(info.vatRate||0)}%</td><td class="doc-total-value doc-total-lite">${docMoney(t.vat)}</td></tr>
+    <tr class="doc-total-row"><td colspan="7" class="doc-empty"></td><td colspan="3" class="doc-total-label doc-total-hot">TỔNG TIỀN SAU VAT</td><td class="doc-total-value doc-total-hot">${docMoney(t.afterVat)}</td></tr>
+    <tr class="doc-total-row"><td colspan="7" class="doc-empty"></td><td colspan="3" class="doc-total-label doc-total-lite doc-bold">ĐẶT CỌC</td><td class="doc-total-value doc-total-lite">${docMoney(t.deposit)}</td></tr>
+    <tr class="doc-total-row"><td colspan="7" class="doc-empty"></td><td colspan="3" class="doc-total-label doc-total-lite doc-bold">CÒN LẠI</td><td class="doc-total-value doc-total-lite">${docMoney(t.remaining)}</td></tr>`:'';
+  return `<div class="doc-contract-table-wrap"><table class="doc-table doc-product-table"><colgroup><col style="width:4.1%"><col style="width:8.7%"><col style="width:6.1%"><col style="width:6.8%"><col style="width:16.8%"><col style="width:10.2%"><col style="width:19.0%"><col style="width:7.0%"><col style="width:6.4%"><col style="width:7.2%"><col style="width:7.7%"></colgroup>${header}<tbody>${productRows}${shipRow}${totalRows}</tbody></table></div>`;
+}
+function docContractProductPages(){
+  const rows=docProductRows();
+  const chunks=docContractProductChunks(rows.length?rows:[{stt:'',status:'',code:'',name:'',photo:'',dimension:'',desc:'',unit:'',qty:'',price:0,amount:0}]);
+  const pages=[];
+  chunks.forEach((chunk,i)=>{
+    const first=i===0, last=i===chunks.length-1;
+    let html='';
+    if(first){html+=`<h2 class="doc-section-title">ĐIỀU 1: SẢN PHẨM, SỐ LƯỢNG, QUY CÁCH, GIÁ CẢ, GIÁ TRỊ CỦA HỢP ĐỒNG :</h2><p class="doc-p">1.1&nbsp;&nbsp;&nbsp; Thông tin sản phẩm và giá trị hợp đồng :</p>`;}
+    else{html+=`<div class="doc-continuation-note">Bảng sản phẩm tiếp theo</div>`;}
+    html+=docProductTableSegment(chunk,{first,last});
+    if(last){
+      const t=docTotals(), vat=Number(state.info?.vatRate||0);
+      html+=`<div class="doc-product-summary"><p><b>Tổng giá trị Hợp đồng: ${docMoneyDong(t.afterVat)}</b> <i>(Bằng chữ: ${esc(docNumberWords(t.afterVat))} đồng)</i></p><p><i>Giá đã bao gồm ${vat}% VAT</i></p></div>`;
+    }
+    pages.push({className:`contract-products products-${chunk.length}${last?' products-last':''}`,html});
+  });
+  return pages;
+}
+
+
 initApp();
     </script>
   </body>
