@@ -8130,6 +8130,74 @@ documentPrintCss = function(){
 `;
 };
 
+/* MINMIN PATCH 2026-07-02H
+   Xoay ngang riêng các trang bảng sản phẩm trong Hợp đồng và Bàn giao/Nghiệm thu.
+   Các trang chữ khác vẫn giữ A4 dọc. */
+const __minminDocumentPrintCssBeforeLandscapeProductPages = documentPrintCss;
+documentPrintCss = function(){
+  return __minminDocumentPrintCssBeforeLandscapeProductPages()+`
+@page minmin-doc-landscape{size:A4 landscape;margin:0}
+.doc-page.contract-products,
+.doc-page.handover-products{
+  width:1123px;
+  min-height:794px;
+  padding:24px 34px 30px;
+}
+.doc-page.contract-products{
+  font-size:9.8px;
+  line-height:1.18;
+}
+.doc-page.handover-products{
+  font-size:11.2px;
+  line-height:1.24;
+}
+.contract-products .doc-product-table{
+  font-size:9.8px;
+  line-height:1.18;
+}
+.contract-products .doc-product-table th{
+  font-size:9.4px;
+  line-height:1.12;
+  padding:3px 2px;
+}
+.contract-products .doc-product-table td{
+  font-size:9.8px;
+  line-height:1.18;
+  padding:3px;
+}
+.contract-products .doc-product-table .doc-desc{
+  font-size:9.6px;
+  line-height:1.2;
+}
+.contract-products .doc-photo{
+  width:112px;
+  height:86px;
+}
+.contract-products.products-1 .doc-product-row{height:360px}
+.contract-products.products-2 .doc-product-row{height:240px}
+.contract-products.products-3 .doc-product-row{height:165px}
+.contract-products.products-last.products-1 .doc-product-row{height:300px}
+.contract-products.products-last.products-2 .doc-product-row{height:210px}
+.contract-products.products-last.products-3 .doc-product-row{height:150px}
+.handover-products .doc-photo{
+  width:132px;
+  height:96px;
+}
+.handover-products.products-1 .doc-product-row{height:420px}
+.handover-products.products-2 .doc-product-row{height:270px}
+.handover-products.products-3 .doc-product-row{height:185px}
+.handover-products.products-4 .doc-product-row{height:135px}
+@media print{
+  .doc-page.contract-products,
+  .doc-page.handover-products{
+    page:minmin-doc-landscape;
+    width:297mm;
+    min-height:210mm;
+    padding:6mm 9mm 7mm;
+  }
+}`;
+};
+
 
 initApp();
     </script>
