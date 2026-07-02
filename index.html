@@ -5790,7 +5790,7 @@ function renderDocumentSuiteTab(){
         <div class="rounded-lg border border-black/10 bg-white p-3 shadow-sm">
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div><h2 class="text-lg font-extrabold">${esc(taskTitle)}</h2><p class="mt-1 text-xs font-bold text-black/45">Preview đang dùng đúng layout A4 của bản in và file Word.</p></div>
-            <div class="flex flex-wrap gap-2"><button id="docCopy" type="button" class="h-10 rounded-md border border-mint/30 bg-white px-3 text-sm font-extrabold text-mint">Sao chép</button><button id="docWord" type="button" class="h-10 rounded-md border border-mint/30 bg-white px-3 text-sm font-extrabold text-mint">Xuất Word</button><button id="docPrint" type="button" class="h-10 rounded-md bg-ink px-4 text-sm font-extrabold text-white">Xuất PDF A4 dọc</button></div>
+            <div class="flex flex-wrap gap-2"><button id="docCopy" type="button" class="h-10 rounded-md border border-mint/30 bg-white px-3 text-sm font-extrabold text-mint">Sao chép</button><button id="docWord" type="button" class="h-10 rounded-md border border-mint/30 bg-white px-3 text-sm font-extrabold text-mint">Xuất Word</button><button id="docPrint" type="button" class="h-10 rounded-md bg-ink px-4 text-sm font-extrabold text-white">Xuất PDF theo mẫu Word</button></div>
           </div>
           <div id="documentPreview" class="mt-4 overflow-hidden rounded-lg border border-black/10">${documentPaperHtml(d.activeTask)}</div>
         </div>
@@ -6083,7 +6083,7 @@ function renderDocumentSuiteTab(){
         <div class="rounded-lg border border-black/10 bg-white p-3 shadow-sm">
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div><h2 class="text-lg font-extrabold">${esc(taskTitle)}</h2><p class="mt-1 text-xs font-bold text-black/45">Preview tách trang giống bản in, nhập liệu không làm mất focus.</p></div>
-            <div class="flex flex-wrap gap-2"><button id="docCopy" type="button" class="h-10 rounded-md border border-mint/30 bg-white px-3 text-sm font-extrabold text-mint">Sao chép</button><button id="docWord" type="button" class="h-10 rounded-md border border-mint/30 bg-white px-3 text-sm font-extrabold text-mint">Xuất Word</button><button id="docPrint" type="button" class="h-10 rounded-md bg-ink px-4 text-sm font-extrabold text-white">Xuất PDF A4 dọc</button></div>
+            <div class="flex flex-wrap gap-2"><button id="docCopy" type="button" class="h-10 rounded-md border border-mint/30 bg-white px-3 text-sm font-extrabold text-mint">Sao chép</button><button id="docWord" type="button" class="h-10 rounded-md border border-mint/30 bg-white px-3 text-sm font-extrabold text-mint">Xuất Word</button><button id="docPrint" type="button" class="h-10 rounded-md bg-ink px-4 text-sm font-extrabold text-white">Xuất PDF theo mẫu Word</button></div>
           </div>
           <div id="documentPreview" class="mt-4 overflow-hidden rounded-lg border border-black/10">${documentPaperHtml(d.activeTask)}</div>
         </div>
@@ -7376,6 +7376,364 @@ html,body{
 
 /* MINMIN PATCH 2026-07-02E: Biên bản giao hàng thêm mục % khách đã thanh toán, tự tính số đã trả/còn lại, và chừa chỗ ký tên. */
 
+
+
+
+/* MINMIN PATCH 2026-07-02G
+   Hợp đồng: bám cấu trúc file Word khách gửi.
+   - Trang bìa/điều khoản: A4 dọc, Times New Roman, giãn dòng 1.5 như Word.
+   - Trang bảng sản phẩm: A4 ngang giống section bảng trong file Word.
+   - Không tự viết lại điều khoản; chỉ thay thông tin Bên A, sản phẩm, số tiền, giao hàng theo báo giá. */
+function docContractWordPartyBlock(){
+  const d=ensureDocumentSuite(), a=d.partyA||{};
+  const company=a.company||state.info.client||'xx';
+  const address=a.address||state.info.address||'';
+  const tax=a.taxCode||'';
+  const phone=a.phone||state.info.tel||'';
+  const rep=a.representative||state.info.representative||'';
+  const pos=a.position||'Giám Đốc';
+  return `<div class="word-party-block">
+    <div class="word-party-row"><b>BÊN MUA</b><span>: <b>${esc(company)}</b> (gọi tắt là “Bên A”)</span></div>
+    <div class="word-party-row"><span>Địa chỉ</span><span>: ${esc(address)}</span></div>
+    <div class="word-party-row word-party-split"><span>Mã số thuế</span><span>: ${esc(tax)}</span><span>Điện thoại:</span><span>${esc(phone)}</span></div>
+    <div class="word-party-row word-party-split"><b>Đại diện</b><span>: ${esc(rep)}</span><span>Chức vụ:</span><span>${esc(pos)}</span></div>
+  </div>
+  <div class="word-party-block word-party-seller">
+    <div class="word-party-row"><b>BÊN BÁN</b><span>: <b>CÔNG TY TNHH MINMIN LIFESTYLE</b> (gọi tắt là “Bên B”)</span></div>
+    <div class="word-party-row"><span>Địa chỉ </span><span>: 27/32 Nguyễn Công Hoan, Phường Cầu Kiệu, Thành phố Hồ Chí Minh, Việt Nam.</span></div>
+    <div class="word-party-row word-party-split"><span>Mã số thuế</span><span>: 0319348049</span><span>Điện thoại:</span><span>0707671221</span></div>
+    <div class="word-party-row word-party-split"><b>Đại diện</b><span>: <b>Ông Nguyễn Hồ Quang Huy</b></span><span>Chức vụ:</span><span><b>Giám Đốc</b></span></div>
+  </div>`;
+}
+function docContractWordProductChunks(rows){
+  const list=rows||[];
+  if(list.length<=4)return [list];
+  const chunks=[];
+  let i=0;
+  while(i<list.length){
+    const remain=list.length-i;
+    if(remain<=4){chunks.push(list.slice(i));break;}
+    chunks.push(list.slice(i,i+4));
+    i+=4;
+  }
+  return chunks;
+}
+function docContractWordProductTable(segment,{first=false,last=false}={}){
+  const t=docTotals(), info=state.info||{};
+  const shipAmount=Number(t.shipping||0);
+  const shipDisplay=shipAmount>0?docMoney(shipAmount):'MIỄN PHÍ';
+  const header=`<thead><tr>
+    <th>STT</th><th>Tình trạng</th><th>Mã hàng</th><th>Tên SP</th><th>Hình ảnh</th><th>Kích thước</th><th>Đặc điểm</th><th>ĐVT</th><th>SL</th><th>Đơn giá</th><th>Thành Tiền</th>
+  </tr></thead>`;
+  const productRows=(segment||[]).map(r=>`<tr class="word-product-row">
+    <td class="center">${r.stt}</td>
+    <td class="center">${br(r.status||'')}</td>
+    <td class="center doc-bold">${esc(r.code)}</td>
+    <td class="center">${esc(r.name)}</td>
+    <td>${r.photo?`<img src="${esc(r.photo)}" class="doc-photo word-photo"/>`:''}</td>
+    <td class="center">${esc(r.dimension)}</td>
+    <td class="word-desc">${r.desc||''}</td>
+    <td class="center">${esc(String(r.unit||'Cái').replace(' (pcs)',''))}</td>
+    <td class="center">${r.qty}</td>
+    <td class="num">${docMoney(r.price)}</td>
+    <td class="num doc-bold">${docMoney(r.amount)}</td>
+  </tr>`).join('');
+  const shipRow=last?`<tr class="word-ship-row"><td></td><td></td><td class="center">${esc(info.shipCode||'PVC')}</td><td class="center">${esc(info.shipName||'Phí vận chuyển')}</td><td></td><td></td><td></td><td class="center">${esc(info.shipUnit||'Kiện')}</td><td class="center">${Number(info.shipQty||1)}</td><td></td><td class="num doc-bold">${shipDisplay}</td></tr>`:'';
+  const totalRows=last?`
+    <tr class="word-total-row"><td colspan="7" class="doc-empty"></td><td colspan="3" class="word-total-label">TỔNG GIÁ TRỊ</td><td class="word-total-value">${docMoney(t.subtotal)}</td></tr>
+    <tr class="word-total-row"><td colspan="7" class="doc-empty"></td><td colspan="3" class="word-total-label word-total-lite">CHIẾT KHẤU ${Number(info.discountRate||0)}%</td><td class="word-total-value word-total-lite">${docMoney(t.discount)}</td></tr>
+    <tr class="word-total-row"><td colspan="7" class="doc-empty"></td><td colspan="3" class="word-total-label">TỔNG GIÁ TRỊ SAU CHIẾT KHẤU</td><td class="word-total-value">${docMoney(t.afterDiscount)}</td></tr>
+    <tr class="word-total-row"><td colspan="7" class="doc-empty"></td><td colspan="3" class="word-total-label word-total-lite">VAT ${Number(info.vatRate||0)}%</td><td class="word-total-value word-total-lite">${docMoney(t.vat)}</td></tr>
+    <tr class="word-total-row"><td colspan="7" class="doc-empty"></td><td colspan="3" class="word-total-label word-total-hot">TỔNG TIỀN SAU VAT</td><td class="word-total-value word-total-hot">${docMoney(t.afterVat)}</td></tr>
+    <tr class="word-total-row"><td colspan="7" class="doc-empty"></td><td colspan="3" class="word-total-label word-total-lite doc-bold">ĐẶT CỌC</td><td class="word-total-value word-total-lite">${docMoney(t.deposit)}</td></tr>
+    <tr class="word-total-row"><td colspan="7" class="doc-empty"></td><td colspan="3" class="word-total-label word-total-lite doc-bold">CÒN LẠI</td><td class="word-total-value word-total-lite">${docMoney(t.remaining)}</td></tr>`:'';
+  return `<div class="word-table-wrap"><table class="doc-table word-contract-table"><colgroup><col style="width:4.8%"><col style="width:9.6%"><col style="width:7.2%"><col style="width:8.4%"><col style="width:13.2%"><col style="width:10.6%"><col style="width:20.6%"><col style="width:5.8%"><col style="width:5.0%"><col style="width:7.2%"><col style="width:7.6%"></colgroup>${header}<tbody>${productRows}${shipRow}${totalRows}</tbody></table></div>`;
+}
+function docContractWordTermsPage1(){
+  const d=ensureDocumentSuite();
+  const deliveryDays=esc(d.deliveryDays||40);
+  const notifyBeforeDays=esc(d.notifyBeforeDays||3);
+  const acceptanceHours=esc(d.acceptanceHours||24);
+  const deliveryAddress=esc(d.deliveryAddress||state.info.delivery||state.info.address||'XXX');
+  return `<p class="doc-p doc-line">Giá trị Hợp đồng trên là trọn gói, bao gồm chi phí vận chuyển đến nơi lắp đặt do Bên A chỉ định, nguyên vật liệu để sản xuất thành sản phẩm hoàn chỉnh, không thay đổi trong suốt thời gian thực hiện hợp đồng.</p>
+  <p class="doc-p doc-line">1.2&nbsp;&nbsp; Quy cách đóng gói sản phẩm</p>
+  <p class="doc-p doc-line">- Sản phẩm sản xuất mới 100%, mẫu mã đảm bảo thiết kế, quy cách, chất liệu...đã được Bên A phê duyệt.</p>
+  <p class="doc-p doc-line">- Sản phẩm được sản xuất theo thiết kế, kích thước, màu sắc riêng theo yêu cầu của Bên A nên không được hủy đơn hàng, đổi trả dưới mọi hình thức, trừ trường hợp lỗi do Bên B.</p>
+  <p class="doc-p doc-line">- Do đặc thù sản xuất thủ công, các sai số về kích thước, màu sắc trong phạm vi ±5% được xem là đạt yêu cầu và không được xem là lỗi sản phẩm.</p>
+  <p class="doc-p doc-line">- Đóng gói: Sản phẩm được đóng gói đảm bảo cho vận chuyển xuất khẩu.</p>
+  <p class="doc-p doc-line">1.3&nbsp;&nbsp; Tổng trách nhiệm bồi thường thiệt hại của Bên B phát sinh hoặc liên quan đến Hợp đồng này (bao gồm phạt vi phạm và bồi thường thiệt hại) sẽ không vượt quá 8% giá trị phần nghĩa vụ vi phạm theo quy định Luật Thương mại 2005.</p>
+  <h2 class="doc-section-title no-underline">ĐIỀU 2: GIAO HÀNG</h2>
+  <p class="doc-p doc-line">2.1&nbsp;&nbsp; Địa điểm giao hàng: Bên B tiến hành giao hàng cho Bên A địa chỉ tại: ${deliveryAddress}</p>
+  <p class="doc-p doc-line">2.2&nbsp;&nbsp; Thời gian giao hàng:</p>
+  <p class="doc-p doc-line">· Thời gian giao hàng: trong vòng ${deliveryDays} ngày kể từ ngày Bên B nhận đủ khoản thanh toán đợt 1.</p>
+  <p class="doc-p doc-line">· Chậm nhất trước ${notifyBeforeDays.toString().padStart(2,'0')} ngày làm việc, trước khi tiến hành giao hàng Bên B có trách nhiệm thông báo cho Bên A sắp xếp nhân sự, máy móc (nếu có), kho bãi để tiếp nhận sản phẩm.</p>
+  <p class="doc-p doc-line">· Bên A có trách nhiệm kiểm tra tình trạng sản phẩm được giao có nguyên vẹn, không bị vỡ, bể trong vòng ${acceptanceHours} giờ. Trong trường hợp này, Bên B được xem là hoàn thành việc giao hàng; Quyền sở hữu sản phẩm chỉ được chuyển giao cho Bên A sau khi Bên A thanh toán đầy đủ 100% giá trị Hợp đồng.</p>
+  <p class="doc-p doc-line">· Trong vòng ${acceptanceHours} giờ kể từ thời điểm nhận hàng, nếu Bên A không có ý kiến bằng văn bản về khiếm khuyết sản phẩm, sản phẩm được xem là đã nghiệm thu và chấp nhận không điều kiện.</p>
+  <p class="doc-p doc-line">2.3&nbsp;&nbsp; Chi phí xếp dỡ: Bên B chịu chi phí xếp hàng, vận chuyển đến nơi/địa chỉ do bên A chỉ định. Bên A chịu chi phí dỡ hàng vào kho của Bên A.</p>
+  <p class="doc-p doc-line">· Trường hợp Bên A chậm nhận hàng so với thời gian đã thỏa thuận mà không có thông báo trước bằng văn bản, Bên A phải chịu mọi chi phí phát sinh bao gồm nhưng không giới hạn: chi phí lưu kho, chi phí vận chuyển lại, chi phí bốc xếp và các chi phí liên quan khác. Mọi rủi ro đối với hàng hóa phát sinh trong thời gian chậm nhận hàng thuộc trách nhiệm của Bên A.</p>`;
+}
+function docContractWordTermsPage2(){
+  const d=ensureDocumentSuite();
+  return `<h2 class="doc-section-title no-underline">ĐIỀU 3: PHƯƠNG THỨC VÀ ĐIỀU KIỆN THANH TOÁN</h2>
+  <p class="doc-p doc-line">3.1&nbsp;&nbsp;&nbsp; Giá trị Hợp đồng sẽ được thanh toán làm 2 đợt như sau:</p>
+  <p class="doc-p doc-line">· Đợt 1: thanh toán 50% giá trị hợp đồng, trong vòng 5 ngày kể từ ngày hợp đồng có hiệu lực.</p>
+  <p class="doc-p doc-line">· Đợt 2: thanh toán 50% giá trị hợp đồng, trong vòng 5 ngày làm việc kể từ ngày Bên B bàn giao sản phẩm cho Bên A.</p>
+  <p class="doc-p doc-line">3.2&nbsp;&nbsp;&nbsp; Hình thức thanh toán: chuyển khoản:</p>
+  <p class="doc-p doc-line">· Tên tài khoản: CÔNG TY TNHH MINMIN LIFESTYLE</p>
+  <p class="doc-p doc-line">· Tài khoản: 388683838</p>
+  <p class="doc-p doc-line">· Ngân hàng: Ngân Hàng ACB</p>
+  <p class="doc-p doc-line">3.3&nbsp;&nbsp;&nbsp; Chứng từ thanh toán bao gồm:</p>
+  <p class="doc-p doc-line">Đợt 1: Đề nghị thanh toán</p>
+  <p class="doc-p doc-line">Đợt 2: Đề nghị thanh toán</p>
+  <p class="doc-p doc-line">Bên B có quyền tạm ngừng việc giao hàng trong trường hợp Bên A không thực hiện nghĩa vụ thanh toán theo đúng thời hạn đã thỏa thuận. Thời gian tạm ngừng giao hàng sẽ không được tính là thời gian chậm giao hàng.</p>
+  <h2 class="doc-section-title no-underline">ĐIỀU 4:  QUYỀN VÀ TRÁCH NHIỆM CỦA CÁC BÊN</h2>
+  <p class="doc-p doc-line"><b>4.1.Quyền và Trách nhiệm Bên B.</b></p>
+  <p class="doc-p doc-line">· Bên B có trách nhiệm cung cấp sản phẩm theo đúng: chất liệu, màu sắc, kích cỡ, thiết kế đã được Bên A phê duyệt.</p>
+  <p class="doc-p doc-line">· Bên B có trách nhiệm giao đúng, đủ số lượng Sản phẩm và theo đúng thời gian, địa điểm đã được thống nhất;</p>
+  <p class="doc-p doc-line">· Bên B chịu trách nhiệm đóng gói hàng theo quy cách đảm bảo an toàn khi vận chuyển (tránh va đập, sứt sát….).</p>
+  <p class="doc-p doc-line">· Hoàn trả tài sản Bên A giao cho Bên B, và các tài sản Bên B tạo ra theo đơn đặt hàng của Bên A. Trong thời gian là 03 (ba) ngày làm việc khi nhận được yêu cầu từ Bên A.</p>
+  <p class="doc-p doc-line">· Bên B sẽ không được chuyển giao toàn bộ hoặc một phần nghĩa vụ của mình theo Hợp đồng cho bên thứ ba trừ khi có sự đồng ý trước bằng văn bản của bên A.</p>
+  <p class="doc-p doc-line">· Có trách nhiệm bảo hành sản phẩm trong vòng ${esc(d.warrantyMonths||12)} tháng kể từ ngày bàn giao sản phẩm; trong thời hạn là ${esc(d.warrantyResponseDays||5)} ngày làm việc nếu nhận được thông tin yêu cầu bảo hành sản phẩm Bên B có trách nhiệm cử nhân sự xuống kiểm tra khắc phục; nếu quá thời hạn cử người xuống khắc phục mà Bên A không nhận được bất kỳ thông tin nào về việc chậm trễ này. Trường hợp Bên B không thực hiện bảo hành trong thời hạn ${esc(d.warrantyResponseDays||5)} ngày làm việc kể từ ngày nhận được yêu cầu bằng văn bản và xác định lỗi thuộc trách nhiệm của Bên B, Bên A có quyền thuê bên thứ ba sửa chữa sau khi có sự đồng ý bằng văn bản của Bên B về phương án và chi phí sửa chữa. Chi phí sửa chữa không vượt quá giá trị phần sản phẩm bị lỗi.</p>`;
+}
+function docContractWordTermsPage3(){
+  const d=ensureDocumentSuite();
+  const defectRepairDays=esc(d.defectRepairDays||30);
+  return `<p class="doc-p doc-line">· Bên B không chịu trách nhiệm đối với các thiệt hại gián tiếp, thiệt hại do mất lợi nhuận, mất cơ hội kinh doanh hoặc nghĩa vụ của Bên A đối với bên thứ ba.</p>
+  <p class="doc-p doc-line">· Không bảo hành trong trường hợp: Lắp đặt sai kỹ thuật, sai điện áp, tác động ngoại lực, tự ý sửa chữa, hao mòn tự nhiên</p>
+  <p class="doc-p doc-line">· Sau khi Bên A đã xác nhận bản vẽ, mẫu mã hoặc thông số kỹ thuật, mọi yêu cầu thay đổi (nếu có) sẽ được xem là phát sinh. Bên B có quyền điều chỉnh giá trị hợp đồng, chi phí liên quan và thời gian giao hàng tương ứng với khối lượng thay đổi.</p>
+  <p class="doc-p doc-line"><b>4.2.&nbsp;&nbsp;Quyền và trách nhiệm Bên A:</b></p>
+  <p class="doc-p doc-line">· Bên A có trách nhiệm nhận Sản phẩm theo quy định tại khoản 1.1 Điều 1. Trong trường hợp không thể nhận hàng theo thời gian và địa điểm quy định tại khoản 2.2 Điều 2, Bên A phải thông báo ngay cho Bên B bằng văn bản chậm nhất là hai mươi bốn (24) giờ trước khi kế hoạch giao hàng đã được định sẵn.</p>
+  <p class="doc-p doc-line">· Trong trường hợp sản phẩm không bảo đảm chất lượng, quy cách, thì bên A từ chối nhận sản phẩm, và Bên B sửa chữa và thay thế lại sản phẩm hoặc đổi sản phẩm mới  trong vòng ${defectRepairDays} ngày kể từ ngày hai bên nghiệm thu sản phẩm. Nếu quá thời hạn quy định tại Điều này thì bên A có quyền hủy bỏ hợp đồng và yêu cầu phạt vi phạm, bồi thường thiệt hại theo Điều 7 của Hợp đồng.</p>
+  <p class="doc-p doc-line">· Thanh toán cho bên B đủ và đúng hạn như đã thỏa thuận ở Điều 3. Trong trường hợp bên A thanh tóan chậm phải chịu lãi suất theo mức lãi suất cho vay quá hạn của Ngân hàng Vietcombank tại thời điểm thanh toán, lãi suất được tính từ ngày bên A bắt đầu thanh toán quá hạn đến ngày bên A thanh toán hết, nhưng thời gian cũng không được kéo dài quá 30 ngày, quá thời hạn này bên A phải thanh toán cho bên B theo lãi suất thỏa thuận với bên B.</p>
+  <h2 class="doc-section-title no-underline">ĐIỀU 5:TRƯỜNG HỢP BẤT KHẢ KHÁNG</h2>
+  <p class="doc-p doc-line">· Trường hợp xảy ra sự kiện bất khả kháng bao gồm nhưng không giới hạn: thiên tai, hỏa hoạn, dịch bệnh, gián đoạn vận chuyển, thay đổi chính sách pháp luật hoặc các sự kiện nằm ngoài khả năng kiểm soát hợp lý của các Bên, thì Bên bị ảnh hưởng sẽ không bị xem là vi phạm Hợp đồng. Thời gian thực hiện nghĩa vụ sẽ được gia hạn tương ứng với thời gian bị ảnh hưởng.</p>
+  <h2 class="doc-section-title no-underline">ĐIỀU 6: HỦY BỎ, CHẤM DỨT HỢP ĐỒNG</h2>
+  <p class="doc-p doc-line">6.1&nbsp;&nbsp; Hợp đồng chấm dứt khi các bên thực hiện xong toàn bộ nghĩa vụ của Hợp đồng hoặc bất cứ thời điểm nào theo thỏa thuận của các bên.</p>
+  <p class="doc-p doc-line">6.2&nbsp;&nbsp; Bên A có quyền đơn phương hủy bỏ hoặc chấm dứt hợp đồng theo một trong số các trường hợp sau:</p>
+  <p class="doc-p doc-line">· Bên A chỉ có quyền chấm dứt hợp đồng nếu Bên B chậm giao hàng quá ${esc(d.lateLimitDays||14)} ngày và không khắc phục trong vòng ${esc(d.cureDays||7)} ngày kể từ ngày nhận được thông báo bằng văn bản của Bên A.;</p>
+  <p class="doc-p doc-line">· Bên B giao hàng không đúng quy cách, chất lượng, số lượng quy định tại Điều 1   Hợp đồng này.</p>
+  <p class="doc-p doc-line">6.3&nbsp;&nbsp; Bên B có quyền đơn phương chấm dứt hợp đồng trong các trường hợp Bên A vi phạm quá 07 ngày nghĩa vụ thanh toán theo điều 3 của Hợp đồng hoặc phát sinh các vấn đề liên quan đến bản quyền thiết kế.</p>`;
+}
+function docContractWordTermsPage4(){
+  const d=ensureDocumentSuite();
+  return `<h2 class="doc-section-title no-underline">ĐIỀU 7: PHẠT VI PHẠM</h2>
+  <p class="doc-p doc-line">7.1&nbsp;&nbsp; Nếu Bên B vì bất cứ lý do nào mà không thực hiện đúng theo thời hạn bàn giao sản phẩm quy định khi chưa được sự đồng ý của Bên A, thì Bên B phải bồi thường thiệt hại trễ hạn theo tỉ lệ 0,1 (không phẩy một) % tổng giá trị hợp đồng cho mỗi ngày (tổng mức phạt không vượt quá 8% giá trị phần nghĩa vụ vi phạm) trễ hạn nhưng không được trễ quá ${esc(d.lateLimitDays||14)} ngày, quá thời gian này bên A được quyền từ chối tiếp tục thực hiện hợp đồng này với Bên B và áp dụng theo quy định tại khoản 7.3 điều này.</p>
+  <p class="doc-p doc-line">7.2&nbsp;&nbsp; Ngược lại nếu Bên B đã thực hiện đúng hợp đồng mà Bên A vi phạm điều khoản thanh toán được quy định tại Điều 3 thuộc hợp đồng này, sau khi có sự nhắc nhở của Bên B mà Bên A vẫn không khắc phục, thì Bên A phải chịu phạt trễ hạn thanh toán cho Bên B theo quy định.</p>
+  <p class="doc-p doc-line">7.3&nbsp;&nbsp; Hai bên cam kết thực hiện nghiêm túc các điều khoản đã thoả thuận trong hợp đồng này. Trừ những trường hợp được quy định cụ thể, Bên nào vi phạm bất kì điều khoản nào quy định tại hợp đồng này mà không khắc phục trong thời hạn hợp lý (không ít hơn 02 ngày) kể từ khi nhận được yêu cầu khắc phục của Bên kia, hoặc trong thời hạn theo sự thỏa thuận của các bên nếu có, và gây thiệt hại cho bên kia, Bên bị vi phạm có quyền đơn phương từ chối tiếp tục thực hiện hợp đồng với thông báo trước bằng văn bản cho bên kia. Bên vi phạm phải chịu trách nhiệm bồi thường thiệt hại cho bên bị vi phạm theo quy định pháp luật về bồi thường.</p>
+  <p class="doc-p doc-line word-indent">- Trường hợp Bên A vi phạm, Bên A sẽ:</p>
+  <p class="doc-p doc-line word-indent">a) Thanh toán giá trị Bên A đã thực hiện;</p>
+  <p class="doc-p doc-line word-indent">b) Phạt vi phạm 8% giá trị hợp đồng;</p>
+  <p class="doc-p doc-line word-indent">- Trường hợp Bên B vi phạm, Bên B sẽ:</p>
+  <p class="doc-p doc-line word-indent">a) Hoàn trả lại toàn bộ số tiền tạm ứng/thanh toán cho Bên A;</p>
+  <p class="doc-p doc-line word-indent">b) Phạt vi phạm 8% giá trị hợp đồng;</p>
+  <p class="doc-p doc-line">7.4&nbsp;&nbsp; Trong mọi trường hợp, tổng mức phạt vi phạm và bồi thường thiệt hại của Bên B phát sinh từ hoặc liên quan đến Hợp đồng này sẽ không vượt quá 8% giá trị phần nghĩa vụ bị vi phạm.</p>
+  <h2 class="doc-section-title no-underline">ĐIỀU 8: THANH LÝ HỢP ĐỒNG  HIỆU LỰC CỦA HỢP ĐỒNG</h2>
+  <p class="doc-p doc-line">8.1&nbsp;&nbsp; Hai bên cam kết thực hiện đúng các nội dung ghi trong Hợp đồng, mọi thay đổi phải được thể hiện bằng văn bản phụ lục kèm theo. Quá trình thực hiện nếu có bất kỳ khó khăn, vướng mắc nào phải được thông báo và được sự thỏa thuận bằng văn bản của hai bên.</p>
+  <p class="doc-p doc-line">8.2&nbsp;&nbsp; Sau khi hai Bên đã thực hiện đầy đủ và nghiêm chỉnh các Điều khoản trong Hợp đồng này, mà không có vướng mắc gì thì Hợp đồng coi như đã được thanh lý</p>
+  <p class="doc-p doc-line">8.3&nbsp;&nbsp; Hợp đồng này có hiệu lực kể từ ngày ký, được lập thành 02 (hai) bản Tiếng Việt, mỗi bên giữ 01 (một) bản có giá trị như nhau.</p>
+  <table class="word-sign-table"><tr><td><b>ĐẠI DIỆN BÊN A</b><br>Giám đốc<br><br><br><br><br></td><td><b>ĐẠI DIỆN BÊN B</b><br>Giám đốc<br><br><br><br><br><b>NGUYỄN HỒ QUANG HUY</b></td></tr></table>`;
+}
+function renderContractPages(){
+  const d=ensureDocumentSuite(), t=docTotals();
+  const rows=docProductRows();
+  const productChunks=docContractWordProductChunks(rows.length?rows:[]);
+  const vatRate=Number(state.info?.vatRate||0);
+  const pages=[];
+  pages.push({className:'contract-word-cover',html:`${docNational()}
+    <h1 class="doc-title">HỢP ĐỒNG MUA BÁN</h1>
+    <p class="doc-subtitle"><b><i>Số: ${esc(d.contractNo||'XXX/2026/MINMIN')}</i></b></p>
+    <p class="doc-p doc-line word-bullet">· Căn cứ Luật Thương mại số 36/2005/QH11 ban hành ngày 14/06/2005</p>
+    <p class="doc-p doc-line word-bullet">· Căn cứ vào nhu cầu và khả năng của hai bên</p>
+    <p class="doc-p doc-line">Hợp đồng này được lập ${docLongDate(d.contractDate)} bởi và giữa:</p>
+    ${docContractWordPartyBlock()}
+    <p class="doc-p doc-line">Bên A và Bên B sau đây được gọi riêng là “Bên” và được gọi chung là “Các Bên”.</p>
+    <p class="doc-p doc-line">Sau khi bàn bạc, thảo luận, hai bên thống nhất ký kết Hợp Đồng Mua Bán (sau đây gọi là “Hợp đồng”) với các điều kiện và điều khoản sau:</p>`});
+  productChunks.forEach((chunk,idx)=>{
+    const first=idx===0,last=idx===productChunks.length-1;
+    pages.push({className:`contract-word-products products-${chunk.length||1} ${last?'products-last':''}`,html:`${first?`<h2 class="doc-section-title no-underline">ĐIỀU 1: SẢN PHẨM, SỐ LƯỢNG, QUY CÁCH, GIÁ CẢ, GIÁ TRỊ CỦA HỢP ĐỒNG :</h2><p class="doc-p doc-line">1.1&nbsp;&nbsp; Thông tin sản phẩm và giá trị hợp đồng :</p>`:`<p class="doc-continuation-note">Bảng sản phẩm tiếp theo</p>`}${docContractWordProductTable(chunk,{first,last})}${last?`<div class="doc-product-summary"><p>(Bằng chữ: ${esc(docNumberWords(t.afterVat))} đồng)</p><p><i>Giá đã bao gồm ${vatRate}% VAT</i></p></div>`:''}`});
+  });
+  pages.push({className:'contract-word-terms',html:docContractWordTermsPage1()});
+  pages.push({className:'contract-word-terms',html:docContractWordTermsPage2()});
+  pages.push({className:'contract-word-terms',html:docContractWordTermsPage3()});
+  pages.push({className:'contract-word-terms terms-last',html:docContractWordTermsPage4()});
+  return docPageObjects(pages);
+}
+const __minminDocumentPrintCssWordTemplate = documentPrintCss;
+function documentPrintCss(){
+  const base = __minminDocumentPrintCssWordTemplate();
+  return base + `
+/* Hợp đồng theo đúng cấu trúc Word - SONKIMLAND */
+@page contractPortrait{size:A4 portrait;margin:0}
+@page contractLandscape{size:A4 landscape;margin:0}
+.doc-page.contract-word-cover,
+.doc-page.contract-word-terms,
+.doc-page.contract-word-terms.terms-last{
+  page:contractPortrait;
+  width:794px;
+  min-height:1123px;
+  padding:58px 56px 58px 78px;
+  font-family:"Times New Roman",Times,serif;
+  font-size:13.35px;
+  line-height:1.5;
+  overflow:hidden;
+}
+.doc-page.contract-word-products{
+  page:contractLandscape;
+  width:1123px;
+  min-height:794px;
+  padding:31px 56px 44px 56px;
+  font-family:"Times New Roman",Times,serif;
+  font-size:10px;
+  line-height:1.12;
+  overflow:hidden;
+}
+.contract-word-cover .doc-title{
+  font-size:18.7px;
+  line-height:1.25;
+  margin:8px 0 0;
+  font-weight:800;
+}
+.contract-word-cover .doc-subtitle{
+  font-size:13.35px;
+  margin:0 0 12px;
+  text-align:center;
+}
+.contract-word-cover .doc-p,
+.contract-word-terms .doc-p{
+  font-size:13.35px;
+  line-height:1.5;
+  margin:0 0 2px;
+  text-align:justify;
+}
+.contract-word-cover .doc-center{
+  line-height:1.5;
+  font-size:13.35px;
+}
+.contract-word-products .doc-section-title{
+  font-size:13.35px;
+  line-height:1.25;
+  margin:0 0 3px;
+  text-align:left;
+  text-decoration:none;
+}
+.contract-word-products .doc-p{
+  font-size:13.35px;
+  line-height:1.25;
+  margin:0 0 4px;
+}
+.contract-word-terms .doc-section-title{
+  font-size:13.35px;
+  line-height:1.35;
+  margin:2px 0 0;
+  text-align:justify;
+  text-decoration:none;
+  font-weight:800;
+}
+.word-bullet{margin-left:0}
+.word-indent{margin-left:30px!important}
+.word-party-block{
+  display:grid;
+  gap:0;
+  margin:7px 0 12px;
+  font-size:13.35px;
+  line-height:1.5;
+}
+.word-party-block.word-party-seller{margin-top:2px}
+.word-party-row{
+  display:grid;
+  grid-template-columns:104px 1fr;
+  gap:6px;
+  min-height:20px;
+}
+.word-party-split{
+  grid-template-columns:104px 190px 92px 1fr;
+}
+.word-contract-table{
+  width:100%;
+  border-collapse:collapse;
+  table-layout:fixed;
+  margin-top:2px;
+  font-size:9.8px;
+  line-height:1.08;
+}
+.word-contract-table th,
+.word-contract-table td{
+  border:1px solid #111;
+  padding:2px 2.5px;
+  vertical-align:middle;
+  overflow-wrap:break-word;
+}
+.word-contract-table th{
+  font-size:9.4px;
+  line-height:1.05;
+  text-align:center;
+  font-weight:700;
+}
+.word-contract-table .num{text-align:right;white-space:nowrap}
+.word-contract-table .center{text-align:center}
+.word-desc{font-size:9.45px;line-height:1.1;text-align:left}
+.word-photo{width:105px;height:82px;object-fit:contain;display:block;margin:auto}
+.word-product-row{height:116px}
+.contract-word-products.products-1 .word-product-row{height:330px}
+.contract-word-products.products-2 .word-product-row{height:216px}
+.contract-word-products.products-3 .word-product-row{height:158px}
+.contract-word-products.products-4 .word-product-row{height:116px}
+.word-ship-row{height:36px}
+.word-total-row td{height:22px;padding-top:2px;padding-bottom:2px}
+.word-total-label{text-align:left;font-weight:800;background:#bfbfbf}
+.word-total-value{text-align:right;font-weight:800;white-space:nowrap;background:#bfbfbf}
+.word-total-lite{font-style:italic;font-weight:400}
+.word-total-hot{color:#c00000;font-weight:800}
+.word-table-wrap{width:100%;overflow:hidden}
+.contract-word-products .doc-product-summary{
+  margin:8px 0 0;
+  font-size:13.35px;
+  line-height:1.45;
+}
+.contract-word-products .doc-product-summary p{margin:0 0 2px}
+.word-sign-table{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:18px;
+  table-layout:fixed;
+  font-size:13.35px;
+  line-height:1.5;
+  text-align:center;
+}
+.word-sign-table td{
+  border:0;
+  width:50%;
+  vertical-align:top;
+  padding:0 12px;
+}
+.doc-page.contract-word-products .doc-page-number{bottom:9px}
+@media print{
+  @page contractPortrait{size:A4 portrait;margin:0}
+  @page contractLandscape{size:A4 landscape;margin:0}
+  .doc-page.contract-word-cover,
+  .doc-page.contract-word-terms,
+  .doc-page.contract-word-terms.terms-last{
+    page:contractPortrait;
+    width:210mm;
+    min-height:297mm;
+    padding:15mm 15mm 15mm 20.5mm;
+    font-size:13.35px;
+    line-height:1.5;
+    box-shadow:none;
+    overflow:hidden;
+  }
+  .doc-page.contract-word-products{
+    page:contractLandscape;
+    width:297mm;
+    min-height:210mm;
+    padding:8mm 15mm 11mm 15mm;
+    font-size:10px;
+    line-height:1.12;
+    box-shadow:none;
+    overflow:hidden;
+  }
+}`;
+}
 
 /* MINMIN PATCH 2026-07-02F
    Bàn giao / nghiệm thu: ép đúng khổ A4 chiều dọc, bảng co gọn vừa trang, chừa chỗ ký. */
