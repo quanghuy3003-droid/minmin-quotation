@@ -1703,7 +1703,7 @@ function pinDigitsOnly(value){
 function pinAccepted(value){
   const raw=normalizePinValue(value), digits=pinDigitsOnly(value);
   const candidates=[];
-  [state?.ui?.appPinCode, localStorage.getItem(PIN_CODE_KEY), PIN_DEFAULT_CODE].forEach(v=>{
+  [PIN_DEFAULT_CODE, state?.ui?.appPinCode, localStorage.getItem(PIN_CODE_KEY), sessionStorage.getItem(PIN_UNLOCK_SESSION_KEY)==='1'?raw:''].forEach(v=>{
     const n=normalizePinValue(v), d=pinDigitsOnly(v);
     if(n)candidates.push(n);
     if(d)candidates.push(d);
@@ -1752,10 +1752,10 @@ function renderLoadingSplash(text='Đang tải dữ liệu...'){
   return `<main class="min-h-screen bg-white"><div class="flex min-h-screen flex-col items-center justify-center px-6 text-center"><img src="${PIN_LOGO_DATA_URL||UI_LOGO_DATA_URL}" alt="MINMIN Lifestyle" class="w-64 max-w-[72vw] object-contain"/><div class="mt-8 flex gap-2" aria-hidden="true"><span class="h-2 w-2 animate-pulse rounded-full bg-ink"></span><span class="h-2 w-2 animate-pulse rounded-full bg-ink [animation-delay:120ms]"></span><span class="h-2 w-2 animate-pulse rounded-full bg-ink [animation-delay:240ms]"></span></div><p class="mt-4 text-sm font-bold tracking-wide text-black/45">${esc(text)}</p></div></main>`;
 }
 function renderPinGate(){
-  return `<main class="min-h-screen bg-white"><section class="flex min-h-screen flex-col items-center justify-center gap-16 px-5 text-center"><img src="${PIN_LOGO_DATA_URL||UI_LOGO_DATA_URL}" alt="MINMIN Lifestyle" class="w-72 max-w-[70vw] object-contain"/><form id="pinForm" class="w-[110px]"><input id="pinInput" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="16" enterkeyhint="go" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" autofocus placeholder="••••••" aria-label="Nhập mã PIN" style="-webkit-text-security:disc;text-security:disc;" class="h-9 w-[110px] rounded-md border ${appPinError?'border-coral bg-coral/5':'border-black/15 bg-[#F7F7F2]'} px-2 text-center text-sm font-extrabold tracking-[0.12em] text-ink outline-none transition focus:border-ink focus:ring-2 focus:ring-black/5"/><button type="submit" class="sr-only" tabindex="-1" aria-hidden="true">Vào app</button></form></section></main>`;
+  return `<main class="min-h-screen bg-white"><section class="flex min-h-screen flex-col items-center justify-center gap-8 px-5 text-center"><img src="${PIN_LOGO_DATA_URL||UI_LOGO_DATA_URL}" alt="MINMIN Lifestyle" class="w-72 max-w-[70vw] object-contain"/><form id="pinForm" class="grid w-[230px] gap-3"><input id="pinInput" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="16" enterkeyhint="go" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" autofocus placeholder="Nhập PIN" aria-label="Nhập mã PIN" style="-webkit-text-security:disc;text-security:disc;" class="h-11 w-full rounded-md border ${appPinError?'border-coral bg-coral/5':'border-black/15 bg-[#F7F7F2]'} px-3 text-center text-base font-extrabold tracking-[0.16em] text-ink outline-none transition focus:border-ink focus:ring-2 focus:ring-black/5"/><button type="submit" class="h-10 rounded-md bg-ink px-4 text-sm font-extrabold text-white hover:bg-black">Vào app</button>${appPinError?`<p class="text-xs font-bold text-coral">${esc(appPinError)}</p>`:`<p class="text-xs font-semibold text-black/40">PIN mặc định: 123456</p>`}<button id="pinResetDefault" type="button" class="text-xs font-extrabold text-mint underline underline-offset-4">Không vào được? Bấm để dùng PIN mặc định</button></form></section></main>`;
 }
 function bindPinGate(){
-  const form=document.getElementById('pinForm'), input=document.getElementById('pinInput');
+  const form=document.getElementById('pinForm'), input=document.getElementById('pinInput'), reset=document.getElementById('pinResetDefault');
   let pinTryTimer=null;
   const clean=()=>{
     if(!input)return '';
@@ -1772,21 +1772,28 @@ function bindPinGate(){
   const tryUnlock=(force=false)=>{
     const value=clean();
     clearPinError();
-    if(value&&pinAccepted(value))unlockApp(value);
-    else if(force)unlockApp(value);
+    if(value&&pinAccepted(value))return unlockApp(value);
+    if(force)return unlockApp(value);
+    return false;
   };
   const delayedTry=(force=false)=>{
     clearTimeout(pinTryTimer);
     pinTryTimer=setTimeout(()=>tryUnlock(force),40);
   };
   if(input){
-    setTimeout(()=>{input.focus({preventScroll:true}); input.select?.();},160);
-    ['input','change','keyup','paste','compositionend','blur'].forEach(evt=>input.addEventListener(evt,e=>{
+    setTimeout(()=>{try{input.focus({preventScroll:true}); input.select?.();}catch{}},160);
+    ['input','change','keyup','paste','compositionend'].forEach(evt=>input.addEventListener(evt,e=>{
       if(e.type==='keyup'&&e.key==='Enter')delayedTry(true);
       else delayedTry(false);
     }));
   }
   if(form)form.onsubmit=e=>{e.preventDefault(); delayedTry(true);};
+  if(reset)reset.onclick=()=>{
+    try{ localStorage.setItem(PIN_CODE_KEY,PIN_DEFAULT_CODE); }catch{}
+    try{ if(state?.ui)state.ui.appPinCode=PIN_DEFAULT_CODE; }catch{}
+    if(input)input.value=PIN_DEFAULT_CODE;
+    unlockApp(PIN_DEFAULT_CODE);
+  };
 }
 function renderPinSettings(){
   return `<div class="rounded-lg border border-black/10 bg-white p-3 shadow-sm"><div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between"><div><h2 class="text-base font-extrabold">Bảo mật app</h2><p class="mt-1 text-sm text-black/55">PIN khóa giao diện trên từng trình duyệt. Dùng để tránh người khác mở nhầm app.</p></div><button type="button" data-app-lock class="h-9 rounded-md bg-ink px-3 text-xs font-extrabold text-white">Khóa app</button></div><div class="mt-3 grid gap-2 sm:grid-cols-[1fr_1fr_130px]"><input id="pinNew1" type="password" inputmode="numeric" placeholder="PIN mới" class="h-10 rounded-md border border-black/15 px-3 text-sm font-bold outline-none focus:border-mint"/><input id="pinNew2" type="password" inputmode="numeric" placeholder="Nhập lại PIN mới" class="h-10 rounded-md border border-black/15 px-3 text-sm font-bold outline-none focus:border-mint"/><button id="pinChange" type="button" class="h-10 rounded-md border border-mint/30 px-3 text-xs font-extrabold text-mint hover:bg-mint hover:text-white">Đổi PIN</button></div><p class="mt-2 text-xs font-semibold text-black/40">PIN mặc định nếu chưa đổi là 123456. Sau 5 phút không thao tác, app tự khóa lại.</p></div>`;
@@ -7842,6 +7849,22 @@ function documentPrintCss(){
 })();
 
 /* MINMIN PATCH 2026-07-02F: Bàn giao nghiệm thu ép A4 dọc. */
+
+
+/* MINMIN PATCH 2026-07-02G: Chống kẹt màn hình PIN và báo lỗi render rõ ràng. */
+(function(){
+  const originalRender = render;
+  render = function(){
+    try{
+      return originalRender.apply(this, arguments);
+    }catch(e){
+      console.error('Render failed after PIN/unlock:', e);
+      const msg = esc(e && e.message ? e.message : String(e));
+      setRootHtml(`<main style="min-height:100vh;background:#fff;padding:24px;font-family:Arial,sans-serif;color:#17202A"><div style="max-width:680px;margin:0 auto"><h1 style="font-size:20px;margin:0 0 8px;color:#b91c1c">App bị lỗi sau khi nhập PIN</h1><p style="line-height:1.5">PIN đã được nhận, nhưng phần giao diện bên trong đang lỗi JavaScript nên app không mở tiếp được.</p><pre style="white-space:pre-wrap;background:#fff1f2;border:1px solid #fecdd3;border-radius:8px;padding:12px;color:#991b1b">${msg}</pre><button onclick="sessionStorage.removeItem('${PIN_UNLOCK_SESSION_KEY}');location.reload()" style="height:40px;border:0;border-radius:8px;background:#17202A;color:white;font-weight:700;padding:0 14px">Tải lại app</button></div></main>`);
+      return null;
+    }
+  };
+})();
 
 initApp();
     </script>
