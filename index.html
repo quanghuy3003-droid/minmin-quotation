@@ -8020,6 +8020,117 @@ html,body{
 }
 
 
+/* MINMIN PATCH 2026-07-02D
+   Thêm Phiếu xuất kho vào tab Hồ sơ. Chỉ ghi đè nhóm hàm Hồ sơ, không đụng PIN/tab khác. */
+function docTasks(){
+  return [
+    ['contract','Hợp đồng'],
+    ['payment','Đề nghị thanh toán'],
+    ['handover','Bàn giao / nghiệm thu'],
+    ['stockout','Phiếu xuất kho'],
+    ['warranty','Cam kết bảo hành']
+  ];
+}
+function docStockOutNo(){
+  const d=ensureDocumentSuite();
+  if(d.stockOutNo)return d.stockOutNo;
+  const date=new Date(d.handoverDate||d.contractDate||state.info?.quoteDate||todayIso());
+  const y=Number.isNaN(date.getTime())?new Date().getFullYear():date.getFullYear();
+  const dm=Number.isNaN(date.getTime())?'……':`${String(date.getDate()).padStart(2,'0')}${String(date.getMonth()+1).padStart(2,'0')}`;
+  return `XK-${dm}/${y}`;
+}
+function docDotted(value,width=240){
+  const v=String(value||'').trim();
+  return v?esc(v):`<span class="doc-dotted" style="min-width:${width}px"></span>`;
+}
+function docStockOutProducts(){
+  const rows=docProductRows();
+  return (rows.length?rows:[]).map((r,i)=>({
+    stt:i+1,
+    name:r.name||'Đèn trang trí',
+    code:r.code||'',
+    unit:(r.unit||'Cái').replace(/\s*\(pcs\)\s*/i,''),
+    qty:Number(r.qty||0),
+    price:Number(r.price||0),
+    amount:Number(r.amount||0),
+    note:''
+  }));
+}
+function docStockOutChunks(rows){
+  const list=rows.length?rows:[{stt:1,name:'Đèn trang trí',code:'',unit:'Cái',qty:0,price:0,amount:0,note:''}];
+  const chunks=[];
+  for(let i=0;i<list.length;i+=8)chunks.push(list.slice(i,i+8));
+  return chunks;
+}
+function docStockOutProductTable(chunk,{first=false}={}){
+  const header=first?`<thead><tr><th>STT</th><th>Tên hàng hóa</th><th>Mã hàng</th><th>Đơn vị tính</th><th>Số lượng</th><th>Đơn giá</th><th>Thành tiền</th><th>Ghi chú</th></tr></thead>`:'';
+  const body=(chunk||[]).map(r=>`<tr><td class="center">${r.stt}</td><td>${esc(r.name||'Đèn trang trí')}</td><td class="center doc-bold">${esc(r.code||'')}</td><td class="center">${esc(r.unit||'Cái')}</td><td class="center doc-bold">${r.qty||''}</td><td class="num">${r.price?docMoney(r.price):''}</td><td class="num doc-bold">${r.amount?docMoney(r.amount):''}</td><td>${esc(r.note||'')}</td></tr>`).join('');
+  return `<table class="doc-table doc-stockout-table"><colgroup><col style="width:5%"><col style="width:24%"><col style="width:12%"><col style="width:10%"><col style="width:10%"><col style="width:13%"><col style="width:15%"><col style="width:11%"></colgroup>${header}<tbody>${body}</tbody></table>`;
+}
+function renderStockOutPages(){
+  const d=ensureDocumentSuite(), a=d.partyA||{}, rows=docStockOutProducts(), chunks=docStockOutChunks(rows);
+  const totalQty=rows.reduce((s,r)=>s+Number(r.qty||0),0);
+  const totalValue=rows.reduce((s,r)=>s+Number(r.amount||0),0);
+  const receiver=d.stockReceiver||a.representative||'';
+  const receiverUnit=d.stockReceiverUnit||a.company||state.info?.client||'';
+  const reason=d.stockReason||'Xuất hàng giao khách / Xuất theo hợp đồng / Xuất bán hàng';
+  const warehouse=d.stockWarehouse||'Kho hàng Công ty TNHH Minmin Lifestyle';
+  const delivery=d.stockDeliveryAddress||d.deliveryAddress||state.info?.delivery||state.info?.address||'';
+  const pages=[];
+  pages.push({className:'stockout-cover textpage',html:`<h1 class="doc-title doc-stockout-title">PHIẾU XUẤT KHO</h1>
+    <div class="doc-stockout-company">
+      <p><b>Đơn vị:</b> CÔNG TY TNHH MINMIN LIFESTYLE</p>
+      <p><b>Địa chỉ:</b> 27/32 Nguyễn Công Hoan, Phường Cầu Kiệu, TP. Hồ Chí Minh</p>
+      <p><b>Mã số thuế:</b> 0319348049</p>
+    </div>
+    <div class="doc-stockout-meta">
+      <p><b>Số phiếu:</b> ${esc(docStockOutNo())}</p>
+      <p><b>Ngày:</b> ${docLongDate(d.handoverDate||d.contractDate)}</p>
+    </div>
+    <h2 class="doc-section-title no-underline">THÔNG TIN XUẤT KHO</h2>
+    <div class="doc-stockout-info">
+      <p><b>Người nhận hàng:</b> ${docDotted(receiver,360)}</p>
+      <p><b>Bộ phận/Đơn vị nhận:</b> ${docDotted(receiverUnit,340)}</p>
+      <p><b>Lý do xuất kho:</b> ${esc(reason)}</p>
+      <p><b>Xuất tại kho:</b> ${esc(warehouse)}</p>
+      <p><b>Địa điểm giao hàng:</b> ${docDotted(delivery,330)}</p>
+    </div>
+    <h2 class="doc-section-title no-underline">DANH SÁCH HÀNG HÓA XUẤT KHO</h2>
+    <p class="doc-p">Danh sách hàng hóa ở trang tiếp theo.</p>`});
+  chunks.forEach((chunk,i)=>{
+    pages.push({className:`stockout-products compact products-${Math.max(1,chunk.length)} ${i===chunks.length-1?'products-last':''}`,html:`${i===0?'<h2 class="doc-section-title no-underline">DANH SÁCH HÀNG HÓA XUẤT KHO</h2>':'<p class="doc-continuation-note">Danh sách hàng hóa xuất kho (tiếp theo)</p>'}${docStockOutProductTable(chunk,{first:i===0})}`});
+  });
+  pages.push({className:'stockout-sign textpage',html:`<p class="doc-p"><b>Tổng số lượng:</b> ${totalQty?docMoney(totalQty):'<span class="doc-dotted" style="min-width:260px"></span>'}</p>
+    <p class="doc-p"><b>Tổng giá trị:</b> ${totalValue?docMoneyDong(totalValue):'<span class="doc-dotted" style="min-width:260px"></span>'}</p>
+    <p class="doc-p"><b>Bằng chữ:</b> ${totalValue?esc(docNumberWords(totalValue))+' đồng':'<span class="doc-dotted" style="min-width:520px"></span>'}</p>
+    <h2 class="doc-section-title no-underline">KÝ XÁC NHẬN</h2>
+    <table class="doc-table doc-stockout-sign-table"><thead><tr><th>Người lập phiếu</th><th>Người nhận hàng</th><th>Thủ kho</th><th>Kế toán</th><th>Giám đốc</th></tr></thead><tbody><tr><td>Ký, ghi rõ họ tên</td><td>Ký, ghi rõ họ tên</td><td>Ký, ghi rõ họ tên</td><td>Ký, ghi rõ họ tên</td><td>Ký, ghi rõ họ tên</td></tr><tr class="doc-stockout-sign-row"><td></td><td></td><td></td><td></td><td></td></tr></tbody></table>
+    <p class="doc-p"><b>Ghi chú:</b></p>
+    <ul class="doc-bullets"><li>Phiếu này dùng để ghi nhận việc xuất hàng khỏi kho.</li><li>Hàng hóa đã được kiểm đếm trước khi bàn giao.</li><li>Người nhận hàng chịu trách nhiệm kiểm tra số lượng, tình trạng hàng hóa tại thời điểm nhận.</li></ul>`});
+  return docPageObjects(pages);
+}
+const __minminRenderDocumentTaskPagesBeforeStockOut = (typeof renderDocumentTaskPages === 'function') ? renderDocumentTaskPages : null;
+function renderDocumentTaskPages(task){
+  if(task==='contract')return renderContractPages();
+  if(task==='handover')return renderHandoverPages();
+  if(task==='stockout')return renderStockOutPages();
+  return docPageObjects([{className:'textpage',html:renderDocumentTaskContent(task)}]);
+}
+const __minminDocumentPrintCssBeforeStockOut = documentPrintCss;
+documentPrintCss = function(){
+  return __minminDocumentPrintCssBeforeStockOut()+`
+.doc-dotted{display:inline-block;border-bottom:1px dotted #111;height:1em;vertical-align:baseline}
+.doc-stockout-title{font-size:22px!important;text-align:center;text-transform:uppercase;margin-top:16px;margin-bottom:14px}
+.doc-stockout-company p,.doc-stockout-meta p,.doc-stockout-info p{margin:5px 0;line-height:1.56}
+.doc-stockout-meta{margin:18px 0 18px}
+.doc-page.stockout-products{padding:22px 26px 30px;font-size:11.6px;line-height:1.28}
+.doc-stockout-table{font-size:11.6px!important;line-height:1.28!important}.doc-stockout-table th,.doc-stockout-table td{font-size:11.6px!important;line-height:1.28!important;padding:5px 4px!important}.doc-stockout-table tr{height:58px}.doc-stockout-table .num{text-align:right;white-space:nowrap}
+.doc-stockout-sign-table{margin-top:10px}.doc-stockout-sign-table th,.doc-stockout-sign-table td{text-align:center}.doc-stockout-sign-row{height:118px}
+@media print{.doc-page.stockout-products{padding:5.8mm 6.8mm 7.8mm}.doc-stockout-table th,.doc-stockout-table td{padding:1.2mm 1mm!important}.doc-stockout-sign-row{height:32mm}}
+`;
+};
+
+
 initApp();
     </script>
   </body>
