@@ -8365,6 +8365,21 @@ documentPrintCss = function(){
       });
     };
   }
+
+  if(typeof websiteProductsTable === 'function'){
+    const previousWebsiteProductsTableForQuote = websiteProductsTable;
+    websiteProductsTable = function(){
+      let html = previousWebsiteProductsTableForQuote.apply(this, arguments);
+      html = String(html || '').replace(/>Báo giá<\/button>/g, '>Import BG</button>');
+      if(!html.includes('data-website-to-quote')){
+        html = html.replace(
+          /(<button data-website-upload-woo="([^"]+)" type="button" class="h-(?:8|9)[^"]*">Woo<\/button>)/g,
+          '<button data-website-to-quote="$2" type="button" class="h-8 rounded-md border border-gold/60 bg-gold/20 px-2 text-xs font-extrabold text-ink">Import BG</button>$1'
+        );
+      }
+      return html;
+    };
+  }
 })();
 
 
