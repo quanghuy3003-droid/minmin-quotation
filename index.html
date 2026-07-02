@@ -3117,7 +3117,7 @@ function websiteProductsTable(){
   const rowHtml=rows.map(p=>{
     const m=websiteMissingFields(p), stock=websiteLinkedStock(p.stock_code), editing=String(state.website?.editingId||'')===String(p.id||'');
     const category=websiteCategoryLabel(p.category)||'--';
-    const main=`<tr class="border-b border-black/10 align-middle ${editing?'bg-mint/5':''}"><td class="py-2 pr-3"><div class="flex h-14 w-14 items-center justify-center overflow-hidden rounded-md border border-black/10 bg-[#F7F7F2]">${p.featured_image_url?`<img src="${esc(driveAssetUrl(p.featured_image_url))}" class="h-full w-full object-cover" loading="lazy"/>`:'<span class="text-[10px] font-bold text-black/35">No</span>'}</div></td><td class="py-2 pr-3"><div class="min-w-0"><div class="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1"><b class="truncate text-base">${esc(p.product_name_en||p.product_name_vi||p.sku||'Chưa có tên')}</b><span class="shrink-0 rounded bg-black/5 px-2 py-0.5 text-[11px] font-extrabold text-black/45">${esc(p.sku||'--')}</span></div><div class="mt-1 flex min-w-0 flex-wrap items-center gap-2 text-[11px] font-bold"><span class="${stock?'text-mint':'text-black/35'}">Stock: ${esc(p.stock_code||'--')}${stock?` · tồn ${Number(stock.quantity||0)}`:''}</span><span class="truncate text-black/35">${esc(p.slug||'')}</span></div>${m.length?`<div class="mt-1 truncate text-[11px] font-extrabold text-orange-600">Thiếu: ${esc(m.join(', '))}</div>`:''}</div></td><td class="py-2 pr-3"><div class="max-w-[340px] text-sm font-bold leading-5 text-black/60">${esc(category)}</div></td><td class="py-2 pr-3 whitespace-nowrap font-extrabold text-mint">${money(websiteMoneyNumber(p.regular_price))}</td><td class="py-2 pr-3"><span class="inline-flex rounded-md ${p.website_status==='Đã đăng website'?'bg-mint/10 text-mint':p.website_status==='Sẵn sàng CSV'?'bg-gold/20 text-[#9a6500]':'bg-black/5 text-black/50'} px-2 py-1 text-xs font-extrabold">${esc(p.website_status||'Nháp')}</span>${websiteWooSyncBadge(p)}${p.wooProductId?`<a href="${esc(p.wooProductUrl||p.website_product_url||'#')}" target="_blank" rel="noopener" class="mt-1 block text-[11px] font-bold text-sky-700">Woo #${esc(p.wooProductId)}</a>`:''}</td><td class="py-2 text-right"><div class="flex flex-nowrap justify-end gap-2"><button data-website-edit="${esc(p.id)}" type="button" class="h-9 min-w-[58px] rounded-md border ${editing?'border-mint bg-mint/10':'border-mint/25 bg-white'} px-3 text-xs font-extrabold text-mint">${editing?'Đang sửa':'Sửa'}</button><button data-website-upload-woo="${esc(p.id)}" type="button" class="h-9 min-w-[56px] rounded-md border border-sky-300 bg-sky-50 px-3 text-xs font-extrabold text-sky-800">Woo</button><button data-website-delete="${esc(p.id)}" type="button" class="h-9 min-w-[56px] rounded-md border border-coral/25 px-3 text-xs font-extrabold text-coral">Xóa</button></div></td></tr>`;
+const main=`<tr class="border-b border-black/10 align-middle ${editing?'bg-mint/5':''}"><td class="py-2 pr-3"><div class="flex h-14 w-14 items-center justify-center overflow-hidden rounded-md border border-black/10 bg-[#F7F7F2]">${p.featured_image_url?`<img src="${esc(driveAssetUrl(p.featured_image_url))}" class="h-full w-full object-cover" loading="lazy"/>`:'<span class="text-[10px] font-bold text-black/35">No</span>'}</div></td><td class="py-2 pr-3"><div class="min-w-0"><div class="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1"><b class="truncate text-base">${esc(p.product_name_en||p.product_name_vi||p.sku||'Chưa có tên')}</b><span class="shrink-0 rounded bg-black/5 px-2 py-0.5 text-[11px] font-extrabold text-black/45">${esc(p.sku||'--')}</span></div><div class="mt-1 flex min-w-0 flex-wrap items-center gap-2 text-[11px] font-bold"><span class="${stock?'text-mint':'text-black/35'}">Stock: ${esc(p.stock_code||'--')}${stock?` · tồn ${Number(stock.quantity||0)}`:''}</span><span class="truncate text-black/35">${esc(p.slug||'')}</span></div>${m.length?`<div class="mt-1 truncate text-[11px] font-extrabold text-orange-600">Thiếu: ${esc(m.join(', '))}</div>`:''}</div></td><td class="py-2 pr-3"><div class="max-w-[340px] text-sm font-bold leading-5 text-black/60">${esc(category)}</div></td><td class="py-2 pr-3 whitespace-nowrap font-extrabold text-mint">${money(websiteMoneyNumber(p.regular_price))}</td><td class="py-2 pr-3"><span class="inline-flex rounded-md ${p.website_status==='Đã đăng website'?'bg-mint/10 text-mint':p.website_status==='Sẵn sàng CSV'?'bg-gold/20 text-[#9a6500]':'bg-black/5 text-black/50'} px-2 py-1 text-xs font-extrabold">${esc(p.website_status||'Nháp')}</span>${websiteWooSyncBadge(p)}${p.wooProductId?`<a href="${esc(p.wooProductUrl||p.website_product_url||'#')}" target="_blank" rel="noopener" class="mt-1 block text-[11px] font-bold text-sky-700">Woo #${esc(p.wooProductId)}</a>`:''}</td><td class="py-2 text-right"><div class="flex flex-nowrap justify-end gap-2"><button data-website-edit="${esc(p.id)}" type="button" class="h-9 min-w-[58px] rounded-md border ${editing?'border-mint bg-mint/10':'border-mint/25 bg-white'} px-3 text-xs font-extrabold text-mint">${editing?'Đang sửa':'Sửa'}</button><button data-website-to-quote="${esc(p.id)}" type="button" class="h-9 min-w-[64px] rounded-md border border-gold/60 bg-gold/20 px-3 text-xs font-extrabold text-ink">Báo giá</button><button data-website-upload-woo="${esc(p.id)}" type="button" class="h-9 min-w-[56px] rounded-md border border-sky-300 bg-sky-50 px-3 text-xs font-extrabold text-sky-800">Woo</button><button data-website-delete="${esc(p.id)}" type="button" class="h-9 min-w-[56px] rounded-md border border-coral/25 px-3 text-xs font-extrabold text-coral">Xóa</button></div></td></tr>`;
     return main+websiteInlineEditPanel(p);
   }).join('');
   return `<div class="rounded-lg border border-black/10 bg-white p-3 shadow-sm"><div class="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between"><div><h2 class="text-base font-extrabold">Danh sách sản phẩm website</h2><p class="mt-1 text-xs font-semibold text-black/45">${rows.length}/${state.website.products.length} sản phẩm đang hiển thị.</p></div><div class="grid gap-2 sm:grid-cols-4 lg:min-w-[720px]"><input id="websiteSearch" value="${esc(state.website.search||'')}" placeholder="Tìm SKU, STK, tên, danh mục" class="h-10 rounded-md border border-black/15 px-3 text-sm font-bold outline-none focus:border-mint"/><select id="websiteStatusFilter" class="h-10 rounded-md border border-black/15 px-3 text-sm font-bold"><option value="">Tất cả trạng thái</option>${['Nháp','Sẵn sàng CSV','Đã đăng website','Tạm ẩn'].map(v=>`<option value="${esc(v)}" ${state.website.statusFilter===v?'selected':''}>${esc(v)}</option>`).join('')}</select><select id="websiteCategoryFilter" class="h-10 rounded-md border border-black/15 px-3 text-sm font-bold"><option value="">Tất cả danh mục</option>${websiteCategories().map(v=>`<option value="${esc(v)}" ${state.website.categoryFilter===v?'selected':''}>${esc(v)}</option>`).join('')}</select><select id="websiteMissingFilter" class="h-10 rounded-md border border-black/15 px-3 text-sm font-bold"><option value="">Tất cả dữ liệu</option><option value="missing_required" ${state.website.missingFilter==='missing_required'?'selected':''}>Thiếu dữ liệu</option><option value="missing_image" ${state.website.missingFilter==='missing_image'?'selected':''}>Thiếu ảnh</option><option value="missing_price" ${state.website.missingFilter==='missing_price'?'selected':''}>Thiếu giá</option></select></div></div><div class="mt-3 overflow-x-auto"><table class="w-full min-w-[1180px] table-fixed border-collapse text-sm"><colgroup><col style="width:76px"><col style="width:38%"><col style="width:22%"><col style="width:120px"><col style="width:170px"><col style="width:230px"></colgroup><thead><tr class="border-b border-black/10 text-left text-[11px] uppercase tracking-wide text-black/45"><th class="py-2 pr-3">Ảnh</th><th class="py-2 pr-3">Sản phẩm</th><th class="py-2 pr-3">Danh mục</th><th class="py-2 pr-3">Giá</th><th class="py-2 pr-3">Trạng thái</th><th class="py-2 text-right">Thao tác</th></tr></thead><tbody>${rows.length?rowHtml:`<tr><td colspan="6" class="py-8 text-center text-sm font-semibold text-black/45">Chưa có sản phẩm website. Bấm “Tạo mới” rồi nhập sản phẩm.</td></tr>`}</tbody></table></div></div>`;
@@ -8071,6 +8071,9 @@ function renderStockOutPages(){
   const d=ensureDocumentSuite(), a=d.partyA||{}, rows=docStockOutProducts(), chunks=docStockOutChunks(rows);
   const totalQty=rows.reduce((s,r)=>s+Number(r.qty||0),0);
   const totalValue=rows.reduce((s,r)=>s+Number(r.amount||0),0);
+  const vatRate=Number(state.info?.vatRate||0);
+  const vatValue=Math.round(totalValue*vatRate/100);
+  const totalAfterVat=totalValue+vatValue;
   const receiver=d.stockReceiver||a.representative||'';
   const receiverUnit=d.stockReceiverUnit||a.company||state.info?.client||'';
   const reason=d.stockReason||'Xuất hàng giao khách / Xuất theo hợp đồng / Xuất bán hàng';
@@ -8101,8 +8104,14 @@ function renderStockOutPages(){
     pages.push({className:`stockout-products compact products-${Math.max(1,chunk.length)} ${i===chunks.length-1?'products-last':''}`,html:`${i===0?'<h2 class="doc-section-title no-underline">DANH SÁCH HÀNG HÓA XUẤT KHO</h2>':'<p class="doc-continuation-note">Danh sách hàng hóa xuất kho (tiếp theo)</p>'}${docStockOutProductTable(chunk,{first:i===0})}`});
   });
   pages.push({className:'stockout-sign textpage',html:`<p class="doc-p"><b>Tổng số lượng:</b> ${totalQty?docMoney(totalQty):'<span class="doc-dotted" style="min-width:260px"></span>'}</p>
-    <p class="doc-p"><b>Tổng giá trị:</b> ${totalValue?docMoneyDong(totalValue):'<span class="doc-dotted" style="min-width:260px"></span>'}</p>
-    <p class="doc-p"><b>Bằng chữ:</b> ${totalValue?esc(docNumberWords(totalValue))+' đồng':'<span class="doc-dotted" style="min-width:520px"></span>'}</p>
+    <table class="doc-table doc-stockout-total-table">
+      <tbody>
+        <tr><td>Tổng giá trị trước VAT</td><td class="num doc-bold">${totalValue?docMoneyDong(totalValue):'<span class="doc-dotted" style="min-width:180px"></span>'}</td></tr>
+        <tr><td>VAT ${docMoney(vatRate)}%</td><td class="num doc-bold">${totalValue?docMoneyDong(vatValue):'<span class="doc-dotted" style="min-width:180px"></span>'}</td></tr>
+        <tr class="doc-stockout-total-hot"><td>Tổng tiền sau VAT</td><td class="num doc-bold">${totalAfterVat?docMoneyDong(totalAfterVat):'<span class="doc-dotted" style="min-width:180px"></span>'}</td></tr>
+      </tbody>
+    </table>
+    <p class="doc-p"><b>Bằng chữ:</b> ${totalAfterVat?esc(docNumberWords(totalAfterVat))+' đồng':'<span class="doc-dotted" style="min-width:520px"></span>'}</p>
     <h2 class="doc-section-title no-underline">KÝ XÁC NHẬN</h2>
     <table class="doc-table doc-stockout-sign-table"><thead><tr><th>Người lập phiếu</th><th>Người nhận hàng</th><th>Thủ kho</th><th>Kế toán</th><th>Giám đốc</th></tr></thead><tbody><tr><td>Ký, ghi rõ họ tên</td><td>Ký, ghi rõ họ tên</td><td>Ký, ghi rõ họ tên</td><td>Ký, ghi rõ họ tên</td><td>Ký, ghi rõ họ tên</td></tr><tr class="doc-stockout-sign-row"><td></td><td></td><td></td><td></td><td></td></tr></tbody></table>
     <p class="doc-p"><b>Ghi chú:</b></p>
@@ -8125,6 +8134,7 @@ documentPrintCss = function(){
 .doc-stockout-meta{margin:18px 0 18px}
 .doc-page.stockout-products{padding:22px 26px 30px;font-size:11.6px;line-height:1.28}
 .doc-stockout-table{font-size:11.6px!important;line-height:1.28!important}.doc-stockout-table th,.doc-stockout-table td{font-size:11.6px!important;line-height:1.28!important;padding:5px 4px!important}.doc-stockout-table tr{height:58px}.doc-stockout-table .num{text-align:right;white-space:nowrap}
+.doc-stockout-total-table{width:58%;margin:10px 0 12px auto;font-size:12px}.doc-stockout-total-table td{padding:6px 8px}.doc-stockout-total-table td:first-child{font-weight:800;text-align:right}.doc-stockout-total-table .num{text-align:right;white-space:nowrap}.doc-stockout-total-hot td{background:#f4dada;color:#d71920;font-weight:900}
 .doc-stockout-sign-table{margin-top:10px}.doc-stockout-sign-table th,.doc-stockout-sign-table td{text-align:center}.doc-stockout-sign-row{height:118px}
 @media print{.doc-page.stockout-products{padding:5.8mm 6.8mm 7.8mm}.doc-stockout-table th,.doc-stockout-table td{padding:1.2mm 1mm!important}.doc-stockout-sign-row{height:32mm}}
 `;
@@ -8197,6 +8207,165 @@ documentPrintCss = function(){
   }
 }`;
 };
+
+/* MINMIN PATCH 2026-07-02I
+   Giữ nguyên tab/focus khi app tự đồng bộ hoặc tự render.
+   Đồng thời sửa tự sinh mã báo giá theo công thức OD/STK + loại đèn + thứ tự + ngày. */
+(function(){
+  const EDITABLE_SELECTOR = 'input, textarea, select, [contenteditable="true"]';
+  let lastUserEditAt = 0;
+  let pendingRenderTimer = null;
+
+  function activeEditable(){
+    const el = document.activeElement;
+    return !!(el && root && root.contains(el) && el.matches && el.matches(EDITABLE_SELECTOR));
+  }
+  function markUserEdit(){
+    lastUserEditAt = Date.now();
+  }
+  document.addEventListener('focusin', e => { if(e.target?.matches?.(EDITABLE_SELECTOR)) markUserEdit(); }, true);
+  document.addEventListener('input', e => { if(e.target?.matches?.(EDITABLE_SELECTOR)) markUserEdit(); }, true);
+  document.addEventListener('change', e => { if(e.target?.matches?.(EDITABLE_SELECTOR)) markUserEdit(); }, true);
+
+  const previousRefreshLineCodes = refreshLineCodes;
+  refreshLineCodes = function(opts = {}){
+    const force = !!opts.force;
+    const date = quoteDateCode();
+    const counters = {};
+    const existingManual = new Set(
+      (state.lines || [])
+        .filter(line => isManualQuoteCode(line))
+        .map(line => String(line.code || '').trim())
+        .filter(Boolean)
+    );
+    (state.lines || []).forEach(line => {
+      syncLineDefaults(line);
+      const base = codeBase(line);
+      if(!base){
+        if(force || !isManualQuoteCode(line)) line.code = '';
+        return;
+      }
+      if(isManualQuoteCode(line) && !force) return;
+      let n = (counters[base] || 0) + 1;
+      let next = `${base}${String(n).padStart(2,'0')}-${date}`;
+      while(existingManual.has(next)){
+        n += 1;
+        next = `${base}${String(n).padStart(2,'0')}-${date}`;
+      }
+      counters[base] = n;
+      line.code = next;
+      line.codeCustom = false;
+    });
+  };
+
+  const previousRender = render;
+  render = function(options = {}){
+    const force = options === true || !!options.force;
+    if(!force && activeEditable()){
+      clearTimeout(pendingRenderTimer);
+      pendingRenderTimer = setTimeout(() => {
+        if(!activeEditable()) previousRender();
+      }, 700);
+      return false;
+    }
+    const tabBefore = state.activeTab;
+    try{
+      const out = previousRender();
+      if(tabBefore && state.activeTab !== tabBefore && Date.now() - lastUserEditAt < 2500){
+        state.activeTab = tabBefore;
+      }
+      return out;
+    }catch(e){
+      console.error('Render lỗi, giữ nguyên tab hiện tại:', e);
+      if(tabBefore) state.activeTab = tabBefore;
+      throw e;
+    }
+  };
+
+  if(typeof applyWorkingStateSnapshot === 'function'){
+    const previousApplyWorkingStateSnapshot = applyWorkingStateSnapshot;
+    applyWorkingStateSnapshot = function(data){
+      const tabBefore = state.activeTab;
+      const uiBefore = {...(state.ui || {})};
+      const out = previousApplyWorkingStateSnapshot.apply(this, arguments);
+      if(tabBefore) state.activeTab = tabBefore;
+      state.ui = {...(state.ui || {}), toolsView: uiBefore.toolsView || state.ui?.toolsView, showStockHistory: state.ui?.showStockHistory, openStockItems: state.ui?.openStockItems || {}};
+      return out;
+    };
+  }
+
+  if(typeof loadWorkingStateFromSupabase === 'function'){
+    const previousLoadWorkingStateFromSupabase = loadWorkingStateFromSupabase;
+    loadWorkingStateFromSupabase = async function(){
+      if(activeEditable() || Date.now() - lastUserEditAt < 1800){
+        workingStateReady = true;
+        return false;
+      }
+      const tabBefore = state.activeTab;
+      const out = await previousLoadWorkingStateFromSupabase.apply(this, arguments);
+      if(tabBefore) state.activeTab = tabBefore;
+      return out;
+    };
+  }
+
+  function websiteProductToQuote(id, qty = 1){
+    state.website = normalizeWebsiteProducts(state.website || websiteProductsDefaults());
+    const p = (state.website.products || []).find(x => String(x.id) === String(id));
+    if(!p){
+      alert('Không tìm thấy sản phẩm website.');
+      return;
+    }
+    const stock = websiteLinkedStock(p.stock_code);
+    const line = syncLineDefaults({
+      uid: uid(),
+      productId: '',
+      status: stock ? 'Có sẵn' : 'Đặt hàng',
+      code: '',
+      name: p.product_name_en || p.product_name_vi || p.sku || 'Sản phẩm',
+      nameCustom: true,
+      leadTime: stock ? '' : '30-35 ngày',
+      photo: '',
+      photoDataUrl: p.featured_image_url || '',
+      dimension: p.dimensions || '',
+      description: p.short_description || '',
+      attributes: {
+        ...ATTRIBUTE_DEFAULTS,
+        shadeMaterial: p.shade_material || '',
+        bodyMaterial: p.body_material || '',
+        colorTemperature: p.color_temperature || '',
+        color: p.color || '',
+        lightSource: p.bulb_type || ''
+      },
+      unit: 'Cái (pcs)',
+      quantity: Number(qty || 1),
+      price: websiteMoneyNumber(p.regular_price || p.sale_price),
+      chinaPrice: '',
+      weight: '',
+      profitPercent: 120,
+      productType: inferProductType({name:p.product_name_en || p.product_name_vi, code:p.sku, category:p.category}),
+      stockMode: stock ? 'STK' : 'OD',
+      codePartsTouched: true,
+      codeCustom: false,
+      attrsTouched: true
+    });
+    state.lines.push(line);
+    refreshLineCodes();
+    saveDraft();
+    state.activeTab = 'quote';
+    render({force:true});
+  }
+  window.minminWebsiteProductToQuote = websiteProductToQuote;
+
+  if(typeof bindWebsiteProducts === 'function'){
+    const previousBindWebsiteProductsForQuote = bindWebsiteProducts;
+    bindWebsiteProducts = function(){
+      previousBindWebsiteProductsForQuote.apply(this, arguments);
+      document.querySelectorAll('[data-website-to-quote]').forEach(btn => {
+        btn.onclick = () => websiteProductToQuote(btn.dataset.websiteToQuote, 1);
+      });
+    };
+  }
+})();
 
 
 initApp();
