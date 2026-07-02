@@ -7893,6 +7893,133 @@ html,body{
 }
 
 
+/* MINMIN PATCH 2026-07-02G
+   Chỉ áp dụng trong tab Hồ sơ:
+   - Bàn giao/nghiệm thu dùng bảng không có đơn giá, thành tiền và tổng tiền.
+   - Bàn giao/nghiệm thu tách trang preview/in giống hợp đồng.
+   - Tăng offset/lề 4 cạnh cho trang Hồ sơ, đặc biệt bảng hợp đồng không còn sát mép giấy.
+   - Không can thiệp PIN, tab khác hoặc dữ liệu gốc. */
+function docHandoverProductChunks(rows){
+  const list=rows&&rows.length?rows:[{stt:'',status:'',code:'',name:'',photo:'',dimension:'',desc:'',unit:'',qty:''}];
+  if(list.length<=3)return [list];
+  const chunks=[list.slice(0,3)];
+  let i=3;
+  while(i<list.length){
+    chunks.push(list.slice(i,i+4));
+    i+=4;
+  }
+  return chunks;
+}
+function docHandoverProductTableSegment(segment,{first=false}={}){
+  const header=first?`<thead><tr><th>STT</th><th>Tình trạng</th><th>Mã hàng</th><th>Tên sản phẩm</th><th>Hình ảnh</th><th>Kích thước</th><th>Đặc điểm</th><th>ĐVT</th><th>SL</th></tr></thead>`:'';
+  const productRows=(segment||[]).map(r=>`<tr class="doc-product-row"><td class="center">${r.stt}</td><td class="center">${br(r.status||'')}</td><td class="center doc-bold">${esc(r.code||'')}</td><td class="center">${esc(r.name||'')}</td><td>${r.photo?`<img src="${esc(r.photo)}" class="doc-photo"/>`:''}</td><td class="center">${esc(r.dimension||'')}</td><td class="doc-desc">${r.desc||''}</td><td class="center">${esc(r.unit||'')}</td><td class="center doc-bold">${r.qty||''}</td></tr>`).join('');
+  return `<table class="doc-table doc-product-table doc-handover-product-table"><colgroup><col style="width:4.5%"><col style="width:10.5%"><col style="width:8%"><col style="width:11%"><col style="width:17%"><col style="width:12%"><col style="width:25%"><col style="width:7%"><col style="width:5%"></colgroup>${header}<tbody>${productRows}</tbody></table>`;
+}
+function renderHandoverPages(){
+  const d=ensureDocumentSuite();
+  const rows=docProductRows();
+  const chunks=docHandoverProductChunks(rows);
+  const pages=[];
+  pages.push({className:'handover-cover textpage',html:`${docNational()}<h1 class="doc-title">BIÊN BẢN BÀN GIAO - NGHIỆM THU</h1><p class="doc-subtitle">(Hợp đồng số ${esc(d.contractNo||'')})</p><p class="doc-p">Hôm nay, ${docLongDate(d.handoverDate)}, tại ${esc(d.location||'')}, chúng tôi gồm:</p>${docPartyHtml()}<p class="doc-p doc-line">Hai bên cùng tiến hành bàn giao và nghiệm thu các sản phẩm theo hợp đồng/báo giá <b>${esc(d.contractNo||docQuoteCode())}</b> với các nội dung sau:</p><h2 class="doc-section-title no-underline">1. Khối lượng công việc thực hiện</h2><p class="doc-p">Bên B đã bàn giao cho Bên A các sản phẩm theo danh mục ở các trang tiếp theo.</p>`});
+  chunks.forEach((chunk,i)=>{
+    const first=i===0;
+    pages.push({className:`handover-products compact products-${Math.max(1,chunk.length)} ${i===chunks.length-1?'products-last':''}`,html:`${first?'<h2 class="doc-section-title no-underline">Danh mục sản phẩm bàn giao</h2>':'<p class="doc-continuation-note">Danh mục sản phẩm bàn giao (tiếp theo)</p>'}${docHandoverProductTableSegment(chunk,{first})}`});
+  });
+  pages.push({className:'handover-sign textpage',html:`<h2 class="doc-section-title no-underline">2. Chất lượng công việc thực hiện</h2><p class="doc-p doc-line">Bên A đã kiểm tra và thông qua sản phẩm do Bên B thực hiện. Sản phẩm đảm bảo số lượng, chất lượng và tiến độ thời gian theo yêu cầu.</p><h2 class="doc-section-title no-underline">3. Kết luận</h2><p class="doc-p doc-line">Hai bên thống nhất bàn giao, nghiệm thu sản phẩm đã hoàn thành theo đúng các nội dung đã ký kết. Biên bản được lập thành 02 bản có giá trị pháp lý như nhau.</p><div class="doc-signatures"><div>ĐẠI DIỆN BÊN A<div class="doc-sign-spacer" style="height:120px"></div></div><div>ĐẠI DIỆN BÊN B<br>Giám đốc<div class="doc-sign-spacer" style="height:120px"></div>NGUYỄN HỒ QUANG HUY</div></div>`});
+  return docPageObjects(pages);
+}
+const __minminRenderDocumentTaskPagesBase = (typeof renderDocumentTaskPages === 'function') ? renderDocumentTaskPages : null;
+function renderDocumentTaskPages(task){
+  if(task==='contract')return renderContractPages();
+  if(task==='handover')return renderHandoverPages();
+  return docPageObjects([{className:'textpage',html:renderDocumentTaskContent(task)}]);
+}
+function documentPrintCss(){
+  return `@page{size:A4 portrait;margin:0}
+html,body{
+  margin:0;
+  background:#fff;
+  color:#111;
+  font-family:"Times New Roman",Times,serif;
+  -webkit-print-color-adjust:exact;
+  print-color-adjust:exact;
+}
+.doc-preview-shell{
+  max-height:78vh;
+  overflow:auto;
+  background:#ececea;
+  padding:14px;
+  display:grid;
+  gap:14px;
+  justify-items:center;
+}
+.doc-page{
+  box-sizing:border-box;
+  width:794px;
+  min-height:1123px;
+  margin:0 auto;
+  background:#fff;
+  padding:30px 46px 34px;
+  box-shadow:0 14px 40px rgba(0,0,0,.16);
+  font-size:15.2px;
+  line-height:1.56;
+  color:#111;
+  position:relative;
+  break-after:page;
+  page-break-after:always;
+  overflow:hidden;
+}
+.doc-page.contract-cover,
+.doc-page.contract-terms,
+.doc-page.contract-terms.terms-last,
+.doc-page.contract-sign,
+.doc-page.handover-cover,
+.doc-page.handover-sign,
+.doc-page.textpage{
+  padding:30px 46px 34px;
+  font-size:15.2px;
+  line-height:1.56;
+}
+.doc-page.contract-products,
+.doc-page.compact{
+  padding:18px 20px 26px;
+  font-size:8.7px;
+  line-height:1.15;
+}
+.doc-page.handover-products{
+  padding:20px 24px 28px;
+  font-size:10.4px;
+  line-height:1.22;
+}
+.doc-page:last-child{break-after:auto;page-break-after:auto}
+.doc-page-number{position:absolute;left:0;right:0;bottom:8px;text-align:center;font-size:15.2px;color:#111}
+.doc-center{text-align:center}.doc-right{text-align:right}.doc-bold{font-weight:700}.doc-extra{font-weight:800}.doc-italic{font-style:italic}.doc-red{color:#c00000}.doc-uppercase{text-transform:uppercase}
+.doc-title,.doc-subtitle,.doc-section-title,.doc-section-title.no-underline,.doc-mini-title,.doc-small,.doc-p,.doc-tight,.doc-tight p,.doc-bullets li,.doc-letter-list li,.doc-signatures,.doc-party-block,.doc-party-row{font-size:15.2px}
+.doc-title{margin:6px 0 4px;text-align:center;font-weight:800;line-height:1.56;letter-spacing:.08px}.doc-subtitle{text-align:center;margin:0 0 8px;line-height:1.56}.doc-section-title,.doc-section-title.no-underline{margin:6px 0 4px;line-height:1.56;font-weight:800;text-transform:uppercase;text-decoration:none}.doc-mini-title{margin:5px 0 3px;font-weight:700}
+.contract-cover .doc-title{font-size:15.2px;margin-top:6px}.contract-cover .doc-bullets{margin-top:8px}.contract-cover .doc-party-block{margin-top:7px}
+.doc-muted{color:#555}.doc-p{margin:4px 0;line-height:1.56}.doc-line{line-height:1.56}.doc-tight{line-height:1.56}.doc-tight p{margin:4px 0;line-height:1.56}.doc-indent{text-indent:18px}
+.doc-bullets{margin:4px 0 7px 20px;padding:0}.doc-bullets li{margin:3px 0;line-height:1.56}.contract-terms .doc-bullets{margin:4px 0 7px 20px}.contract-terms .doc-bullets li{margin:3px 0}.doc-letter-list{margin:4px 0 7px 24px;padding:0}.doc-letter-list li{margin:3px 0;line-height:1.56}
+.doc-party-block{display:grid;gap:4px;margin-top:6px}.doc-party-row{display:grid;grid-template-columns:108px 1fr;gap:8px;line-height:1.56}.contract-cover .doc-party-row{grid-template-columns:100px 1fr}
+.doc-signatures{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:36px;text-align:center;font-weight:800;line-height:1.56}.doc-sign-spacer{height:88px}
+.doc-table{width:100%;border-collapse:collapse;table-layout:fixed;margin-top:6px;page-break-inside:auto}.doc-table th,.doc-table td{border:1px solid #111;padding:3px;vertical-align:middle;overflow-wrap:break-word}.doc-table th{font-weight:800;text-align:center;background:#fff}.doc-table tr{page-break-inside:avoid;page-break-after:auto}.doc-table .num{text-align:right;white-space:nowrap}.doc-table .center{text-align:center}
+.doc-table:not(.doc-product-table){font-size:15.2px;line-height:1.56}.doc-table:not(.doc-product-table) th,.doc-table:not(.doc-product-table) td{font-size:15.2px;line-height:1.56}
+.doc-product-table{font-size:8.7px;line-height:1.15}.doc-product-table th{font-size:8.4px;line-height:1.1;padding:2px 1px}.doc-product-table td{padding:2px}.doc-product-table .doc-desc{font-size:8.6px;line-height:1.15}
+.doc-handover-product-table{font-size:10.4px;line-height:1.22}.doc-handover-product-table th{font-size:10.1px;line-height:1.18;padding:3px 2px}.doc-handover-product-table td{font-size:10.4px;line-height:1.22;padding:3px}.doc-handover-product-table .doc-desc{font-size:10.2px;line-height:1.22}
+.doc-photo{width:78px;height:60px;object-fit:contain;display:block;margin:auto}.contract-products .doc-photo{width:88px;height:70px}.handover-products .doc-photo{width:108px;height:84px}.doc-desc{line-height:1.15;text-align:left}
+.doc-product-row{height:200px}.products-1 .doc-product-row{height:410px}.products-2 .doc-product-row{height:286px}.products-3 .doc-product-row{height:196px}.products-last.products-1 .doc-product-row{height:284px}.products-last.products-2 .doc-product-row{height:212px}.products-last.products-3 .doc-product-row{height:168px}.handover-products.products-1 .doc-product-row{height:520px}.handover-products.products-2 .doc-product-row{height:330px}.handover-products.products-3 .doc-product-row{height:230px}.handover-products.products-4 .doc-product-row{height:170px}
+.doc-ship-row{height:42px}.doc-total-row td{padding-top:2px;padding-bottom:2px}.doc-total-label{text-align:left;font-weight:800;background:#bfbfbf}.doc-total-value{text-align:right;font-weight:800;white-space:nowrap;background:#bfbfbf}.doc-total-lite{font-style:italic;font-weight:400}.doc-total-hot{color:#c00000;font-weight:800}.doc-empty{background:#fff}
+.doc-note-list{margin:4px 0 0 0;padding-left:0;list-style:none}.doc-note-list li{margin:3px 0;font-size:15.2px;line-height:1.56}.doc-product-summary{margin:11px 36px 0;font-size:12px;line-height:1.4}.doc-product-summary p{margin:3px 0}.doc-contract-table-wrap{width:100%;overflow:hidden}.doc-continuation-note{font-size:10.8px;margin:0 0 3px 30px;font-style:italic;color:#555}.doc-page-break-safe{break-inside:avoid;page-break-inside:avoid}
+@media print{
+  html,body{background:#fff;width:210mm;min-height:297mm}.doc-preview-shell{display:block;max-height:none;overflow:visible;background:#fff;padding:0}
+  .doc-page{width:210mm;min-height:297mm;margin:0;box-shadow:none;padding:7.5mm 12mm 8.5mm;break-after:page;page-break-after:always;overflow:hidden}
+  .doc-page.contract-cover,.doc-page.contract-terms,.doc-page.contract-terms.terms-last,.doc-page.contract-sign,.doc-page.handover-cover,.doc-page.handover-sign,.doc-page.textpage{padding:7.5mm 12mm 8.5mm;font-size:15.2px;line-height:1.56}
+  .doc-page.contract-products,.doc-page.compact{padding:5mm 5.3mm 7mm}
+  .doc-page.handover-products{padding:5.2mm 6.4mm 7.4mm}
+  .doc-page:last-child{break-after:auto;page-break-after:auto}.doc-page-number{bottom:2.5mm}.no-print{display:none!important}
+}`;
+}
+
+
 initApp();
     </script>
   </body>
