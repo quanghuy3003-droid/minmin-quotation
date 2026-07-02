@@ -8218,6 +8218,7 @@ documentPrintCss = function(){
 
   function activeEditable(){
     const el = document.activeElement;
+    if(el?.closest?.('#pinForm')) return false;
     return !!(el && root && root.contains(el) && el.matches && el.matches(EDITABLE_SELECTOR));
   }
   function markUserEdit(){
@@ -8378,6 +8379,19 @@ documentPrintCss = function(){
         );
       }
       return html;
+    };
+  }
+
+  if(typeof unlockApp === 'function'){
+    const previousUnlockAppForStableRender = unlockApp;
+    unlockApp = function(pin){
+      const out = previousUnlockAppForStableRender.apply(this, arguments);
+      if(out){
+        setTimeout(() => {
+          try{ render({force:true}); }catch(e){ console.warn('Không force render được sau PIN:', e); }
+        }, 0);
+      }
+      return out;
     };
   }
 })();
