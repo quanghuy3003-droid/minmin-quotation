@@ -1048,10 +1048,16 @@ create policy "public write invoice files" on invoice_files for all using (true)
 function showInputInvoiceSchemaSql(){ prompt('Copy SQL này vào Supabase > SQL Editor > Run:', inputInvoiceSchemaSql()); }
 function randomInventoryBarcode(){ const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s='MM'+quoteDateCode(); for(let i=0;i<6;i++)s+=chars[Math.floor(Math.random()*chars.length)]; return s; }
 function isInventoryCode(v){ return /^(OD|STK)(WL|PL|TL|FL|CD)\d{2}-\d{6}$/.test(String(v||'')); }
-function nextInventoryCode(productType='PL'){ const base=`STK${productType||'PL'}`, date=quoteDateCode(); let max=0; state.inventory.items.forEach(item=>{ const m=String(item.code||'').match(new RegExp(`^${base}(\\d{2})-${date}$`)); if(m)max=Math.max(max,Number(m[1]||0)); }); return `${base}${String(Math.min(max+1,99)).padStart(2,'0')}-${date}`; }
+function nextInventoryCode(productType='PL'){
+  const base=`STK${productType||'PL'}`, date=quoteDateCode(), re=new RegExp(`^${base}(\\d{2})-${date}$`);
+  let max=0;
+  state.inventory.items.forEach(item=>{ const m=String(item.code||item.barcodeId||'').match(re); if(m)max=Math.max(max,Number(m[1]||0)); });
+  Object.keys(inventoryDeletedTombstones()).forEach(code=>{ const m=String(code||'').match(re); if(m)max=Math.max(max,Number(m[1]||0)); });
+  return `${base}${String(Math.min(max+1,99)).padStart(2,'0')}-${date}`;
+}
 function ensureInventoryDraftCode(force=false){ const d=state.inventory.draft=state.inventory.draft||inventoryDraftDefaults(); if(!d.name)d.name=productTypeName(d.productType); if(force||!String(d.code||'').trim()||isInventoryCode(d.code))d.code=nextInventoryCode(d.productType); return d.code; }
 function inventoryKindMeta(kind){ const normalized=kind==='sale'?'reserve':(kind||'reserve'); return INVENTORY_KINDS.find(x=>x.value===normalized)||INVENTORY_KINDS[1]; }
-function normalizeInventoryItem(item){ const code=item.code||item.barcodeId||item.qrCode||randomInventoryBarcode(), attrs={...ATTRIBUTE_DEFAULTS,...(item.attributes||{})}, rawKind=item.itemKind||attrs._itemKind||'reserve', itemKind=rawKind==='sale'?'reserve':rawKind, photo=normalizePhotoRefs({...item,attributes:attrs,photoDataUrl:item.photoDataUrl||item.photo_data_url||item.photoDriveUrl||item.photo_drive_url||driveFileUrl(attrs._photoDriveId||item.photoDriveId||item.photo_drive_id||'')}); return {...item, code, barcodeId:code, itemKind, photoDataUrl:photo.photoDataUrl, photoStoragePath:photo.photoStoragePath, photoStorageBucket:photo.photoStorageBucket, photoStorageUrl:photo.photoStorageUrl, photoDriveId:photo.photoDriveId, photoDriveUrl:photo.photoDriveUrl, purchasePrice:parseInputMoney(item.purchasePrice??attrs._purchasePrice??0), orderDate:item.orderDate||attrs._orderDate||'', importDate:item.importDate||attrs._importDate||'', exportDate:item.exportDate||attrs._exportDate||'', saleInvoiceName:item.saleInvoiceName||attrs._saleInvoiceName||'', saleInvoiceDataUrl:item.saleInvoiceDataUrl||attrs._saleInvoiceDataUrl||'', attributes:photo.attributes||attrs}; }
+function normalizeInventoryItem(item){ const code=item.code||item.barcodeId||item.qrCode||randomInventoryBarcode(), attrs={...ATTRIBUTE_DEFAULTS,...(item.attributes||{})}, rawKind=item.itemKind||attrs._itemKind||'reserve', itemKind=rawKind==='sale'?'reserve':rawKind, photo=normalizePhotoRefs({...item,attributes:attrs,photoDataUrl:item.photoDataUrl||item.photo_data_url||item.photoDriveUrl||item.photo_drive_url||driveFileUrl(attrs._photoDriveId||item.photoDriveId||item.photo_drive_id||'')}); return {...item, code, barcodeId:code, itemKind, photoDataUrl:photo.photoDataUrl, photoStoragePath:photo.photoStoragePath, photoStorageBucket:photo.photoStorageBucket, photoStorageUrl:photo.photoStorageUrl, photoDriveId:photo.photoDriveId, photoDriveUrl:photo.photoDriveUrl, purchasePrice:parseInputMoney(item.purchasePrice??attrs._purchasePrice??0), orderDate:item.orderDate||attrs._orderDate||'', importDate:item.importDate||attrs._importDate||'', exportDate:item.exportDate||attrs._exportDate||'', saleInvoiceName:item.saleInvoiceName||attrs._saleInvoiceName||'', saleInvoiceDataUrl:item.saleInvoiceDataUrl||attrs._saleInvoiceDataUrl||'', created_at:item.created_at||item.createdAt||'', updated_at:item.updated_at||item.updatedAt||'', attributes:photo.attributes||attrs}; }
 function normalizeDriveUploadEndpoint(value){
   let v=String(value||'').trim();
   const m=v.match(/https:\/\/script\.google\.com\/macros\/s\/([^/?#]+)(?:\/(?:exec|dev))?/i);
@@ -1252,6 +1258,7 @@ async function upsertInventoryItem(){
   const qty=Number(d.quantity||0);
   if(qty<=0)return alert('Số lượng nhập kho phải lớn hơn 0.');
   holdInventoryImportLock(45000);
+  clearInventoryDeletedTombstone(code);
   const existing=state.inventory.items.find(x=>x.code===code);
   const item=normalizeInventoryItem({...d,code,barcodeId:code,itemKind:d.itemKind||'reserve',invoiceName:d.itemKind==='sample'?'':d.invoiceName,invoiceDataUrl:d.itemKind==='sample'?'':d.invoiceDataUrl,name:String(d.name||productTypeName(d.productType)||'Sản phẩm').trim(),quantity:qty,purchasePrice:parseInputMoney(d.purchasePrice),price:parseInputMoney(d.price),orderDate:d.orderDate||'',importDate:d.importDate||todayIso(),exportDate:d.exportDate||'',saleInvoiceName:d.itemKind==='sample'?'':(d.saleInvoiceName||''),saleInvoiceDataUrl:d.itemKind==='sample'?'':(d.saleInvoiceDataUrl||''),attributes:{...ATTRIBUTE_DEFAULTS,...(d.attributes||{})}});
   const nextQty=existing?Number(existing.quantity||0)+qty:qty;
@@ -1260,10 +1267,12 @@ async function upsertInventoryItem(){
   let movement, remoteItem;
   if(existing){
     Object.assign(existing,item,{id:existing.id,quantity:nextQty});
+    clearInventoryDeletedTombstone(existing.code||existing.barcodeId);
     movement=inventoryMovement('Nhập kho',existing,qty);
     remoteItem=existing;
   } else {
     item.id=uid();
+    clearInventoryDeletedTombstone(item.code||item.barcodeId);
     state.inventory.items.unshift(item);
     movement=inventoryMovement('Nhập kho',item,qty);
     remoteItem=item;
@@ -1530,11 +1539,36 @@ async function deleteOutgoingInvoiceRemote(id){ await supabaseRequest(`/rest/v1/
 async function savePaymentRemote(payment){ await supabaseRequest('/rest/v1/payments?on_conflict=id',{method:'POST',headers:{'Content-Type':'application/json',Prefer:'resolution=merge-duplicates'},body:JSON.stringify(paymentToSupabaseRow(payment))}); }
 async function deletePaymentRemote(id){ await supabaseRequest(`/rest/v1/payments?id=eq.${encodeURIComponent(id)}`,{method:'DELETE'}); }
 function itemToSupabaseRow(item){ const photo=normalizePhotoRefs(item); return {code:item.code,barcode_id:item.barcodeId,name:item.name,product_type:item.productType,unit:item.unit,quantity:Number(item.quantity||0),price:parseInputMoney(item.price),dimension:item.dimension||'',photo_data_url:driveStoredValue(photo.photoDriveUrl||photo.photoDataUrl),invoice_name:item.itemKind==='sample'?'':(item.invoiceName||''),invoice_data_url:item.itemKind==='sample'?'':driveStoredValue(item.invoiceDataUrl),attributes:{...ATTRIBUTE_DEFAULTS,...(item.attributes||{}),_photoDriveId:'',_photoStoragePath:photo.photoStoragePath||'',_photoStorageBucket:photo.photoStorageBucket||'',_photoStorageUrl:photo.photoStorageUrl||'',_itemKind:item.itemKind||'reserve',_purchasePrice:parseInputMoney(item.purchasePrice),_orderDate:item.orderDate||'',_importDate:item.importDate||'',_exportDate:item.exportDate||'',_saleInvoiceName:item.saleInvoiceName||'',_saleInvoiceDataUrl:driveStoredValue(item.saleInvoiceDataUrl)},updated_at:new Date().toISOString()}; }
-function supabaseRowToItem(row){ const attrs={...ATTRIBUTE_DEFAULTS,...(row.attributes||{})}, rawKind=attrs._itemKind||'reserve', itemKind=rawKind==='sale'?'reserve':rawKind; return normalizeInventoryItem({id:row.id||row.barcode_id,code:row.code||'',barcodeId:row.barcode_id||'',name:row.name||'',productType:row.product_type||'PL',itemKind,unit:row.unit||'Cái (pcs)',quantity:Number(row.quantity||0),price:Number(row.price||0),dimension:row.dimension||'',photoDataUrl:row.photo_data_url||'',photoStorageUrl:row.photo_data_url||'',invoiceName:itemKind==='sample'?'':(row.invoice_name||''),invoiceDataUrl:itemKind==='sample'?'':(row.invoice_data_url||''),attributes:attrs}); }
+function supabaseRowToItem(row){ const attrs={...ATTRIBUTE_DEFAULTS,...(row.attributes||{})}, rawKind=attrs._itemKind||'reserve', itemKind=rawKind==='sale'?'reserve':rawKind; return normalizeInventoryItem({id:row.id||row.barcode_id,code:row.code||'',barcodeId:row.barcode_id||'',name:row.name||'',productType:row.product_type||'PL',itemKind,unit:row.unit||'Cái (pcs)',quantity:Number(row.quantity||0),price:Number(row.price||0),dimension:row.dimension||'',photoDataUrl:row.photo_data_url||'',photoStorageUrl:row.photo_data_url||'',invoiceName:itemKind==='sample'?'':(row.invoice_name||''),invoiceDataUrl:itemKind==='sample'?'':(row.invoice_data_url||''),created_at:row.created_at||'',updated_at:row.updated_at||'',attributes:attrs}); }
 function movementToSupabaseRow(m){ return {type:m.type,code:m.code,barcode_id:m.barcodeId||'',name:m.name||'',qty:Number(m.qty||0),happened_at:m.time||new Date().toISOString()}; }
 function supabaseMovementToLocal(row){ return {id:String(row.id||uid()),type:row.type||'',code:row.code||'',barcodeId:row.barcode_id||'',name:row.name||'',qty:Number(row.qty||0),time:row.happened_at||row.created_at||new Date().toISOString()}; }
 function inventoryDeletedFromMovements(movements){ return (movements||[]).filter(m=>String(m.type||'')==='Xóa kho').reduce((a,m)=>{ const time=m.time||new Date().toISOString(); if(m.code)a[String(m.code)]=time; if(m.barcodeId)a[String(m.barcodeId)]=time; return a; },{}); }
-async function fetchInventoryFromSupabase(){ const [items,moves]=await Promise.all([supabaseRequest('/rest/v1/inventory_items?select=*&order=updated_at.desc'),supabaseRequest('/rest/v1/inventory_movements?select=*&order=happened_at.desc&limit=200')]); const movements=(moves||[]).map(supabaseMovementToLocal), deleted=inventoryDeletedFromMovements(movements); return {items:(items||[]).map(supabaseRowToItem).filter(item=>!isInventoryDeleted(item,deleted)),movements:movements.filter(m=>String(m.type||'')!=='Xóa kho'),deleted}; }
+function inventoryDeleteTimeFor(itemOrCode,deleted=inventoryDeletedTombstones()){
+  if(!itemOrCode)return'';
+  const key=inventoryDeletedKey(itemOrCode);
+  const code=typeof itemOrCode==='object'?String(itemOrCode.code||''):'';
+  const barcode=typeof itemOrCode==='object'?String(itemOrCode.barcodeId||itemOrCode.barcode_id||''):'';
+  return deleted[key]||deleted[code]||deleted[barcode]||'';
+}
+function inventoryRowNewerThanDelete(row,item,deleted){
+  const deletedAt=inventoryDeleteTimeFor(item,deleted);
+  if(!deletedAt)return true;
+  const updatedAt=Date.parse(row?.updated_at||row?.created_at||item?.updated_at||item?.created_at||0)||0;
+  const removedAt=Date.parse(deletedAt)||0;
+  return updatedAt>removedAt;
+}
+async function fetchInventoryFromSupabase(){
+  const [rows,moves]=await Promise.all([supabaseRequest('/rest/v1/inventory_items?select=*&order=updated_at.desc'),supabaseRequest('/rest/v1/inventory_movements?select=*&order=happened_at.desc&limit=200')]);
+  const movements=(moves||[]).map(supabaseMovementToLocal), deleted=inventoryDeletedFromMovements(movements), activeKeys=new Set();
+  const items=(rows||[]).map(row=>({row,item:supabaseRowToItem(row)})).filter(({row,item})=>{
+    const active=inventoryRowNewerThanDelete(row,item,deleted);
+    if(active){ activeKeys.add(String(item.code||'')); activeKeys.add(String(item.barcodeId||'')); }
+    return active;
+  }).map(({item})=>item);
+  const effectiveDeleted={...deleted};
+  activeKeys.forEach(key=>{ if(key)delete effectiveDeleted[key]; });
+  return {items,movements:movements.filter(m=>String(m.type||'')!=='Xóa kho'),deleted:effectiveDeleted};
+}
 function mergeInventoryRemoteWithLocal(remoteItems,localItems,deleted=inventoryDeletedTombstones()){ const localByCode=new Map((localItems||[]).filter(item=>!isInventoryDeleted(item,deleted)).map(item=>[String(item.barcodeId||item.code||''),item])), seen=new Set(); const merged=(remoteItems||[]).filter(remote=>!isInventoryDeleted(remote,deleted)).map(remote=>{ const key=String(remote.barcodeId||remote.code||''); seen.add(key); const local=localByCode.get(key); if(!local)return remote; const item={...remote}; ['photoDataUrl','invoiceDataUrl','saleInvoiceDataUrl'].forEach(field=>{ if(!item[field]&&local[field])item[field]=local[field]; }); item.invoiceName=item.invoiceName||local.invoiceName||''; item.saleInvoiceName=item.saleInvoiceName||local.saleInvoiceName||''; item.attributes={...(local.attributes||{}),...(item.attributes||{})}; return normalizeInventoryItem(item); }); (localItems||[]).forEach(local=>{ const key=String(local.barcodeId||local.code||''); if(key&&!seen.has(key)&&!isInventoryDeleted(local,deleted))merged.push(normalizeInventoryItem(local)); }); return merged; }
 async function syncInventoryFromSupabase(options={}){
   if(inventoryImportLocked()){ state.inventory.syncStatus=state.inventory.syncStatus||'Đang import báo giá, tạm dừng đồng bộ kéo dữ liệu từ Supabase.'; return; }
