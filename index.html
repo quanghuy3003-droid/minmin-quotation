@@ -8799,6 +8799,203 @@ documentPrintCss = function(){
 })();
 
 
+/* MINMIN PATCH 2026-07-04B
+   Kế toán MISA mini: chứng từ, dashboard, VAT, sổ quỹ, báo cáo quản trị.
+   Mục tiêu: giữ dữ liệu cũ, không phá tab HĐ đầu vào/đầu ra/thanh toán hiện có. */
+(function(){
+  const ACC_PATCH_VERSION = '2026-07-04B-MISA-MINI';
+  function accNum(v){
+    try{ if(typeof parseInputMoney === 'function') return Number(parseInputMoney(v)||0); }catch(_e){}
+    return Number(String(v??0).replace(/[^0-9.-]/g,''))||0;
+  }
+  function accMoney(v){ try{return money(v);}catch(_e){return new Intl.NumberFormat('vi-VN').format(accNum(v))+' đ';} }
+  function accEsc(v){ try{return esc(v);}catch(_e){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));} }
+  function accToday(){ try{return todayIso();}catch(_e){return new Date().toISOString().slice(0,10);} }
+  function accUid(){ try{return uid();}catch(_e){return 'acc_'+Date.now()+'_'+Math.random().toString(16).slice(2);} }
+  function accMonth(v){ return String(v||'').slice(0,7); }
+  function accFilters(){ minminAccountingEnsure(); return state.accounting.filters || {}; }
+  function accInPeriod(date){
+    const f=accFilters();
+    const d=String(date||'');
+    if(f.period && accMonth(d)!==f.period) return false;
+    if(!f.period && f.year && !d.includes(String(f.year))) return false;
+    return true;
+  }
+  function minminAccountingEnsure(){
+    state.accounting = state.accounting || {};
+    const now=new Date();
+    state.accounting.view = state.accounting.view || 'overview';
+    state.accounting.filters = {...{period:`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`,year:String(now.getFullYear()),search:'',status:'',type:''},...(state.accounting.filters||{})};
+    state.accounting.outgoingInvoices = Array.isArray(state.accounting.outgoingInvoices)?state.accounting.outgoingInvoices:[];
+    state.accounting.payments = Array.isArray(state.accounting.payments)?state.accounting.payments:[];
+    state.accounting.suppliers = Array.isArray(state.accounting.suppliers)?state.accounting.suppliers:[];
+    state.accounting.vouchers = Array.isArray(state.accounting.vouchers)?state.accounting.vouchers:[];
+    state.accounting.voucherDraft = {...{date:accToday(),type:'Phiếu kế toán',code:'',description:'',debit_account:'',credit_account:'',amount:0,partner:'',invoice_ref:'',note:''},...(state.accounting.voucherDraft||{})};
+    state.accounting.editingVoucherId = state.accounting.editingVoucherId || '';
+    state.accounting.cashOpeningBalance = accNum(state.accounting.cashOpeningBalance||0);
+    state.accounting.bankOpeningBalance = accNum(state.accounting.bankOpeningBalance||0);
+    state.accounting.patchVersion = ACC_PATCH_VERSION;
+  }
+  const oldLoadAccountingMisaMini = typeof loadAccounting === 'function' ? loadAccounting : null;
+  if(oldLoadAccountingMisaMini){
+    loadAccounting = function(){ const out=oldLoadAccountingMisaMini.apply(this,arguments); state.accounting=out; minminAccountingEnsure(); return state.accounting; };
+  }
+  const oldSaveAccountingMisaMini = typeof saveAccounting === 'function' ? saveAccounting : null;
+  if(oldSaveAccountingMisaMini){
+    saveAccounting = function(){ minminAccountingEnsure(); return oldSaveAccountingMisaMini.apply(this,arguments); };
+  }
+  function accIncoming(){ return ((state.inputInvoices&&state.inputInvoices.invoices)||[]).filter(x=>accInPeriod(x.invoice_date||x.period)); }
+  function accOutgoing(){ minminAccountingEnsure(); const f=accFilters(); const q=invoiceNorm ? invoiceNorm(f.search||'') : String(f.search||'').toLowerCase(); return (state.accounting.outgoingInvoices||[]).filter(x=>accInPeriod(x.invoice_date||x.request_date)&&(!f.status||x.status===f.status||x.payment_status===f.status)&&(!q || String([x.customer_name,x.customer_tax_code,x.invoice_number,x.item_summary].join(' ')).toLowerCase().includes(q))); }
+  function accPayments(){ minminAccountingEnsure(); const f=accFilters(); return (state.accounting.payments||[]).filter(x=>accInPeriod(x.payment_date||x.date)&&(!f.type||x.type===f.type)); }
+  function accVouchers(){ minminAccountingEnsure(); return (state.accounting.vouchers||[]).filter(x=>accInPeriod(x.date)); }
+  function accIncomingPaid(inv){
+    const id=String(inv.id||'');
+    return (state.accounting.payments||[]).filter(p=>p.related_type==='incoming'&&String(p.related_id)===id).reduce((s,p)=>s+accNum(p.amount),0);
+  }
+  function accOutgoingPaid(inv){
+    try{ if(typeof outgoingPaid==='function') return outgoingPaid(inv); }catch(_e){}
+    const id=String(inv.id||'');
+    return (state.accounting.payments||[]).filter(p=>p.related_type==='outgoing'&&String(p.related_id)===id).reduce((s,p)=>s+accNum(p.amount),0);
+  }
+  function accCostAccount(inv){
+    const cat=String(inv.category||'').toLowerCase();
+    if(cat.includes('hàng')||cat.includes('kho')||cat.includes('đèn')) return '156';
+    if(cat.includes('vận')||cat.includes('ship')) return '1562/641';
+    if(cat.includes('công cụ')) return '153/242';
+    return '642';
+  }
+  function accJournalRows(){
+    const rows=[];
+    accOutgoing().forEach(inv=>{
+      const net=accNum(inv.net_amount||0), vat=accNum(inv.vat_amount||0), total=accNum(inv.total_amount||0);
+      if(total) rows.push({date:inv.invoice_date||inv.request_date||'',code:inv.invoice_number||inv.order_code||'Bán hàng',type:'Hóa đơn bán ra',description:`Bán hàng cho ${inv.customer_name||'khách hàng'}`,debit:'131',credit:'511',amount:net,partner:inv.customer_name||'',source:'outgoing',id:inv.id});
+      if(vat) rows.push({date:inv.invoice_date||inv.request_date||'',code:inv.invoice_number||inv.order_code||'VAT ra',type:'Thuế GTGT đầu ra',description:`VAT đầu ra ${inv.customer_name||''}`,debit:'131',credit:'3331',amount:vat,partner:inv.customer_name||'',source:'outgoing',id:inv.id});
+    });
+    accIncoming().forEach(inv=>{
+      const net=accNum(inv.net_amount||0), vat=accNum(inv.vat_amount||0), total=accNum(inv.total_amount||0), acc=accCostAccount(inv);
+      if(net) rows.push({date:inv.invoice_date||inv.period||'',code:inv.invoice_number||'Mua vào',type:'Hóa đơn mua vào',description:`Mua hàng/dịch vụ từ ${inv.seller_name||'nhà cung cấp'}`,debit:acc,credit:'331',amount:net,partner:inv.seller_name||'',source:'incoming',id:inv.id});
+      if(vat) rows.push({date:inv.invoice_date||inv.period||'',code:inv.invoice_number||'VAT vào',type:'Thuế GTGT đầu vào',description:`VAT đầu vào ${inv.seller_name||''}`,debit:'1331',credit:'331',amount:vat,partner:inv.seller_name||'',source:'incoming',id:inv.id});
+    });
+    accPayments().forEach(p=>{
+      const type=String(p.type||'').toLowerCase();
+      const amount=accNum(p.amount||0);
+      const cash=String(p.method||p.account||'').toLowerCase().includes('tiền mặt')?'111':'112';
+      const debit=type.includes('thu')?cash:(p.related_type==='incoming'?'331':'642');
+      const credit=type.includes('thu')?'131':cash;
+      rows.push({date:p.payment_date||p.date||'',code:p.code||p.reference_no||'Thanh toán',type:p.type||'Thu/Chi',description:p.description||p.note||'Thu/chi tiền',debit,credit,amount,partner:p.partner_name||p.payer_name||p.payee_name||'',source:'payment',id:p.id});
+    });
+    accVouchers().forEach(v=>rows.push({date:v.date,code:v.code||'Chứng từ',type:v.type||'Phiếu kế toán',description:v.description||v.note||'',debit:v.debit_account||'',credit:v.credit_account||'',amount:accNum(v.amount),partner:v.partner||'',source:'voucher',id:v.id}));
+    return rows.sort((a,b)=>String(a.date).localeCompare(String(b.date))||String(a.code).localeCompare(String(b.code)));
+  }
+  function accMetric(label,value,tone='bg-white',sub=''){
+    return `<div class="rounded-xl border border-black/10 ${tone} p-3 shadow-sm"><div class="text-[10px] font-extrabold uppercase tracking-wide text-black/40">${accEsc(label)}</div><div class="mt-1 text-xl font-black text-ink">${accEsc(value)}</div>${sub?`<div class="mt-1 text-xs font-bold text-black/45">${accEsc(sub)}</div>`:''}</div>`;
+  }
+  function accSummary(){
+    const incoming=accIncoming(), outgoing=accOutgoing(), pays=accPayments();
+    const revenue=outgoing.reduce((s,x)=>s+accNum(x.total_amount),0), outVat=outgoing.reduce((s,x)=>s+accNum(x.vat_amount),0);
+    const cost=incoming.reduce((s,x)=>s+accNum(x.total_amount),0), inVat=incoming.reduce((s,x)=>s+accNum(x.vat_amount),0);
+    const thu=pays.filter(p=>String(p.type||'').toLowerCase().includes('thu')).reduce((s,p)=>s+accNum(p.amount),0);
+    const chi=pays.filter(p=>String(p.type||'').toLowerCase().includes('chi')).reduce((s,p)=>s+accNum(p.amount),0);
+    const receivable=outgoing.reduce((s,x)=>s+Math.max(0,accNum(x.total_amount)-accOutgoingPaid(x)),0);
+    const payable=incoming.reduce((s,x)=>s+Math.max(0,accNum(x.total_amount)-accIncomingPaid(x)),0);
+    const review=incoming.filter(x=>x.validation_status&&x.validation_status!=='Hợp lệ').length+outgoing.filter(x=>!x.invoice_number||!x.customer_tax_code).length;
+    return {incoming,outgoing,pays,revenue,outVat,cost,inVat,thu,chi,receivable,payable,review,vatPayable:Math.max(0,outVat-inVat),cash:accNum(state.accounting.cashOpeningBalance)+thu-chi};
+  }
+  function accountingNav(){ minminAccountingEnsure(); const tabs=[['overview','Tổng quan'],['vouchers','Chứng từ'],['payments','Thu/chi'],['debts','Công nợ'],['incoming','Mua vào'],['outgoing','Bán ra'],['vat','Thuế GTGT'],['cashbook','Sổ quỹ'],['reports','Báo cáo']]; return `<div class="flex flex-wrap gap-2">${tabs.map(([id,label])=>`<button data-accounting-view="${id}" type="button" class="h-9 rounded-md px-3 text-xs font-extrabold ${state.accounting.view===id?'bg-ink text-white':'border border-black/10 bg-white text-ink hover:border-mint'}">${label}</button>`).join('')}</div>`; }
+  function accountingOverview(){
+    minminAccountingEnsure(); const s=accSummary();
+    const tasks=[];
+    if(s.review) tasks.push(`${s.review} chứng từ cần kiểm tra`);
+    if(s.receivable) tasks.push(`Còn phải thu ${accMoney(s.receivable)}`);
+    if(s.payable) tasks.push(`Còn phải trả ${accMoney(s.payable)}`);
+    if(!tasks.length) tasks.push('Không có cảnh báo lớn trong kỳ đang lọc');
+    return `<div class="grid gap-3">${accountingFilters()}<div class="grid gap-2 md:grid-cols-4">${accMetric('Doanh thu bán ra',accMoney(s.revenue),'bg-mint/10')}${accMetric('Chi phí mua vào',accMoney(s.cost))}${accMetric('Thu trong kỳ',accMoney(s.thu),'bg-white')}${accMetric('Chi trong kỳ',accMoney(s.chi),'bg-white')}${accMetric('Phải thu khách hàng',accMoney(s.receivable),'bg-coral/10')}${accMetric('Phải trả NCC',accMoney(s.payable),'bg-gold/20')}${accMetric('VAT tạm nộp',accMoney(s.vatPayable),'bg-gold/20')}${accMetric('Số dư tiền tạm tính',accMoney(s.cash),'bg-mint/10','Theo số dư đầu kỳ + thu - chi')}</div><div class="grid gap-3 lg:grid-cols-2"><div class="rounded-xl border border-black/10 bg-white p-3 shadow-sm"><h2 class="text-base font-black">Việc cần làm</h2><div class="mt-2 grid gap-2">${tasks.map(t=>`<div class="rounded-lg border border-black/10 bg-[#F7F7F2] p-2 text-sm font-bold">${accEsc(t)}</div>`).join('')}</div></div><div class="rounded-xl border border-black/10 bg-white p-3 shadow-sm"><h2 class="text-base font-black">Luồng nghiệp vụ kiểu MISA</h2><div class="mt-2 grid gap-2 text-sm font-bold text-black/65"><div>1. Nhập hóa đơn mua vào / bán ra</div><div>2. Ghi nhận phiếu thu/phiếu chi hoặc thanh toán ngân hàng</div><div>3. Theo dõi công nợ khách hàng/NCC</div><div>4. Kiểm tra VAT và xuất báo cáo gửi kế toán</div></div></div></div></div>`;
+  }
+  function accVoucherForm(){ minminAccountingEnsure(); const d=state.accounting.voucherDraft||{}; return `<div class="rounded-xl border border-black/10 bg-white p-3 shadow-sm"><div class="flex flex-col gap-2 md:flex-row md:items-end md:justify-between"><div><h2 class="text-base font-black">Chứng từ nghiệp vụ khác</h2><p class="text-xs font-bold text-black/45">Dùng cho bút toán thủ công: hoàn ứng, phí ngân hàng, điều chỉnh công nợ, chi phí không có hóa đơn...</p></div><div class="flex gap-2"><button id="saveAccVoucher" class="h-10 rounded-md bg-mint px-4 text-sm font-extrabold text-white">${state.accounting.editingVoucherId?'Lưu sửa':'Thêm chứng từ'}</button><button id="cancelAccVoucher" class="h-10 rounded-md border border-black/10 px-4 text-sm font-extrabold">Hủy</button></div></div><div class="mt-3 grid gap-2 md:grid-cols-4"><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">Ngày</span><input data-acc-voucher-field="date" type="date" value="${accEsc(d.date||accToday())}" class="h-10 rounded-md border border-black/15 px-3 text-sm font-bold"/></label><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">Loại chứng từ</span><select data-acc-voucher-field="type" class="h-10 rounded-md border border-black/15 px-3 text-sm font-bold">${['Phiếu kế toán','Phiếu thu','Phiếu chi','Bù trừ công nợ','Điều chỉnh'].map(x=>`<option ${d.type===x?'selected':''}>${x}</option>`).join('')}</select></label><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">Số CT</span><input data-acc-voucher-field="code" value="${accEsc(d.code||'')}" placeholder="PKT-..." class="h-10 rounded-md border border-black/15 px-3 text-sm font-bold"/></label><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">Số tiền</span><input data-acc-voucher-field="amount" value="${accEsc(d.amount||'')}" placeholder="0" class="h-10 rounded-md border border-black/15 px-3 text-sm font-bold"/></label><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">TK Nợ</span><input data-acc-voucher-field="debit_account" value="${accEsc(d.debit_account||'')}" placeholder="111/112/131/156/642" class="h-10 rounded-md border border-black/15 px-3 text-sm font-bold"/></label><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">TK Có</span><input data-acc-voucher-field="credit_account" value="${accEsc(d.credit_account||'')}" placeholder="111/112/331/511" class="h-10 rounded-md border border-black/15 px-3 text-sm font-bold"/></label><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">Đối tượng</span><input data-acc-voucher-field="partner" value="${accEsc(d.partner||'')}" placeholder="Khách hàng/NCC/Nhân viên" class="h-10 rounded-md border border-black/15 px-3 text-sm font-bold"/></label><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">Tham chiếu HĐ</span><input data-acc-voucher-field="invoice_ref" value="${accEsc(d.invoice_ref||'')}" placeholder="Số hóa đơn" class="h-10 rounded-md border border-black/15 px-3 text-sm font-bold"/></label><label class="grid gap-1 md:col-span-4"><span class="text-[10px] font-bold uppercase text-black/40">Diễn giải</span><input data-acc-voucher-field="description" value="${accEsc(d.description||'')}" placeholder="Nội dung nghiệp vụ" class="h-10 rounded-md border border-black/15 px-3 text-sm font-bold"/></label></div></div>`; }
+  function renderAccountingVouchers(){
+    const rows=accJournalRows();
+    return `<div class="grid gap-3">${accountingFilters()}${accVoucherForm()}<div class="rounded-xl border border-black/10 bg-white p-3 shadow-sm"><div class="flex items-center justify-between gap-2"><h2 class="text-base font-black">Sổ nhật ký chung</h2><button id="exportMisaJournal" class="h-9 rounded-md bg-ink px-3 text-xs font-extrabold text-white">Xuất Excel</button></div><div class="mt-3 max-h-[520px] overflow-auto rounded-lg border border-black/10"><table class="w-full min-w-[980px] text-left text-xs"><thead class="bg-[#F7F7F2]"><tr>${['Ngày','Số CT','Loại','Diễn giải','Đối tượng','Nợ','Có','Số tiền','Nguồn'].map(h=>`<th class="p-2">${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr class="border-t border-black/5"><td class="p-2 font-bold">${accEsc(r.date)}</td><td class="p-2">${accEsc(r.code)}</td><td class="p-2">${accEsc(r.type)}</td><td class="p-2">${accEsc(r.description)}</td><td class="p-2">${accEsc(r.partner)}</td><td class="p-2 font-black text-mint">${accEsc(r.debit)}</td><td class="p-2 font-black text-coral">${accEsc(r.credit)}</td><td class="p-2 text-right font-black">${accMoney(r.amount)}</td><td class="p-2">${r.source==='voucher'?`<button data-acc-voucher-edit="${accEsc(r.id)}" class="rounded border border-mint/30 px-2 py-1 font-bold text-mint">Sửa</button> <button data-acc-voucher-delete="${accEsc(r.id)}" class="rounded border border-coral/30 px-2 py-1 font-bold text-coral">Xóa</button>`:accEsc(r.source)}</td></tr>`).join('')}</tbody></table></div></div></div>`;
+  }
+  function renderVatReport(){
+    const s=accSummary();
+    const rows=[['VAT đầu ra phải nộp','3331',s.outVat],['VAT đầu vào được khấu trừ','1331',s.inVat],['VAT tạm phải nộp','3331 - 1331',s.vatPayable]];
+    return `<div class="grid gap-3">${accountingFilters()}<div class="grid gap-2 md:grid-cols-3">${accMetric('VAT đầu ra',accMoney(s.outVat),'bg-coral/10')}${accMetric('VAT đầu vào',accMoney(s.inVat),'bg-mint/10')}${accMetric('VAT tạm nộp',accMoney(s.vatPayable),'bg-gold/20')}</div><div class="rounded-xl border border-black/10 bg-white p-3 shadow-sm"><h2 class="text-base font-black">Bảng kiểm tra thuế GTGT</h2><div class="mt-3 overflow-auto rounded-lg border border-black/10"><table class="w-full min-w-[620px] text-left text-sm"><thead class="bg-[#F7F7F2]"><tr><th class="p-2">Chỉ tiêu</th><th class="p-2">Tài khoản</th><th class="p-2 text-right">Số tiền</th></tr></thead><tbody>${rows.map(r=>`<tr class="border-t border-black/5"><td class="p-2 font-bold">${accEsc(r[0])}</td><td class="p-2">${accEsc(r[1])}</td><td class="p-2 text-right font-black">${accMoney(r[2])}</td></tr>`).join('')}</tbody></table></div><p class="mt-3 text-xs font-bold text-black/45">Lưu ý: đây là bảng quản trị nội bộ, kế toán vẫn cần đối chiếu hóa đơn hợp lệ trước khi kê khai.</p></div></div>`;
+  }
+  function renderCashBook(){
+    const pays=accPayments().slice().sort((a,b)=>String(a.payment_date||a.date).localeCompare(String(b.payment_date||b.date)));
+    let bal=accNum(state.accounting.cashOpeningBalance)+accNum(state.accounting.bankOpeningBalance);
+    return `<div class="grid gap-3">${accountingFilters()}<div class="rounded-xl border border-black/10 bg-white p-3 shadow-sm"><h2 class="text-base font-black">Số dư đầu kỳ</h2><div class="mt-2 grid gap-2 md:grid-cols-2"><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">Tiền mặt 111</span><input id="accCashOpening" value="${accEsc(state.accounting.cashOpeningBalance||0)}" class="h-10 rounded-md border border-black/15 px-3 text-sm font-bold"/></label><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">Ngân hàng 112</span><input id="accBankOpening" value="${accEsc(state.accounting.bankOpeningBalance||0)}" class="h-10 rounded-md border border-black/15 px-3 text-sm font-bold"/></label></div></div><div class="rounded-xl border border-black/10 bg-white p-3 shadow-sm"><h2 class="text-base font-black">Sổ quỹ / ngân hàng</h2><div class="mt-3 overflow-auto rounded-lg border border-black/10"><table class="w-full min-w-[760px] text-left text-xs"><thead class="bg-[#F7F7F2]"><tr><th class="p-2">Ngày</th><th class="p-2">Nội dung</th><th class="p-2 text-right">Thu</th><th class="p-2 text-right">Chi</th><th class="p-2 text-right">Tồn</th></tr></thead><tbody>${pays.map(p=>{const isThu=String(p.type||'').toLowerCase().includes('thu'), amt=accNum(p.amount); bal += isThu?amt:-amt; return `<tr class="border-t border-black/5"><td class="p-2 font-bold">${accEsc(p.payment_date||p.date||'')}</td><td class="p-2">${accEsc(p.description||p.note||p.partner_name||'')}</td><td class="p-2 text-right font-bold text-mint">${isThu?accMoney(amt):''}</td><td class="p-2 text-right font-bold text-coral">${!isThu?accMoney(amt):''}</td><td class="p-2 text-right font-black">${accMoney(bal)}</td></tr>`;}).join('')}</tbody></table></div></div></div>`;
+  }
+  function renderAccountingReports(){ return `<div class="grid gap-3">${accountingFilters()}<div class="rounded-xl border border-black/10 bg-white p-3 shadow-sm"><h2 class="text-base font-black">Báo cáo kế toán quản trị</h2><p class="mt-1 text-sm text-black/55">Xuất file gồm: nhật ký chung, hóa đơn mua vào, hóa đơn bán ra, thu chi, công nợ và VAT.</p><div class="mt-3 flex flex-wrap gap-2"><button id="exportAccountingReport" class="h-10 rounded-md bg-ink px-4 text-sm font-extrabold text-white">Xuất Excel cũ</button><button id="exportMisaJournal" class="h-10 rounded-md bg-mint px-4 text-sm font-extrabold text-white">Xuất Excel MISA mini</button><button id="accountingSql" class="h-10 rounded-md border border-mint/30 px-4 text-sm font-extrabold text-mint">SQL tạo bảng</button><button id="sampleAccounting" class="h-10 rounded-md border border-black/10 px-4 text-sm font-extrabold">Tạo dữ liệu mẫu</button></div><p class="mt-3 text-xs font-bold text-black/45">Báo cáo này để quản trị nội bộ, không thay thế phần mềm kế toán chính thức hoặc chữ ký số.</p></div></div>`; }
+  async function exportMisaMiniReport(){
+    await loadScript('https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js',()=>window.ExcelJS);
+    const wb=new window.ExcelJS.Workbook();
+    const add=(name,rows)=>{ const ws=wb.addWorksheet(name); const list=rows.length?rows:[{}]; ws.columns=Object.keys(list[0]).map(k=>({header:k,key:k,width:Math.min(Math.max(k.length+6,14),42)})); if(rows.length)ws.addRows(rows); ws.getRow(1).font={bold:true}; ws.views=[{state:'frozen',ySplit:1}]; };
+    add('Nhat ky chung', accJournalRows().map(r=>({'Ngày':r.date,'Số CT':r.code,'Loại':r.type,'Diễn giải':r.description,'Đối tượng':r.partner,'TK Nợ':r.debit,'TK Có':r.credit,'Số tiền':accNum(r.amount),'Nguồn':r.source})));
+    add('Cong no phai thu', accOutgoing().map(x=>({'Khách hàng':x.customer_name,'MST':x.customer_tax_code,'Số HĐ':x.invoice_number,'Ngày':x.invoice_date||x.request_date,'Tổng tiền':accNum(x.total_amount),'Đã thu':accOutgoingPaid(x),'Còn phải thu':Math.max(0,accNum(x.total_amount)-accOutgoingPaid(x))})));
+    add('Cong no phai tra', accIncoming().map(x=>({'Nhà cung cấp':x.seller_name,'MST':x.seller_tax_code,'Số HĐ':x.invoice_number,'Ngày':x.invoice_date||x.period,'Tổng tiền':accNum(x.total_amount),'Đã trả':accIncomingPaid(x),'Còn phải trả':Math.max(0,accNum(x.total_amount)-accIncomingPaid(x))})));
+    add('Thue GTGT', [{ 'VAT đầu ra':accSummary().outVat, 'VAT đầu vào':accSummary().inVat, 'VAT tạm nộp':accSummary().vatPayable }]);
+    add('Thu chi', accPayments().map(p=>({'Ngày':p.payment_date||p.date,'Loại':p.type,'Đối tượng':p.partner_name||p.payer_name||p.payee_name,'Nội dung':p.description||p.note,'Số tiền':accNum(p.amount),'Liên kết':p.related_type||''})));
+    const buf=await wb.xlsx.writeBuffer();
+    const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`MINMIN_MISA_MINI_${(accFilters().period||accFilters().year||accToday()).replace(/[^0-9-]/g,'')}.xlsx`; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  }
+  function renderAccountingTab(){
+    minminAccountingEnsure(); const v=state.accounting.view||'overview';
+    const body=v==='incoming'?renderInputInvoicesTab().replace(/<section class="mx-auto grid max-w-7xl gap-3 px-4 py-4 sm:px-6 lg:px-8">|<\/section>$/g,''):v==='outgoing'?renderOutgoingInvoices():v==='debts'?renderDebts():v==='payments'?renderPayments():v==='vouchers'?renderAccountingVouchers():v==='vat'?renderVatReport():v==='cashbook'?renderCashBook():v==='reports'?renderAccountingReports():accountingOverview();
+    return `<section class="mx-auto grid max-w-7xl gap-3 px-4 py-4 sm:px-6 lg:px-8"><div class="rounded-xl border border-black/10 bg-white p-3 shadow-sm"><div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between"><div><h1 class="text-xl font-black">Kế toán - MISA mini</h1><p class="mt-1 text-sm text-black/55">Quản lý chứng từ, hóa đơn, thu chi, công nợ, VAT và báo cáo nội bộ.</p><p class="mt-1 text-xs font-bold text-black/45">${accEsc(state.accounting.syncStatus||'Sẵn sàng đồng bộ kế toán.')} · Patch ${ACC_PATCH_VERSION}</p></div><div class="flex flex-wrap gap-2"><button id="syncAccounting" class="h-9 rounded-md border border-mint/30 px-3 text-xs font-extrabold text-mint">Đồng bộ</button><button id="sampleAccountingTop" class="h-9 rounded-md border border-black/10 px-3 text-xs font-extrabold">Dữ liệu mẫu</button><button id="accountingSqlTop" class="h-9 rounded-md border border-mint/30 px-3 text-xs font-extrabold text-mint">SQL</button></div></div><div class="mt-3">${accountingNav()}</div></div>${body}</section>`;
+  }
+  const oldBindAccountingMisaMini = typeof bindAccounting === 'function' ? bindAccounting : null;
+  if(oldBindAccountingMisaMini){
+    bindAccounting = function(){
+      minminAccountingEnsure();
+      oldBindAccountingMisaMini.apply(this,arguments);
+      document.querySelectorAll('[data-acc-voucher-field]').forEach(el=>{
+        el.oninput=()=>{ state.accounting.voucherDraft[el.dataset.accVoucherField]=el.value; saveAccounting(); };
+        el.onchange=()=>{ state.accounting.voucherDraft[el.dataset.accVoucherField]=el.value; saveAccounting(); };
+      });
+      const saveV=document.getElementById('saveAccVoucher');
+      if(saveV) saveV.onclick=()=>{
+        const d={...(state.accounting.voucherDraft||{})};
+        if(!d.date)d.date=accToday();
+        if(!d.description&&!d.note) return alert('Nhập diễn giải chứng từ.');
+        if(!accNum(d.amount)) return alert('Nhập số tiền chứng từ.');
+        if(!d.debit_account||!d.credit_account) return alert('Nhập tài khoản Nợ và Có.');
+        if(state.accounting.editingVoucherId){
+          state.accounting.vouchers=state.accounting.vouchers.map(x=>String(x.id)===String(state.accounting.editingVoucherId)?{...x,...d,amount:accNum(d.amount),updated_at:new Date().toISOString()}:x);
+        }else{
+          state.accounting.vouchers.unshift({...d,id:accUid(),amount:accNum(d.amount),created_at:new Date().toISOString()});
+        }
+        state.accounting.editingVoucherId='';
+        state.accounting.voucherDraft={date:accToday(),type:'Phiếu kế toán',code:'',description:'',debit_account:'',credit_account:'',amount:0,partner:'',invoice_ref:'',note:''};
+        saveAccounting(); render();
+      };
+      const cancelV=document.getElementById('cancelAccVoucher');
+      if(cancelV) cancelV.onclick=()=>{ state.accounting.editingVoucherId=''; state.accounting.voucherDraft={date:accToday(),type:'Phiếu kế toán',code:'',description:'',debit_account:'',credit_account:'',amount:0,partner:'',invoice_ref:'',note:''}; saveAccounting(); render(); };
+      document.querySelectorAll('[data-acc-voucher-edit]').forEach(b=>b.onclick=()=>{ const v=(state.accounting.vouchers||[]).find(x=>String(x.id)===String(b.dataset.accVoucherEdit)); if(!v)return; state.accounting.editingVoucherId=v.id; state.accounting.voucherDraft={...v}; saveAccounting(); render(); });
+      document.querySelectorAll('[data-acc-voucher-delete]').forEach(b=>b.onclick=()=>{ if(confirm('Xóa chứng từ này?')){ state.accounting.vouchers=(state.accounting.vouchers||[]).filter(x=>String(x.id)!==String(b.dataset.accVoucherDelete)); saveAccounting(); render(); } });
+      const cash=document.getElementById('accCashOpening'); if(cash) cash.onchange=()=>{state.accounting.cashOpeningBalance=accNum(cash.value); saveAccounting(); render();};
+      const bank=document.getElementById('accBankOpening'); if(bank) bank.onchange=()=>{state.accounting.bankOpeningBalance=accNum(bank.value); saveAccounting(); render();};
+      const exp=document.getElementById('exportMisaJournal'); if(exp) exp.onclick=()=>exportMisaMiniReport().catch(e=>alert('Chưa xuất được Excel MISA mini: '+e.message));
+    };
+  }
+  // Expose patch render functions so the original top-level render() uses the MISA mini version.
+  window.__MINMIN_MISA_PATCH__ = {
+    renderAccountingTab,
+    accountingNav,
+    accountingOverview,
+    renderAccountingReports
+  };
+})();
+(function(p){
+  if(!p) return;
+  try{ renderAccountingTab = p.renderAccountingTab; }catch(_e){}
+  try{ accountingNav = p.accountingNav; }catch(_e){}
+  try{ accountingOverview = p.accountingOverview; }catch(_e){}
+  try{ renderAccountingReports = p.renderAccountingReports; }catch(_e){}
+})(window.__MINMIN_MISA_PATCH__);
+
+
 initApp();
     </script>
   </body>
