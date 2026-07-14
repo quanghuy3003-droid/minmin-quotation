@@ -12,7 +12,141 @@
       tailwind.config = { theme: { extend: { fontFamily: { sans: ["Google Sans", "Product Sans", "Arial", "Helvetica", "ui-sans-serif", "system-ui", "sans-serif"] }, colors: { ink: "#17202A", mint: "#1F8A70", coral: "#F25C54", gold: "#F2C14E" } } } };
     </script>
     <style>
+      html, body {
+        max-width: 100%;
+        overflow-x: hidden;
+      }
+
       @media (max-width: 640px) {
+        body {
+          font-size: 14px;
+        }
+        #root,
+        main {
+          max-width: 100vw;
+          overflow-x: hidden;
+        }
+        .minmin-app-logo {
+          padding: 0.55rem 0.75rem !important;
+        }
+        .minmin-app-logo img {
+          height: 2.05rem !important;
+        }
+        .minmin-main-nav {
+          position: sticky;
+          top: 0;
+          z-index: 40;
+          display: grid !important;
+          grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+          gap: 0.42rem !important;
+          max-width: none !important;
+          padding: 0.48rem 0.72rem !important;
+          background: rgba(247, 247, 242, 0.96);
+          border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+          box-shadow: 0 6px 18px rgba(23, 32, 42, 0.08);
+          backdrop-filter: blur(10px);
+        }
+        .minmin-tab-button {
+          width: 100% !important;
+          min-width: 0 !important;
+          height: 2.45rem !important;
+          padding: 0.2rem 0.35rem !important;
+          border-radius: 0.65rem !important;
+          font-size: 0.76rem !important;
+          line-height: 1.1 !important;
+          white-space: normal !important;
+        }
+        .minmin-mobile-section,
+        main > section:not(.minmin-topbar) {
+          gap: 0.75rem !important;
+          max-width: 100vw !important;
+          padding: 0.75rem !important;
+        }
+        .minmin-mobile-section h1,
+        main > section:not(.minmin-topbar) h1 {
+          font-size: 1.22rem !important;
+          line-height: 1.18 !important;
+        }
+        .minmin-mobile-section h2,
+        main > section:not(.minmin-topbar) h2 {
+          font-size: 1rem !important;
+          line-height: 1.2 !important;
+        }
+        .minmin-mobile-section h3,
+        main > section:not(.minmin-topbar) h3 {
+          line-height: 1.18 !important;
+        }
+        .minmin-mobile-section input,
+        .minmin-mobile-section select,
+        .minmin-mobile-section textarea,
+        main > section:not(.minmin-topbar) input,
+        main > section:not(.minmin-topbar) select,
+        main > section:not(.minmin-topbar) textarea {
+          min-width: 0 !important;
+          font-size: 16px !important;
+        }
+        .minmin-mobile-section button,
+        main > section:not(.minmin-topbar) button {
+          min-width: 0 !important;
+        }
+        .minmin-mobile-section .overflow-x-auto,
+        main > section:not(.minmin-topbar) .overflow-x-auto {
+          max-width: calc(100vw - 1.5rem) !important;
+          -webkit-overflow-scrolling: touch;
+        }
+        .minmin-mobile-section table,
+        main > section:not(.minmin-topbar) table {
+          font-size: 0.78rem !important;
+        }
+        .minmin-mobile-section .grid,
+        main > section:not(.minmin-topbar) .grid {
+          min-width: 0;
+        }
+        .minmin-mobile-section .rounded-lg,
+        main > section:not(.minmin-topbar) .rounded-lg {
+          border-radius: 0.85rem !important;
+        }
+        .minmin-mobile-section [data-line],
+        main > section:not(.minmin-topbar) [data-line] {
+          padding: 0.75rem !important;
+        }
+        .minmin-mobile-section [data-remove-line],
+        main > section:not(.minmin-topbar) [data-remove-line] {
+          position: static !important;
+          width: 100% !important;
+          height: 2.35rem !important;
+          margin-bottom: 0.35rem !important;
+        }
+        .minmin-mobile-section aside,
+        main > section:not(.minmin-topbar) aside {
+          position: static !important;
+          width: 100% !important;
+        }
+        .minmin-mobile-section aside p.text-xl,
+        main > section:not(.minmin-topbar) aside p.text-xl {
+          font-size: 1.05rem !important;
+        }
+        main > section:not(.minmin-topbar) .min-w-\[1180px\],
+        main > section:not(.minmin-topbar) .min-w-\[1120px\],
+        main > section:not(.minmin-topbar) .min-w-\[960px\],
+        main > section:not(.minmin-topbar) .min-w-\[900px\],
+        main > section:not(.minmin-topbar) .min-w-\[820px\],
+        main > section:not(.minmin-topbar) .min-w-\[760px\] {
+          min-width: 760px !important;
+        }
+        main > section:not(.minmin-topbar) .min-w-\[1560px\] {
+          min-width: 980px !important;
+        }
+        main > section:not(.minmin-topbar) td,
+        main > section:not(.minmin-topbar) th {
+          vertical-align: top;
+        }
+        main > section:not(.minmin-topbar) .truncate {
+          max-width: calc(100vw - 6rem);
+        }
+        main > section:not(.minmin-topbar) .fixed {
+          max-width: 100vw;
+        }
         .minmin-stock-list {
           gap: 0.7rem !important;
           order: 1 !important;
@@ -1989,7 +2123,7 @@ function priceField(label,key,suffix='',featured=false){ return `<label class="g
 function priceOut(label,key,hot=false){ return `<div class="rounded-md border ${hot?'border-coral bg-coral text-white':'border-white/10 bg-white/95 text-ink'} p-2"><div class="text-[11px] font-bold uppercase tracking-wide ${hot?'text-white/70':'text-black/45'}">${label}</div><div data-price-out="${key}" class="mt-1 break-words text-base font-extrabold leading-tight">${money(pricingCalc()[key])}</div></div>`; }
 function renderPricingTab(){ const c=pricingCalc(), target=state.pricing.targetUid||state.lines[0]?.uid||''; state.pricing.targetUid=target; return `<section class="mx-auto grid max-w-7xl gap-4 px-4 py-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_250px] lg:px-8"><div class="grid min-w-0 gap-4"><div class="overflow-hidden rounded-lg border border-black/10 bg-white p-3 shadow-sm"><h2 class="text-base font-extrabold">Tính giá bán từ Nhân dân tệ</h2><p class="mt-1 text-sm text-black/55">Công thức lấy theo file 01.TÍNH GIÁ.xlsx. Các kết quả cập nhật ngay khi nhập.</p><div class="mt-3 grid gap-3 md:grid-cols-3">${priceField('Giá TQ','chinaPrice','NDT',true)}${priceField('Cân nặng','weight','kg',true)}${priceField('Lợi nhuận mong muốn','profitPercent','%',true)}</div><div class="mt-3 rounded-md border border-black/10 bg-[#F7F7F2] p-2"><div class="flex items-center justify-between gap-3"><div><h3 class="text-sm font-extrabold">Thông số công thức</h3><p class="mt-0.5 text-xs text-black/45">Ít thay đổi, bấm mở khi cần chỉnh tỷ giá, phí và markup.</p></div><button type="button" data-toggle="showPricingOptions" class="h-9 shrink-0 rounded-md bg-ink px-3 text-xs font-extrabold text-white hover:bg-black">${state.ui.showPricingOptions?'Đóng':'Mở'}</button></div>${state.ui.showPricingOptions?`<div class="mt-3 overflow-x-auto pb-1"><div class="grid min-w-[1260px] grid-cols-9 gap-3">${priceField('Tỷ giá','exchangeRate','VND/NDT')}${priceField('VC TQ-VN','chinaVnRate','/kg')}${priceField('Phí mua hộ','buyFeePercent','%')}${priceField('Bọt khí đầu','bubbleBaseCny','NDT')}${priceField('Bọt khí thêm/kg','bubbleExtraCny','NDT')}${priceField('Tỷ giá bọt khí','bubbleRate','VND/NDT')}${priceField('Ship nội địa','inlandShip','VND')}${priceField('Ship Việt Nam','vnShip','VND')}${priceField('Markup niêm yết','listMarkupPercent','%')}</div></div>`:''}</div></div><div class="overflow-hidden rounded-lg border border-black/10 bg-white p-3 shadow-sm"><div class="flex items-center justify-between gap-3"><div><h2 class="text-base font-extrabold">Chi tiết công thức</h2><p class="mt-1 text-xs text-black/45">Bảng giải thích công thức, chỉ mở khi cần kiểm tra.</p></div><button type="button" data-toggle="showFormulaDetails" class="h-9 shrink-0 rounded-md border border-black/10 bg-white px-3 text-xs font-extrabold text-ink hover:border-mint">${state.ui.showFormulaDetails?'Đóng':'Mở'}</button></div>${state.ui.showFormulaDetails?`<div class="mt-4 overflow-x-auto"><table class="w-full min-w-[760px] border-collapse text-sm"><tbody>${[['GIÁ VN','giaVn','Giá TQ x tỷ giá'],['LOGISTIC','logistic','VC TQ-VN + bọt khí + mua hộ + ship'],['TIỀN VC TQ-VN','vcTqVn','33.000 x cân nặng'],['BỌT KHÍ','bubble','((20 x 3700) + (1.5 x 3700 x (kg-1))) x 2'],['PHÍ MUA HỘ','buyFee','5% x Giá VN'],['LỢI NHUẬN MONG MUỐN','profit','Giá VN x % lợi nhuận'],['TỔNG TIỀN 1','total1','Lợi nhuận + Logistic + Giá VN, làm tròn 10.000'],['BÙ VAT','vatBuffer','20% x Giá khai xuất HĐ tạm tính'],['TỔNG TIỀN 2','total2','Tổng tiền 1 + Bù VAT'],['GIÁ NIÊM YẾT','listPrice','110% x Tổng tiền 2, làm tròn 100.000'],['GIÁ SAU VAT','afterVat','Tổng tiền 2 làm tròn 10.000 x 108%'],['LỢI NHUẬN RÒNG','netProfit','Giá sau VAT - Chi phí - Thuế DN']].map(([label,key,note])=>`<tr class="border-b border-black/10"><td class="py-2 pr-3 font-bold">${label}</td><td data-price-out="${key}" class="py-2 pr-3 text-right font-extrabold">${money(c[key])}</td><td class="py-2 text-black/55">${note}</td></tr>`).join('')}</tbody></table></div>`:''}</div></div><aside class="h-fit overflow-hidden rounded-lg border border-black/10 bg-ink p-3 text-white shadow-sm lg:sticky lg:top-4"><p class="text-sm font-semibold uppercase tracking-wide text-white/55">Giá niêm yết</p><p data-price-out="listPrice" class="mt-2 break-words text-xl font-extrabold leading-tight">${money(c.listPrice)}</p><div class="my-3 h-px bg-white/15"></div><div class="grid gap-2">${priceOut('Tổng tiền 2','total2')}${priceOut('Giá sau VAT','afterVat')}${priceOut('Lợi nhuận ròng','netProfit',true)}</div><label class="mt-5 grid gap-1.5"><span class="text-[11px] font-semibold uppercase tracking-wide text-white/55">Đưa giá sang dòng báo giá</span><select data-price-target class="h-10 min-w-0 rounded-md border border-white/15 bg-white px-2 text-xs font-bold text-ink outline-none">${state.lines.map(l=>`<option value="${esc(l.uid)}" ${l.uid===target?'selected':''}>${esc(l.code||l.name||'Dòng sản phẩm')}</option>`).join('')}</select></label><button data-apply-price type="button" class="mt-3 h-10 w-full rounded-md bg-gold px-2 text-xs font-extrabold leading-tight text-ink hover:bg-[#ffd76a]">Đưa giá sang báo giá</button></aside></section>`; }
 function updatePricingOutput(){ const c=pricingCalc(); document.querySelectorAll('[data-price-out]').forEach(el=>{const key=el.dataset.priceOut; if(c[key]!==undefined)el.textContent=money(c[key]);}); }
-function tabNav(){ const isTools=['tools','pricing','history'].includes(state.activeTab); const btn=(id,label,active)=>`<button data-tab="${id}" type="button" class="h-10 rounded-md px-4 text-sm font-extrabold ${(active!==undefined?active:state.activeTab===id)?'bg-ink text-white':'border border-black/10 bg-white text-ink hover:border-mint'}">${label}</button>`; return `<div class="mx-auto flex max-w-7xl flex-wrap gap-2 px-4 pt-4 sm:px-6 lg:px-8">${btn('quote','Báo giá')}${btn('stock','Kho hàng')}${btn('accounting','Kế toán')}${btn('documents','Hồ sơ')}${btn('website','Website sản phẩm')}${btn('tools','Công cụ',isTools)}</div>`; }
+function tabNav(){ const isTools=['tools','pricing','history'].includes(state.activeTab); const btn=(id,label,active)=>`<button data-tab="${id}" type="button" class="minmin-tab-button h-10 rounded-md px-4 text-sm font-extrabold ${(active!==undefined?active:state.activeTab===id)?'bg-ink text-white':'border border-black/10 bg-white text-ink hover:border-mint'}">${label}</button>`; return `<div class="minmin-main-nav mx-auto flex max-w-7xl flex-wrap gap-2 px-4 pt-4 sm:px-6 lg:px-8">${btn('quote','Báo giá')}${btn('stock','Kho hàng')}${btn('accounting','Kế toán')}${btn('documents','Hồ sơ')}${btn('website','Website')}${btn('tools','Công cụ',isTools)}</div>`; }
 function imagePicker(label,key,square=false){ const v=state.info[key]; return `<div class="grid gap-2"><span class="text-xs font-semibold uppercase tracking-wide text-black/50">${label}</span><div class="grid gap-3 sm:grid-cols-[96px_minmax(0,1fr)] sm:items-center"><div class="flex aspect-square h-24 items-center justify-center overflow-hidden rounded-md border border-black/10 bg-[#F7F7F2]">${v?`<img src="${v}" class="h-full w-full ${square?'object-cover':'object-contain'}"/>`:'<span class="px-3 text-center text-sm font-medium text-black/45">Chưa có ảnh</span>'}</div><div class="grid min-w-0 gap-2"><input data-asset="${key}" data-square="${square?'1':'0'}" type="file" accept="image/png,image/jpeg" class="block min-w-0 w-full rounded-md border border-black/15 bg-white px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-ink file:px-3 file:py-2 file:text-sm file:font-bold file:text-white" />${v?`<button data-clear-asset="${key}" type="button" class="h-10 rounded-md border border-black/10 px-4 text-sm font-bold text-coral hover:border-coral hover:bg-coral hover:text-white">Bỏ ảnh</button>`:''}</div></div></div>`; }
 function linePricingInput(label,key,line,suffix=''){ const value=line[key]??(key==='profitPercent'?120:''), step=key==='weight'?'0.1':'1'; return `<label class="grid min-w-0 gap-1"><span class="truncate text-[11px] font-semibold uppercase tracking-wide text-mint">${label}</span><div class="flex h-10 overflow-hidden rounded-md border border-mint/30 bg-mint/10 focus-within:border-mint focus-within:ring-4 focus-within:ring-mint/10"><input data-line-field="${key}" type="number" step="${step}" value="${esc(value)}" class="min-w-0 flex-1 bg-white/80 px-2 text-sm font-semibold outline-none" />${suffix?`<span class="flex items-center bg-mint/10 px-2 text-[11px] font-bold text-mint">${suffix}</span>`:''}</div></label>`; }
 function renderLine(line,idx){ syncLineDefaults(line); const amount=lineAmount(line); return `<div class="relative overflow-hidden rounded-lg border border-black/10 bg-white p-3 shadow-sm" data-line="${line.uid}"><button data-remove-line="${line.uid}" type="button" class="absolute right-2 top-1.5 z-20 h-8 rounded-md border border-coral/30 bg-white px-3 text-xs font-extrabold text-coral hover:bg-coral hover:text-white">Xóa</button><div class="mb-3 grid gap-3 border-b border-black/10 pb-3 pr-20 xl:grid-cols-[minmax(180px,0.55fr)_minmax(300px,0.8fr)_96px_minmax(190px,0.55fr)] xl:items-center"><div><div class="text-sm font-extrabold text-ink">${esc(line.code||`Dòng ${idx+1}`)} - ${esc(line.name||'Sản phẩm')}</div><div class="mt-1 text-xs font-semibold text-black/45">${esc(line.status)}</div><div class="mt-1 text-xs font-extrabold text-mint">Thành tiền ${moneyPlain(amount)} đ</div></div><div class="grid gap-2 sm:grid-cols-3">${linePricingInput('Giá NDT','chinaPrice',line,'NDT')}${linePricingInput('Cân nặng','weight',line,'kg')}${linePricingInput('Lợi nhuận','profitPercent',line,'%')}</div><div class="grid gap-1"><span class="text-[11px] font-semibold uppercase tracking-wide text-black/50">Ảnh</span><div data-line-paste="${line.uid}" tabindex="0" title="Bấm vào đây rồi Cmd+V để dán screenshot, hoặc kéo ảnh thả vào" class="group relative flex aspect-square h-20 cursor-copy items-center justify-center overflow-hidden rounded-md border border-dashed border-black/20 bg-[#F7F7F2] outline-none ring-mint/10 focus:border-mint focus:ring-4">${previewImage(line)?`<img src="${esc(previewImage(line))}" class="h-full w-full object-contain" loading="lazy"/>`:'<span class="px-1 text-center text-[10px] font-medium text-black/45">Paste / thả ảnh</span>'}<span class="pointer-events-none absolute inset-x-1 bottom-1 rounded bg-black/60 px-1 py-0.5 text-center text-[9px] font-bold text-white opacity-0 transition group-focus:opacity-100 group-hover:opacity-100">Cmd+V</span></div></div><div class="grid min-w-0 gap-1.5"><span class="text-[11px] font-semibold uppercase tracking-wide text-black/50">Chọn / paste ảnh</span><div class="grid gap-2 sm:grid-cols-2"><button data-paste-line-image="${line.uid}" type="button" class="flex h-10 items-center justify-center rounded-md bg-mint px-2 text-xs font-extrabold text-white hover:bg-[#1f7e67]">Dán ảnh</button><label class="flex h-10 cursor-pointer items-center justify-center rounded-md bg-ink px-2 text-xs font-extrabold text-white hover:bg-black"><input data-line-image="${line.uid}" type="file" accept="image/png,image/jpeg" class="sr-only"/>Chọn ảnh</label>${line.photoDataUrl?`<button data-clear-line-image="${line.uid}" type="button" class="flex h-9 items-center justify-center rounded-md border border-black/10 px-2 text-xs font-bold text-coral hover:border-coral hover:bg-coral hover:text-white sm:col-span-2">Bỏ ảnh</button>`:''}</div></div></div><div class="grid gap-3 md:grid-cols-[0.9fr_0.85fr_0.8fr_1fr]">${codeSelect('Loại đèn','productType',line,PRODUCT_TYPES)}${codeSelect('Kiểu hàng','stockMode',line,STOCK_MODES)}${leadTimeSelect(line)}${lineInput('Mã hàng (sửa được)','code',line)}</div><div class="mt-3 grid gap-3 md:grid-cols-[0.55fr_0.9fr_0.7fr_0.9fr]">${lineInput('SL','quantity',line,'number')}${lineInput('Đơn giá','price',line,'number')}${lineInput('ĐVT','unit',line)}${lineInput('Kích thước','dimension',line)}</div><div class="mt-3 rounded-md border border-black/10 bg-[#F7F7F2] p-3"><div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between"><h3 class="text-sm font-extrabold">Thuộc tính sản phẩm</h3></div><div class="mt-3 grid gap-3 md:grid-cols-[1.05fr_1.05fr_2fr_.65fr_.65fr]">${ATTRIBUTE_FIELDS.map(f=>renderAttributeField(line,f)).join('')}</div></div></div>`; }
@@ -3498,7 +3632,7 @@ function setRootHtml(html){
   }
 }
 
-function render(){ const t=totals(), quoteHtml=`<section class="mx-auto grid max-w-7xl gap-4 px-4 py-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_250px] lg:px-8"><div class="grid min-w-0 gap-4"><div class="overflow-hidden rounded-lg border border-black/10 bg-white p-3 shadow-sm"><h2 class="text-base font-extrabold">Thông tin khách hàng</h2><div class="mt-3 grid gap-3 md:grid-cols-[1fr_0.75fr_1fr_0.8fr]">${field('Khách hàng','client')}${field('Tel','tel')}${field('Người đại diện','representative')}${field('Ngày tạo báo giá','quoteDate','date')}</div><div class="mt-3 grid gap-3 md:grid-cols-2">${field('Địa chỉ','address')}${field('Nơi giao','delivery')}</div></div><div><h2 class="text-lg font-bold">Bảng sản phẩm</h2><p class="mt-1 text-sm text-black/55">Chọn loại đèn, kiểu hàng và nhập thông tin trước khi xuất Excel.</p></div>${state.lines.map(renderLine).join('')}<div class="flex justify-end"><button id="addLine" class="h-11 rounded-md bg-gold px-5 text-sm font-extrabold text-ink hover:bg-[#ffd76a]">+ Thêm sản phẩm</button></div><div class="overflow-hidden rounded-lg border border-black/10 bg-white p-3 shadow-sm"><h2 class="text-base font-extrabold">Phí vận chuyển & công thức</h2><div class="mt-3 grid gap-3 md:grid-cols-[0.55fr_2fr_0.55fr_0.45fr_1.05fr_0.65fr_0.48fr_0.6fr]">${field('Mã phí','shipCode')}${field('Tên phí','shipName')}${field('ĐVT phí','shipUnit')}${field('SL phí','shipQty','number')}${field('Thành tiền phí','shipPriceText')}${field('Chiết khấu %','discountRate','number')}${field('VAT %','vatRate','number')}${field('Đặt cọc %','depositRate','number')}</div></div><div class="overflow-hidden rounded-lg border border-black/10 bg-white p-3 shadow-sm"><div class="flex items-center justify-between gap-3"><div><h2 class="text-base font-extrabold">Logo & QR ngân hàng</h2><p class="mt-1 text-xs text-black/45">Mặc định đã lưu sẵn, chỉ mở khi cần đổi ảnh.</p></div><button type="button" data-toggle="showAssets" class="h-9 shrink-0 rounded-md border border-black/10 bg-white px-3 text-xs font-extrabold text-ink hover:border-mint">${state.ui.showAssets?'Đóng':'Mở'}</button></div>${state.ui.showAssets?`<div class="mt-3 grid gap-3 lg:grid-cols-2">${imagePicker('Logo Minmin','logoDataUrl')}${imagePicker('Mã QR ngân hàng','qrDataUrl',true)}</div>`:''}</div></div><aside class="h-fit overflow-hidden rounded-lg border border-black/10 bg-ink p-3 text-white shadow-sm lg:sticky lg:top-4"><p class="text-sm font-semibold uppercase tracking-wide text-white/55">Tổng tiền sau VAT</p><p class="mt-2 break-words text-xl font-extrabold leading-tight">${money(t.afterVat)}</p><div class="my-3 h-px bg-white/15"></div><div class="grid gap-2 text-xs">${[['Tổng giá trị',t.subtotal],['Chiết khấu',t.discount],['Sau chiết khấu',t.afterDiscount],['VAT',t.vat],['Đặt cọc',t.deposit],['Còn lại',t.remaining]].map(([k,v])=>`<div class="flex justify-between gap-2"><span>${k}</span><b class="text-right">${money(v)}</b></div>`).join('')}</div><div class="mt-3 rounded-md bg-white/10 p-2 text-xs leading-5 text-white/75">${esc(numberToVietnamese(t.afterVat))}</div><button id="exportExcel" class="mt-3 h-10 w-full rounded-md bg-coral text-sm font-extrabold text-white hover:bg-[#ff726b]">Xuất Excel</button><button id="previewPdf" class="mt-2 h-10 w-full rounded-md border border-white/25 bg-white/10 text-sm font-extrabold text-white hover:bg-white/20">Xem trước PDF</button><button id="exportPdf" class="mt-2 h-10 w-full rounded-md bg-white text-sm font-extrabold text-ink hover:bg-gold">Xuất PDF</button><label class="mt-2 flex h-10 w-full cursor-pointer items-center justify-center rounded-md border border-white/20 bg-white/10 px-2 text-center text-xs font-extrabold text-white hover:bg-white/20">Nhập Excel cũ<input id="importExcel" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="hidden" /></label></aside></section>`; if(!appUnlocked){ setRootHtml(renderPinGate()); bindPinGate(); return; } const current=(state.activeTab==='tools'||state.activeTab==='pricing'||state.activeTab==='history')?renderToolsTab():(state.activeTab==='website'?renderWebsiteProductsTab():(state.activeTab==='documents'?renderDocumentSuiteTab():(state.activeTab==='stock'?renderInventoryTab():(state.activeTab==='accounting'||state.activeTab==='inputInvoices'?renderAccountingTab():quoteHtml)))); setRootHtml(`<main class="min-h-screen"><section class="border-b border-black/10 bg-white"><div class="mx-auto flex max-w-7xl items-center justify-center px-4 py-4 sm:px-6 lg:px-8"><img src="${UI_LOGO_DATA_URL}" alt="Minmin" class="h-12 w-auto object-contain"/></div></section>${tabNav()}${current}</main>`); bind(); if(!state.loading) scheduleSave(); }
+function render(){ const t=totals(), quoteHtml=`<section class="mx-auto grid max-w-7xl gap-4 px-4 py-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_250px] lg:px-8"><div class="grid min-w-0 gap-4"><div class="overflow-hidden rounded-lg border border-black/10 bg-white p-3 shadow-sm"><h2 class="text-base font-extrabold">Thông tin khách hàng</h2><div class="mt-3 grid gap-3 md:grid-cols-[1fr_0.75fr_1fr_0.8fr]">${field('Khách hàng','client')}${field('Tel','tel')}${field('Người đại diện','representative')}${field('Ngày tạo báo giá','quoteDate','date')}</div><div class="mt-3 grid gap-3 md:grid-cols-2">${field('Địa chỉ','address')}${field('Nơi giao','delivery')}</div></div><div><h2 class="text-lg font-bold">Bảng sản phẩm</h2><p class="mt-1 text-sm text-black/55">Chọn loại đèn, kiểu hàng và nhập thông tin trước khi xuất Excel.</p></div>${state.lines.map(renderLine).join('')}<div class="flex justify-end"><button id="addLine" class="h-11 rounded-md bg-gold px-5 text-sm font-extrabold text-ink hover:bg-[#ffd76a]">+ Thêm sản phẩm</button></div><div class="overflow-hidden rounded-lg border border-black/10 bg-white p-3 shadow-sm"><h2 class="text-base font-extrabold">Phí vận chuyển & công thức</h2><div class="mt-3 grid gap-3 md:grid-cols-[0.55fr_2fr_0.55fr_0.45fr_1.05fr_0.65fr_0.48fr_0.6fr]">${field('Mã phí','shipCode')}${field('Tên phí','shipName')}${field('ĐVT phí','shipUnit')}${field('SL phí','shipQty','number')}${field('Thành tiền phí','shipPriceText')}${field('Chiết khấu %','discountRate','number')}${field('VAT %','vatRate','number')}${field('Đặt cọc %','depositRate','number')}</div></div><div class="overflow-hidden rounded-lg border border-black/10 bg-white p-3 shadow-sm"><div class="flex items-center justify-between gap-3"><div><h2 class="text-base font-extrabold">Logo & QR ngân hàng</h2><p class="mt-1 text-xs text-black/45">Mặc định đã lưu sẵn, chỉ mở khi cần đổi ảnh.</p></div><button type="button" data-toggle="showAssets" class="h-9 shrink-0 rounded-md border border-black/10 bg-white px-3 text-xs font-extrabold text-ink hover:border-mint">${state.ui.showAssets?'Đóng':'Mở'}</button></div>${state.ui.showAssets?`<div class="mt-3 grid gap-3 lg:grid-cols-2">${imagePicker('Logo Minmin','logoDataUrl')}${imagePicker('Mã QR ngân hàng','qrDataUrl',true)}</div>`:''}</div></div><aside class="h-fit overflow-hidden rounded-lg border border-black/10 bg-ink p-3 text-white shadow-sm lg:sticky lg:top-4"><p class="text-sm font-semibold uppercase tracking-wide text-white/55">Tổng tiền sau VAT</p><p class="mt-2 break-words text-xl font-extrabold leading-tight">${money(t.afterVat)}</p><div class="my-3 h-px bg-white/15"></div><div class="grid gap-2 text-xs">${[['Tổng giá trị',t.subtotal],['Chiết khấu',t.discount],['Sau chiết khấu',t.afterDiscount],['VAT',t.vat],['Đặt cọc',t.deposit],['Còn lại',t.remaining]].map(([k,v])=>`<div class="flex justify-between gap-2"><span>${k}</span><b class="text-right">${money(v)}</b></div>`).join('')}</div><div class="mt-3 rounded-md bg-white/10 p-2 text-xs leading-5 text-white/75">${esc(numberToVietnamese(t.afterVat))}</div><button id="exportExcel" class="mt-3 h-10 w-full rounded-md bg-coral text-sm font-extrabold text-white hover:bg-[#ff726b]">Xuất Excel</button><button id="previewPdf" class="mt-2 h-10 w-full rounded-md border border-white/25 bg-white/10 text-sm font-extrabold text-white hover:bg-white/20">Xem trước PDF</button><button id="exportPdf" class="mt-2 h-10 w-full rounded-md bg-white text-sm font-extrabold text-ink hover:bg-gold">Xuất PDF</button><label class="mt-2 flex h-10 w-full cursor-pointer items-center justify-center rounded-md border border-white/20 bg-white/10 px-2 text-center text-xs font-extrabold text-white hover:bg-white/20">Nhập Excel cũ<input id="importExcel" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="hidden" /></label></aside></section>`; if(!appUnlocked){ setRootHtml(renderPinGate()); bindPinGate(); return; } const current=(state.activeTab==='tools'||state.activeTab==='pricing'||state.activeTab==='history')?renderToolsTab():(state.activeTab==='website'?renderWebsiteProductsTab():(state.activeTab==='documents'?renderDocumentSuiteTab():(state.activeTab==='stock'?renderInventoryTab():(state.activeTab==='accounting'||state.activeTab==='inputInvoices'?renderAccountingTab():quoteHtml)))); setRootHtml(`<main class="min-h-screen"><section class="minmin-topbar border-b border-black/10 bg-white"><div class="minmin-app-logo mx-auto flex max-w-7xl items-center justify-center px-4 py-4 sm:px-6 lg:px-8"><img src="${UI_LOGO_DATA_URL}" alt="Minmin" class="h-12 w-auto object-contain"/></div></section>${tabNav()}${current}</main>`); bind(); if(!state.loading) scheduleSave(); }
 function bindInputInvoices(){
   document.querySelectorAll('[data-input-invoice-view]').forEach(b=>b.onclick=()=>{state.inputInvoices.view=b.dataset.inputInvoiceView; state.inputInvoices.editingId=''; saveInputInvoices(); render();});
   document.querySelectorAll('[data-input-invoice-filter]').forEach(el=>el.onchange=()=>{state.inputInvoices.filters[el.dataset.inputInvoiceFilter]=el.value; saveInputInvoices(); render();});
