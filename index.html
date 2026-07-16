@@ -10212,6 +10212,9 @@ documentPrintCss = function(){
     }
     render();
   }
+  globalThis.outgoingForm = outgoingForm;
+  globalThis.outgoingTable = outgoingTable;
+  globalThis.renderOutgoingInvoices = renderOutgoingInvoices;
   const previousBindOutgoingInvoiceFiles = bind;
   bind = function(){
     previousBindOutgoingInvoiceFiles.apply(this, arguments);
