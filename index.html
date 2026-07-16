@@ -9198,6 +9198,49 @@ documentPrintCss = function(){
   ['loadWorkingStateFromSupabase','syncInventoryFromSupabase','syncInputInvoicesFromSupabase','syncAccountingFromSupabase'].forEach(wrapAsyncNavSafe);
 })();
 
+/* MINMIN PATCH 2026-07-16M
+   Website san pham: thu gon cac khoi phu bang dropdown de form nhap lieu gon hon. */
+(function(){
+  function mmWebsiteFoldOptionalSections(){
+    if(state?.activeTab !== 'website') return;
+    const foldTitles = new Set(['Product attributes', 'Ảnh sản phẩm']);
+    [...document.querySelectorAll('h2')].forEach(title => {
+      const text = String(title.textContent || '').trim();
+      if(!foldTitles.has(text)) return;
+      const card = title.closest('.rounded-lg.border.border-black\\/10.bg-white');
+      if(!card || card.dataset.websiteFolded === '1') return;
+      const content = [...card.children].find(el => el.classList?.contains('mt-3')) || card.lastElementChild;
+      const header = title.closest('.flex') || card.firstElementChild;
+      if(!content || !header || content === header) return;
+      const hasValue = text === 'Ảnh sản phẩm'
+        ? !!(state.website?.current?.featured_image_url || (state.website?.current?.gallery_image_urls || []).length)
+        : websiteSimpleAttributePairs(state.website?.current || {}).some(([,v]) => String(v || '').trim());
+      const open = hasValue;
+      content.classList.toggle('hidden', !open);
+      card.dataset.websiteFolded = '1';
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'h-9 shrink-0 rounded-md border border-black/10 bg-white px-3 text-xs font-extrabold text-ink hover:border-mint';
+      btn.textContent = open ? 'Thu gọn' : 'Mở';
+      btn.onclick = () => {
+        const isHidden = content.classList.toggle('hidden');
+        btn.textContent = isHidden ? 'Mở' : 'Thu gọn';
+      };
+      header.classList.add('items-center');
+      const right = document.createElement('div');
+      right.className = 'flex shrink-0 items-center gap-2';
+      right.appendChild(btn);
+      header.appendChild(right);
+    });
+  }
+
+  const previousBindWebsiteFoldOptionalSections = bind;
+  bind = function(){
+    previousBindWebsiteFoldOptionalSections.apply(this, arguments);
+    mmWebsiteFoldOptionalSections();
+  };
+})();
+
 /* MINMIN PATCH 2026-07-16C
    Hoa don dau vao: gom cot, dua MST xuong duoi nha cung cap, chong tran chu cum trang thai/thao tac. */
 (function(){
