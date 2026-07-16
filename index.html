@@ -11120,6 +11120,70 @@ documentPrintCss = function(){
   };
 })();
 
+/* MINMIN PATCH 2026-07-17D
+   Ban ra: mac dinh chi hien bang nhu Mua vao, form chi mo khi Tao/Sua. */
+(function(){
+  function outDNum(v){ return Number(parseInputMoney(v||0))||0; }
+  function outDShort(v,max=34){ const s=String(v||'').replace(/\s+/g,' ').trim(); return s.length>max?s.slice(0,max-1).trim()+'...':s; }
+  function outDCodes(text){ return [...new Set([...String(text||'').matchAll(/\b(?:OD|STK|TM|FTX|FX|WL|PL|TB)[A-Z0-9-]{2,}\b/gi)].map(m=>m[0]))]; }
+  function outDQty(inv,code){
+    const m=String(inv?.item_summary||'').match(new RegExp(`${String(code||'').replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}[^;\\n,]*?(?:x|SL|sl|qty)\\s*(\\d+(?:[.,]\\d+)?)`,'i'));
+    return m?Number(String(m[1]).replace(',','.'))||1:1;
+  }
+  function outDItems(inv){
+    if(Array.isArray(inv?.items_json)&&inv.items_json.length)return inv.items_json.map(x=>({code:x.code||'',name:x.name||'',dimension:x.dimension||'',qty:Number(x.quantity||x.qty||1),price:outDNum(x.unit_price||x.price),amount:outDNum(x.amount)||outDNum(x.unit_price||x.price)*Number(x.quantity||x.qty||1),photo:x.photo||x.photoDataUrl||''}));
+    const rows=outDCodes([inv?.order_code,inv?.item_summary].join(' ')).map(code=>{
+      const item=findInventoryItem(code);
+      if(!item)return null;
+      const n=normalizeInventoryItem(item), qty=outDQty(inv,code), price=outDNum(n.price);
+      return {code:n.code||n.barcodeId||code,name:n.name||productTypeName(n.productType)||code,dimension:n.dimension||'',qty,price,amount:qty*price,photo:driveAssetUrl(photoSourceValue(n)||n.photoDataUrl||n.photoStorageUrl||'')};
+    }).filter(Boolean);
+    if(rows.length)return rows;
+    return String(inv?.item_summary||'').split(/[;\n]+/).map(x=>x.trim()).filter(Boolean).slice(0,4).map(x=>({code:'',name:x,dimension:'',qty:1,price:0,amount:0,photo:''}));
+  }
+  function outDProductCell(inv){
+    const rows=outDItems(inv);
+    if(!rows.length)return '<span class="text-xs font-bold text-black/30">--</span>';
+    return `<div class="grid w-[440px] max-w-[440px] gap-1.5">${rows.slice(0,5).map(r=>`<div class="grid grid-cols-[42px_minmax(0,1fr)_82px] items-center gap-2 rounded-md border border-black/10 bg-white p-1.5">
+      <div class="flex h-10 w-10 items-center justify-center overflow-hidden rounded border border-black/10 bg-[#F7F7F2]">${r.photo?`<img src="${esc(driveAssetUrl(r.photo))}" class="h-full w-full object-contain" loading="lazy"/>`:'<span class="text-[9px] font-bold text-black/30">Ảnh</span>'}</div>
+      <div class="min-w-0"><div class="truncate text-xs font-black">${esc(outDShort(r.name||r.code||'Sản phẩm'))}</div><div class="truncate text-[10px] font-bold text-mint">${esc(r.code||'--')}${r.dimension?` · ${esc(r.dimension)}`:''}</div><div class="text-[10px] font-bold text-black/45">SL ${Number(r.qty||0)}${r.price?` · ${money(r.price)}`:''}</div></div>
+      <div class="text-right text-[10px] font-black">${r.amount?money(r.amount):''}</div>
+    </div>`).join('')}${rows.length>5?`<div class="rounded-md border border-dashed border-black/15 bg-[#F7F7F2] p-1.5 text-center text-[10px] font-bold text-black/45">+${rows.length-5} sản phẩm</div>`:''}</div>`;
+  }
+  function outDFileCell(inv){
+    const badge=(label,ok)=>`<span class="inline-flex rounded-md border ${ok?'border-mint/25 bg-mint/10 text-mint':'border-orange-200 bg-orange-50 text-orange-600'} px-2 py-1 text-[10px] font-extrabold">${label}: ${ok?'đã có':'chưa có'}</span>`;
+    return `<div class="grid gap-1"><div class="flex flex-wrap gap-1">${badge('PDF',!!inv.pdf_url)}${badge('XML',!!inv.xml_url)}</div><div class="flex flex-wrap gap-1"><label class="inline-flex h-7 cursor-pointer items-center rounded-md border border-mint/30 px-2 text-[10px] font-extrabold text-mint">PDF<input data-sale-order-file="${esc(inv.id)}" data-file-type="pdf" type="file" accept="application/pdf,.pdf" class="hidden"/></label><label class="inline-flex h-7 cursor-pointer items-center rounded-md border border-sky-300 bg-sky-50 px-2 text-[10px] font-extrabold text-sky-800">XML<input data-sale-order-file="${esc(inv.id)}" data-file-type="xml" type="file" accept=".xml,text/xml,application/xml" class="hidden"/></label></div></div>`;
+  }
+  function outDEditForm(inv){
+    if(!state.ui.showOutgoingEditor||!inv)return '';
+    inv=recalcOutgoingTotals(outgoingEmpty({...inv,id:inv.id||''}));
+    const f=(l,k,t='text')=>`<label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">${esc(l)}</span><input data-outgoing-edit="${esc(k)}" type="${t}" value="${esc(t==='date'?(inv[k]||''):outgoingEditValue(k,inv[k]||''))}" class="h-9 rounded-md border border-black/15 bg-white px-2 text-xs font-bold"/></label>`;
+    return `<div class="mt-3 rounded-lg border border-mint/20 bg-mint/[0.04] p-3"><div class="mb-2 flex flex-wrap items-center justify-between gap-2"><h2 class="text-sm font-black">${inv.id?'Sửa đơn bán ra':'Tạo đơn bán ra'}</h2><div class="flex gap-2"><button id="saveOutgoingInvoice" class="h-8 rounded-md bg-ink px-3 text-xs font-extrabold text-white">Lưu</button><button data-sale-order-close-editor type="button" class="h-8 rounded-md border border-black/10 bg-white px-3 text-xs font-extrabold">Đóng</button></div></div><div class="grid gap-2 md:grid-cols-4">${f('Ngày đơn','request_date','date')}${f('Ngày hóa đơn','invoice_date','date')}${f('Hạn thanh toán','due_date','date')}${f('Số hóa đơn','invoice_number')}${f('Khách hàng','customer_name')}${f('MST khách','customer_tax_code')}${f('File báo giá','quote_file_name')}${f('Mã đơn/báo giá','order_code')}${f('Tiền hàng','goods_amount')}${f('Chiết khấu %','discount_percent')}${f('Phí ship','shipping_fee')}${f('VAT %','vat_rate')}</div></div>`;
+  }
+  function outDTable(rows){
+    return `<div class="mt-3 overflow-x-auto"><table class="w-full min-w-[1580px] border-collapse text-sm"><thead><tr class="border-b border-black/10 text-left text-xs uppercase tracking-wide text-black/45"><th class="py-2 pr-2">Ngày</th><th class="py-2 pr-2">Số HĐ</th><th class="py-2 pr-2">Khách hàng</th><th class="py-2 pr-2">MST</th><th class="w-[460px] min-w-[460px] py-2 pr-2">Sản phẩm</th><th class="py-2 pr-2 text-right">Trước VAT</th><th class="py-2 pr-2 text-right">VAT</th><th class="py-2 pr-2 text-right">Tổng</th><th class="py-2 pr-2 text-right">Đã thu</th><th class="py-2 pr-2 text-right">Còn thu</th><th class="py-2 pr-2">Trạng thái</th><th class="py-2 pr-2">File gốc</th><th class="py-2 text-right">Thao tác</th></tr></thead><tbody>${rows.map(inv=>{const paid=outgoingPaid(inv), remain=Math.max(0,Number(inv.total_amount||0)-paid), debt=debtStatus(inv.total_amount,paid,inv.due_date); return `<tr class="border-b border-black/10 align-top"><td class="py-2 pr-2 font-bold">${esc(compactDate(inv.invoice_date||inv.request_date))}</td><td class="py-2 pr-2"><b>${esc(inv.invoice_number||'Chờ xuất')}</b><div class="text-xs text-black/45">${esc(inv.invoice_series||inv.order_code||'')}</div></td><td class="py-2 pr-2 font-bold">${esc(inv.customer_name||'--')}</td><td class="py-2 pr-2">${esc(inv.customer_tax_code||'Thiếu MST')}</td><td class="w-[460px] min-w-[460px] py-2 pr-2">${outDProductCell(inv)}</td><td class="py-2 pr-2 text-right font-bold">${money(inv.net_amount)}</td><td class="py-2 pr-2 text-right font-bold">${money(inv.vat_amount)}</td><td class="py-2 pr-2 text-right"><div class="font-extrabold">${money(inv.total_amount)}</div>${Number(inv.discount_percent||0)||Number(inv.shipping_fee||0)?`<div class="mt-1 text-[11px] font-bold text-black/45">Giảm ${Number(inv.discount_percent||0)}% · Ship ${money(inv.shipping_fee||0)}</div>`:''}</td><td class="py-2 pr-2 text-right font-bold text-mint">${money(paid)}</td><td class="py-2 pr-2 text-right font-black ${remain?'text-coral':'text-mint'}">${money(remain)}</td><td class="py-2 pr-2"><span class="inline-flex rounded-md border px-2 py-1 text-xs font-extrabold ${accountingStatusClass(inv.status)}">${esc(inv.status||'Chờ xuất hóa đơn')}</span><div class="mt-1 inline-flex rounded-md border px-2 py-1 text-[11px] font-bold ${accountingStatusClass(debt)}">${esc(debt)}</div></td><td class="py-2 pr-2">${outDFileCell(inv)}</td><td class="py-2"><div class="flex justify-end gap-1"><button data-outgoing-edit-row="${esc(inv.id)}" type="button" class="h-8 rounded-md bg-ink px-2 text-xs font-extrabold text-white">Sửa</button><button data-sale-order-pick-stock="${esc(inv.id)}" type="button" class="h-8 rounded-md bg-gold px-2 text-xs font-extrabold">Kho</button><button data-outgoing-delete="${esc(inv.id)}" type="button" class="h-8 rounded-md border border-coral/30 px-2 text-xs font-extrabold text-coral">Xóa</button></div></td></tr>`}).join('')}</tbody></table></div>`;
+  }
+  renderOutgoingInvoices=function(){
+    const rows=accountingRows();
+    if(!state.ui.showOutgoingEditor && state.accounting.editingOutgoingId) state.accounting.editingOutgoingId='';
+    const edit=state.accounting.outgoingInvoices.find(x=>String(x.id)===String(state.accounting.editingOutgoingId));
+    const totals=rows.reduce((a,x)=>{const paid=outgoingPaid(x); a.net+=Number(x.net_amount||0); a.vat+=Number(x.vat_amount||0); a.total+=Number(x.total_amount||0); a.remain+=Math.max(0,Number(x.total_amount||0)-paid); a.review+=(!x.pdf_url||!x.xml_url||Math.max(0,Number(x.total_amount||0)-paid)>0)?1:0; return a;},{net:0,vat:0,total:0,remain:0,review:0});
+    const metric=(label,value,tone='')=>`<div class="rounded-md border border-black/10 ${tone||'bg-white'} p-3"><div class="text-[10px] font-bold uppercase text-black/40">${label}</div><div class="mt-1 text-base font-extrabold">${value}</div></div>`;
+    return `<div class="grid gap-3">${accountingFilters()}<div class="grid gap-2 md:grid-cols-5">${metric('Tổng trước VAT',money(totals.net))}${metric('VAT đầu ra',money(totals.vat),'bg-mint/10')}${metric('Tổng bán ra',money(totals.total))}${metric('Còn phải thu',money(totals.remain),'bg-gold/20')}${metric('Cần kiểm tra',totals.review,'bg-coral/10')}</div><div class="rounded-lg border border-black/10 bg-white p-3 shadow-sm"><div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between"><div><h2 class="text-base font-black">Danh sách bán ra</h2></div><div class="flex flex-wrap gap-2"><button data-sale-order-new type="button" class="h-9 rounded-md bg-ink px-3 text-xs font-extrabold text-white">Tạo đơn hàng bán ra</button><label class="inline-flex h-9 cursor-pointer items-center rounded-md border border-gold/50 bg-gold/15 px-3 text-xs font-extrabold text-ink">Import báo giá<input id="outgoingImportQuotation" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="hidden"/></label></div></div>${outDEditForm(edit)}${rows.length?outDTable(rows):'<div class="mt-3 rounded-md border border-dashed border-black/15 bg-[#F7F7F2] p-6 text-center text-sm font-bold text-black/45">Chưa có đơn hàng bán ra.</div>'}</div></div>`;
+  };
+  const prevBindOutD=bind;
+  bind=function(){
+    prevBindOutD.apply(this,arguments);
+    document.querySelectorAll('[data-outgoing-edit-row]').forEach(btn=>{
+      btn.onclick=()=>{state.ui.showOutgoingEditor=true; state.accounting.editingOutgoingId=btn.dataset.outgoingEditRow; saveAccounting(); render({force:true});};
+    });
+    const newBtn=document.querySelector('[data-sale-order-new]');
+    if(newBtn)newBtn.onclick=()=>{const inv=outgoingEmpty({status:'Chờ xuất hóa đơn',payment_status:'Chưa thanh toán'}); state.accounting.outgoingInvoices.unshift(inv); state.accounting.editingOutgoingId=inv.id; state.ui.showOutgoingEditor=true; saveAccounting(); render({force:true});};
+    const close=document.querySelector('[data-sale-order-close-editor]');
+    if(close)close.onclick=()=>{state.ui.showOutgoingEditor=false; state.accounting.editingOutgoingId=''; saveAccounting(); render({force:true});};
+  };
+})();
+
 
 initApp();
     </script>
