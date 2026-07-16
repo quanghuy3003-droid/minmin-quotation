@@ -10855,6 +10855,209 @@ documentPrintCss = function(){
   };
 })();
 
+/* MINMIN PATCH 2026-07-17B
+   Ban ra: lam lai thanh dashboard theo doi thanh toan don hang. */
+(function(){
+  function saleDashNum(v){ return Number(parseInputMoney(v||0))||0; }
+  function saleDashShort(v,max=46){ const s=String(v||'').replace(/\s+/g,' ').trim(); return s.length>max?s.slice(0,max-1).trim()+'...':s; }
+  function saleDashCodes(text){
+    return [...new Set([...String(text||'').matchAll(/\b(?:OD|STK|TM|FTX|FX|WL|PL|TB)[A-Z0-9-]{2,}\b/gi)].map(m=>m[0]))];
+  }
+  function saleDashItemPhoto(item){ return driveAssetUrl(photoSourceValue(item)||item?.photoDataUrl||item?.photoStorageUrl||item?.photo||''); }
+  function saleDashQty(inv,code){
+    const rx=new RegExp(`${String(code||'').replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}[^;\\n,]*?(?:x|SL|sl|qty)\\s*(\\d+(?:[.,]\\d+)?)`,'i');
+    const m=String(inv?.item_summary||'').match(rx);
+    return m?Number(String(m[1]).replace(',','.'))||1:1;
+  }
+  function saleDashItems(inv){
+    if(Array.isArray(inv?.items_json)&&inv.items_json.length)return inv.items_json.map(x=>({
+      code:x.code||'', name:x.name||'', dimension:x.dimension||'', quantity:Number(x.quantity||x.qty||1),
+      unit_price:saleDashNum(x.unit_price||x.price), amount:saleDashNum(x.amount)||saleDashNum(x.unit_price||x.price)*Number(x.quantity||x.qty||1),
+      photo:x.photo||x.photoDataUrl||''
+    }));
+    const codes=saleDashCodes([inv?.order_code,inv?.item_summary].filter(Boolean).join(' '));
+    const rows=codes.map(code=>{
+      const item=findInventoryItem(code);
+      if(!item)return null;
+      const n=normalizeInventoryItem(item);
+      const qty=saleDashQty(inv,code), price=saleDashNum(n.price);
+      return {code:n.code||n.barcodeId||code,name:n.name||productTypeName(n.productType)||code,dimension:n.dimension||'',quantity:qty,unit_price:price,amount:price*qty,photo:saleDashItemPhoto(n)};
+    }).filter(Boolean);
+    if(rows.length)return rows;
+    return String(inv?.item_summary||'').split(/[;\n]+/).map(x=>x.trim()).filter(Boolean).slice(0,10).map(x=>({code:'',name:x,dimension:'',quantity:1,unit_price:0,amount:0,photo:''}));
+  }
+  function saleDashStatus(inv){
+    const paid=outgoingPaid(inv), total=Number(inv.total_amount||0), remain=Math.max(0,total-paid);
+    return {paid,total,remain,debt:debtStatus(total,paid,inv.due_date), invoice:inv.xml_url?'Đã quét XML':(inv.pdf_url?'Có PDF':'Chưa có hóa đơn')};
+  }
+  function saleDashMetric(label,value,tone='bg-white'){
+    return `<div class="rounded-lg border border-black/10 ${tone} p-3 shadow-sm"><div class="text-[10px] font-bold uppercase text-black/40">${esc(label)}</div><div class="mt-1 text-lg font-black">${value}</div></div>`;
+  }
+  function saleDashProducts(inv){
+    const rows=saleDashItems(inv);
+    if(!rows.length)return '<div class="rounded-md border border-dashed border-black/15 bg-[#F7F7F2] p-4 text-center text-xs font-bold text-black/35">Chưa có sản phẩm. Bấm Import báo giá hoặc Chọn từ kho.</div>';
+    return `<div class="grid gap-2">${rows.slice(0,10).map(r=>`<div class="grid grid-cols-[54px_minmax(0,1fr)_112px] items-center gap-2 rounded-md border border-black/10 bg-white p-2">
+      <div class="flex h-12 w-12 items-center justify-center overflow-hidden rounded border border-black/10 bg-[#F7F7F2]">${r.photo?`<img src="${esc(driveAssetUrl(r.photo))}" class="h-full w-full object-contain" loading="lazy"/>`:'<span class="text-[9px] font-bold text-black/30">Ảnh</span>'}</div>
+      <div class="min-w-0">
+        <div class="truncate text-xs font-black text-ink">${esc(saleDashShort(r.name||r.code||'Sản phẩm',48))}</div>
+        <div class="truncate text-[10px] font-bold text-mint">${esc(r.code||'--')}${r.dimension?` · ${esc(r.dimension)}`:''}</div>
+        <div class="text-[10px] font-bold text-black/45">SL ${Number(r.quantity||0)}${Number(r.unit_price||0)?` · Đơn giá ${money(r.unit_price)}`:''}</div>
+      </div>
+      <div class="text-right text-[11px] font-black">${Number(r.amount||0)?money(r.amount):''}</div>
+    </div>`).join('')}${rows.length>10?`<div class="rounded-md border border-dashed border-black/15 bg-[#F7F7F2] p-2 text-center text-[10px] font-bold text-black/45">+${rows.length-10} sản phẩm khác</div>`:''}</div>`;
+  }
+  function saleDashMoneyBox(inv){
+    const st=saleDashStatus(inv);
+    return `<div class="grid gap-2 rounded-lg border border-black/10 bg-[#F7F7F2] p-3">
+      <div class="flex items-center justify-between gap-2"><span class="text-xs font-bold text-black/45">Tiền hàng</span><b>${money(inv.goods_amount||0)}</b></div>
+      <div class="flex items-center justify-between gap-2"><span class="text-xs font-bold text-black/45">Chiết khấu</span><b>${Number(inv.discount_percent||0)}% · ${money(inv.discount_amount||0)}</b></div>
+      <div class="flex items-center justify-between gap-2"><span class="text-xs font-bold text-black/45">Phí ship</span><b>${money(inv.shipping_fee||0)}</b></div>
+      <div class="flex items-center justify-between gap-2"><span class="text-xs font-bold text-black/45">VAT</span><b>${Number(inv.vat_rate||0)}% · ${money(inv.vat_amount||0)}</b></div>
+      <div class="border-t border-black/10 pt-2"><div class="flex items-center justify-between gap-2"><span class="text-xs font-black uppercase text-black/45">Tổng sau VAT</span><b class="text-base">${money(st.total)}</b></div></div>
+      <div class="grid grid-cols-2 gap-2">
+        <div class="rounded-md bg-mint/10 p-2"><div class="text-[10px] font-bold uppercase text-black/40">Đã thu</div><b>${money(st.paid)}</b></div>
+        <div class="rounded-md bg-gold/20 p-2"><div class="text-[10px] font-bold uppercase text-black/40">Còn thu</div><b>${money(st.remain)}</b></div>
+      </div>
+    </div>`;
+  }
+  function saleDashFileControls(inv){
+    return `<div class="grid gap-2 rounded-lg border border-black/10 bg-white p-3">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div><div class="text-xs font-black uppercase text-black/45">Hóa đơn đầu ra</div><p class="text-[11px] font-bold text-black/40">Chọn PDF để lưu đối chiếu, quét XML để cập nhật số hóa đơn và tổng tiền.</p></div>
+        <div class="flex flex-wrap gap-1">
+          <span class="rounded-md border ${inv.pdf_url?'border-mint/25 bg-mint/10 text-mint':'border-orange-200 bg-orange-50 text-orange-600'} px-2 py-1 text-[10px] font-extrabold">PDF ${inv.pdf_url?'đã có':'chưa có'}</span>
+          <span class="rounded-md border ${inv.xml_url?'border-mint/25 bg-mint/10 text-mint':'border-orange-200 bg-orange-50 text-orange-600'} px-2 py-1 text-[10px] font-extrabold">XML ${inv.xml_url?'đã có':'chưa có'}</span>
+        </div>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <label class="inline-flex h-8 cursor-pointer items-center rounded-md border border-mint/30 bg-white px-3 text-xs font-extrabold text-mint">Chọn PDF<input data-sale-order-file="${esc(inv.id)}" data-file-type="pdf" type="file" accept="application/pdf,.pdf" class="hidden"/></label>
+        <label class="inline-flex h-8 cursor-pointer items-center rounded-md border border-sky-300 bg-sky-50 px-3 text-xs font-extrabold text-sky-800">Quét XML<input data-sale-order-file="${esc(inv.id)}" data-file-type="xml" type="file" accept=".xml,text/xml,application/xml" class="hidden"/></label>
+        ${inv.pdf_url?`<button data-open-url="${esc(inv.pdf_url)}" class="h-8 rounded-md border border-black/10 px-3 text-xs font-extrabold">Mở PDF</button>`:''}
+        ${inv.xml_url?`<button data-open-url="${esc(inv.xml_url)}" class="h-8 rounded-md border border-black/10 px-3 text-xs font-extrabold">Mở XML</button>`:''}
+      </div>
+    </div>`;
+  }
+  function saleDashPaymentSelect(inv){
+    const choices=(state.accounting?.payments||[]).filter(p=>String(p.type||'').toLowerCase().includes('thu')&&(!p.related_id||String(p.related_id)===String(inv.id)));
+    return `<label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">Gắn dòng tiền sao kê</span><select data-sale-order-payment="${esc(inv.id)}" class="h-8 rounded-md border border-black/15 bg-white px-2 text-xs font-bold"><option value="">Chưa gắn dòng tiền</option>${choices.map(p=>`<option value="${esc(p.id)}" ${String(p.related_id||'')===String(inv.id)?'selected':''}>${esc(compactDate(p.payment_date||p.date))} · ${money(p.amount)} · ${esc(saleDashShort(p.description||p.note||p.method||'',42))}</option>`).join('')}</select></label>`;
+  }
+  function saleDashOrderCard(inv){
+    const st=saleDashStatus(inv);
+    return `<article class="rounded-xl border border-black/10 bg-white p-3 shadow-sm">
+      <div class="grid gap-3 xl:grid-cols-[220px_minmax(0,1fr)_260px]">
+        <div class="grid content-start gap-2">
+          <div><div class="text-[10px] font-bold uppercase text-black/40">Khách hàng</div><div class="text-sm font-black">${esc(inv.customer_name||'--')}</div><div class="text-[11px] font-bold text-black/40">${esc(inv.customer_tax_code||'Thiếu MST')}</div></div>
+          <div><div class="text-[10px] font-bold uppercase text-black/40">Đơn/Hóa đơn</div><div class="text-sm font-black">${esc(inv.invoice_number||'Chờ xuất')}</div><div class="text-[11px] font-bold text-black/40">${esc(compactDate(inv.invoice_date||inv.request_date))}</div></div>
+          <div class="flex flex-wrap gap-1"><span class="rounded-md border px-2 py-1 text-[10px] font-extrabold ${accountingStatusClass(st.debt)}">${esc(st.debt)}</span><span class="rounded-md border px-2 py-1 text-[10px] font-extrabold ${accountingStatusClass(st.invoice)}">${esc(st.invoice)}</span></div>
+          ${saleDashPaymentSelect(inv)}
+          <div class="flex flex-wrap gap-1"><button data-outgoing-edit-row="${esc(inv.id)}" class="h-8 rounded-md bg-ink px-3 text-xs font-extrabold text-white">Sửa</button><button data-sale-order-pick-stock="${esc(inv.id)}" class="h-8 rounded-md bg-gold px-3 text-xs font-extrabold">Chọn từ kho</button><button data-outgoing-delete="${esc(inv.id)}" class="h-8 rounded-md border border-coral/30 px-3 text-xs font-extrabold text-coral">Xóa</button></div>
+        </div>
+        <div class="min-w-0"><div class="mb-2 text-xs font-black uppercase text-black/45">Sản phẩm trong kho / trong đơn</div>${saleDashProducts(inv)}</div>
+        <div class="grid content-start gap-2">${saleDashMoneyBox(inv)}${saleDashFileControls(inv)}</div>
+      </div>
+    </article>`;
+  }
+  function saleDashForm(inv){
+    if(!inv)return '';
+    inv=recalcOutgoingTotals(outgoingEmpty({...inv,id:inv.id||''}));
+    const field=(l,k,t='text')=>`<label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">${esc(l)}</span><input data-outgoing-edit="${esc(k)}" type="${t}" value="${esc(t==='date'?(inv[k]||''):outgoingEditValue(k,inv[k]||''))}" class="h-9 rounded-md border border-black/15 bg-white px-2 text-xs font-bold"/></label>`;
+    return `<div class="rounded-xl border border-mint/20 bg-mint/[0.04] p-3 shadow-sm">
+      <div class="flex flex-wrap items-center justify-between gap-2"><div><h2 class="text-base font-black">Sửa đơn hàng bán ra</h2><p class="text-xs font-bold text-black/45">Chỉ mở khi cần sửa thông tin. Danh sách đơn bên dưới là màn hình kiểm tra chính.</p></div><div class="flex gap-2"><button id="saveOutgoingInvoice" class="h-9 rounded-md bg-ink px-3 text-xs font-extrabold text-white">Lưu đơn</button><button data-sale-order-close-editor type="button" class="h-9 rounded-md border border-black/10 bg-white px-3 text-xs font-extrabold">Đóng</button></div></div>
+      <div class="mt-3 grid gap-2 md:grid-cols-4">${field('Ngày đơn','request_date','date')}${field('Ngày hóa đơn','invoice_date','date')}${field('Hạn thanh toán','due_date','date')}${field('Số hóa đơn','invoice_number')}${field('Khách hàng','customer_name')}${field('MST khách','customer_tax_code')}${field('File báo giá','quote_file_name')}${field('Mã đơn/báo giá','order_code')}${field('Tiền hàng','goods_amount')}${field('Chiết khấu %','discount_percent')}${field('Phí ship','shipping_fee')}${field('VAT %','vat_rate')}</div>
+    </div>`;
+  }
+  async function saleDashUploadFile(id,type,file){
+    const inv=(state.accounting.outgoingInvoices||[]).find(x=>String(x.id)===String(id));
+    if(!inv||!file)return;
+    state.accounting.syncStatus=`Đang lưu ${type.toUpperCase()} cho đơn ${inv.invoice_number||inv.customer_name||''}...`;
+    render({force:true});
+    try{
+      const code=inv.invoice_number||inv.order_code||inv.customer_name||inv.id;
+      const uploaded=await uploadFileToSupabaseStorage(file,'sale-invoice',code);
+      const url=uploaded?.publicUrl||uploaded?.viewUrl||uploaded?.downloadUrl||uploaded?.url||'';
+      if(type==='pdf')inv.pdf_url=url;
+      if(type==='xml'){
+        inv.xml_url=url;
+        const parsed=parseVietnamInvoiceXml(await file.text(),{name:file.name||'',url,xmlUrl:url,pdfUrl:inv.pdf_url||''});
+        inv.invoice_date=parsed.invoice_date||inv.invoice_date;
+        inv.invoice_number=parsed.invoice_number||inv.invoice_number;
+        inv.invoice_series=parsed.invoice_series||inv.invoice_series;
+        inv.tax_authority_code=parsed.tax_authority_code||inv.tax_authority_code;
+        inv.customer_name=parsed.buyer_name||inv.customer_name;
+        inv.customer_tax_code=parsed.buyer_tax_code||inv.customer_tax_code;
+        inv.customer_address=parsed.buyer_address||inv.customer_address;
+        if(Number(parsed.net_amount||0)){ inv.goods_amount=Number(parsed.net_amount||0); inv.net_amount=Number(parsed.net_amount||0); }
+        if(Number(parsed.vat_amount||0))inv.vat_amount=Number(parsed.vat_amount||0);
+        if(Number(parsed.total_amount||0))inv.total_amount=Number(parsed.total_amount||0);
+        inv.status='Đã xuất hóa đơn';
+      }
+      inv.payment_status=debtStatus(inv.total_amount,outgoingPaid(inv),inv.due_date);
+      inv.updated_at=new Date().toISOString();
+      saveAccounting();
+      await saveOutgoingInvoiceRemote(inv).catch(e=>{state.accounting.syncStatus='Đã lưu trên máy, chưa đồng bộ được Supabase.'; console.warn(e);});
+      state.accounting.syncStatus=`Đã lưu ${type.toUpperCase()} cho đơn bán ra.`;
+    }catch(e){
+      state.accounting.syncStatus=`Chưa lưu/quét được ${type.toUpperCase()}: `+(e.message||e);
+      console.warn(e);
+    }
+    render({force:true});
+  }
+  renderOutgoingInvoices=function(){
+    const rows=accountingRows();
+    const edit=state.accounting.outgoingInvoices.find(x=>String(x.id)===String(state.accounting.editingOutgoingId));
+    const total=rows.reduce((s,x)=>s+Number(x.total_amount||0),0);
+    const paid=rows.reduce((s,x)=>s+outgoingPaid(x),0);
+    const overdue=rows.filter(x=>debtStatus(x.total_amount,outgoingPaid(x),x.due_date)==='Quá hạn').length;
+    return `<div class="grid gap-3">${accountingFilters()}
+      <div class="grid gap-2 md:grid-cols-4">${saleDashMetric('Tổng bán ra',money(total),'bg-white')}${saleDashMetric('Đã thu',money(paid),'bg-mint/10')}${saleDashMetric('Còn phải thu',money(Math.max(0,total-paid)),'bg-gold/20')}${saleDashMetric('Quá hạn',overdue,'bg-coral/10')}</div>
+      <div class="rounded-xl border border-black/10 bg-white p-3 shadow-sm"><div class="flex flex-wrap items-center justify-between gap-2"><div><h2 class="text-base font-black">Đơn hàng bán ra</h2><p class="text-xs font-bold text-black/45">Theo dõi thanh toán khách hàng, sản phẩm trong kho, trạng thái xuất hóa đơn và file PDF/XML.</p></div><div class="flex flex-wrap gap-2"><button data-sale-order-new type="button" class="h-9 rounded-md bg-ink px-3 text-xs font-extrabold text-white">Tạo đơn hàng bán ra</button><label class="inline-flex h-9 cursor-pointer items-center rounded-md border border-gold/50 bg-gold/15 px-3 text-xs font-extrabold text-ink">Import báo giá<input id="outgoingImportQuotation" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="hidden"/></label></div></div></div>
+      ${saleDashForm(edit)}
+      <div class="grid gap-3">${rows.length?rows.map(saleDashOrderCard).join(''):'<div class="rounded-lg border border-dashed border-black/15 bg-white p-6 text-center text-sm font-bold text-black/45">Chưa có đơn hàng bán ra.</div>'}</div>
+    </div>`;
+  };
+  const previousBindSaleDash=bind;
+  bind=function(){
+    previousBindSaleDash.apply(this,arguments);
+    document.querySelector('[data-sale-order-new]')?.addEventListener('click',()=>{
+      const inv=outgoingEmpty({status:'Chờ xuất hóa đơn',payment_status:'Chưa thanh toán'});
+      state.accounting.outgoingInvoices.unshift(inv);
+      state.accounting.editingOutgoingId=inv.id;
+      saveAccounting();
+      render({force:true});
+    });
+    document.querySelector('[data-sale-order-close-editor]')?.addEventListener('click',()=>{state.accounting.editingOutgoingId=''; saveAccounting(); render({force:true});});
+    document.querySelectorAll('[data-sale-order-file]').forEach(input=>{
+      if(input.dataset.boundSaleOrderFile==='1')return;
+      input.dataset.boundSaleOrderFile='1';
+      input.onchange=()=>{ if(input.files?.[0])saleDashUploadFile(input.dataset.saleOrderFile,input.dataset.fileType,input.files[0]); };
+    });
+    document.querySelectorAll('[data-sale-order-payment]').forEach(sel=>{
+      if(sel.dataset.boundSaleOrderPayment==='1')return;
+      sel.dataset.boundSaleOrderPayment='1';
+      sel.onchange=async()=>{
+        const inv=(state.accounting.outgoingInvoices||[]).find(x=>String(x.id)===String(sel.dataset.saleOrderPayment));
+        const pay=(state.accounting.payments||[]).find(x=>String(x.id)===String(sel.value));
+        if(!inv||!pay)return;
+        pay.related_type='outgoing';
+        pay.related_id=inv.id;
+        inv.payment_status=debtStatus(inv.total_amount,outgoingPaid(inv),inv.due_date);
+        if(inv.payment_status==='Đã thanh toán')inv.status='Đã thanh toán';
+        inv.updated_at=new Date().toISOString();
+        saveAccounting();
+        render({force:true});
+        await Promise.all([savePaymentRemote(pay).catch(e=>console.warn(e)),saveOutgoingInvoiceRemote(inv).catch(e=>console.warn(e))]);
+      };
+    });
+    document.querySelectorAll('[data-sale-order-pick-stock]').forEach(btn=>{
+      if(btn.dataset.boundPickStock==='1')return;
+      btn.dataset.boundPickStock='1';
+      btn.onclick=()=>{ const inv=(state.accounting.outgoingInvoices||[]).find(x=>String(x.id)===String(btn.dataset.saleOrderPickStock)); if(inv){state.accounting.editingOutgoingId=inv.id; saveAccounting(); showOutgoingInventoryPicker(inv);} };
+    });
+    const imp=document.getElementById('outgoingImportQuotation');
+    if(imp)imp.dataset.boundOutgoingImport='1';
+  };
+})();
+
 
 initApp();
     </script>
