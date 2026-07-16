@@ -4269,6 +4269,213 @@ uploadAllWebsiteProductsToWoo = function(options={}){
     if(uploadAllImages)uploadAllImages.onclick=()=>uploadAllWebsiteProductsToWoo({includeImages:true}).catch(e=>alert('Chưa upload được WooCommerce kèm ảnh: '+(e.message||e)));
   };
 })();
+
+/* MINMIN PATCH 2026-07-17A
+   Ban ra: tach don hang ban ra voi hoa don kem theo, import bao gia vao don hang. */
+(function(){
+  function saleNum(v){ return Number(parseInputMoney(v||0))||0; }
+  function saleShort(v,max=42){ const s=String(v||'').replace(/\s+/g,' ').trim(); return s.length>max?s.slice(0,max-1).trim()+'...':s; }
+  function saleLineCode(line,i){ return String(line?.code||line?.barcodeId||'').trim()||`ITEM-${String(i+1).padStart(2,'0')}`; }
+  function saleLinePhoto(line){ return driveAssetUrl(photoSourceValue(line)||line?.photoDataUrl||line?.photoStorageUrl||line?.photo||''); }
+  function saleInvItems(inv){
+    if(Array.isArray(inv?.items_json)&&inv.items_json.length)return inv.items_json;
+    const codes=[...new Set(String([inv?.order_code,inv?.item_summary].filter(Boolean).join(' ')).match(/\b(?:OD|STK|TM|FTX|FX|WL|PL|TB)[A-Z0-9-]{2,}\b/gi)||[])];
+    const rows=codes.map((code,i)=>{
+      const item=findInventoryItem(code);
+      if(!item)return null;
+      const n=normalizeInventoryItem(item);
+      const qty=typeof mmOutQtyForCode==='function'?mmOutQtyForCode(inv,code):1;
+      const unit=saleNum(n.price);
+      return {code:saleLineCode(n,i),name:n.name||productTypeName(n.productType)||code,dimension:n.dimension||'',quantity:qty,unit_price:unit,amount:unit*qty,photo:saleLinePhoto(n)};
+    }).filter(Boolean);
+    if(rows.length)return rows;
+    return String(inv?.item_summary||'').split(/[;\n]+/).map((name,i)=>name.trim()?{code:'',name:saleShort(name,56),dimension:'',quantity:1,unit_price:0,amount:0,photo:''}:null).filter(Boolean).slice(0,8);
+  }
+  function saleItemsCards(inv,compact=false){
+    const rows=saleInvItems(inv);
+    if(!rows.length)return '<div class="rounded-md border border-dashed border-black/15 bg-white p-4 text-center text-xs font-bold text-black/35">Chua co san pham. Bam Import bao gia hoac Chon tu kho.</div>';
+    return `<div class="grid ${compact?'w-[430px] max-w-[430px]':'w-full'} gap-2">${rows.slice(0,12).map(r=>`<div class="grid grid-cols-[52px_minmax(0,1fr)_104px] items-center gap-2 rounded-md border border-black/10 bg-white p-2 shadow-sm">
+      <div class="flex h-12 w-12 items-center justify-center overflow-hidden rounded border border-black/10 bg-[#F7F7F2]">${r.photo?`<img src="${esc(r.photo)}" class="h-full w-full object-contain" loading="lazy"/>`:'<span class="text-[9px] font-bold text-black/30">Anh</span>'}</div>
+      <div class="min-w-0">
+        <div class="truncate text-xs font-black text-ink">${esc(saleShort(r.name||r.code||'San pham',44))}</div>
+        <div class="truncate text-[10px] font-bold text-mint">${esc(r.code||'--')}${r.dimension?` - ${esc(r.dimension)}`:''}</div>
+        <div class="truncate text-[10px] font-bold text-black/45">SL ${Number(r.quantity||0)}${saleNum(r.unit_price)?` - Don gia ${money(r.unit_price)}`:''}</div>
+      </div>
+      <div class="text-right text-[11px] font-black text-ink">${saleNum(r.amount)?money(r.amount):''}</div>
+    </div>`).join('')}${rows.length>12?`<div class="rounded-md border border-dashed border-black/15 bg-[#F7F7F2] p-2 text-center text-[10px] font-bold text-black/45">+${rows.length-12} san pham khac</div>`:''}</div>`;
+  }
+  async function saleQuoteDataFromFile(file){
+    await loadScript('https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js',()=>window.ExcelJS);
+    const wb=new window.ExcelJS.Workbook();
+    await wb.xlsx.load(await file.arrayBuffer());
+    const appSheet=wb.getWorksheet('_APP_DATA');
+    let info={}, lines=[], ship=0, quoteDate='';
+    if(appSheet){
+      const data=readAppDataSheet(appSheet)||{};
+      info=data.info||{};
+      lines=Array.isArray(data.lines)?data.lines.map(l=>normalizeQuoteLineForExcelImport({...applyProduct({}),...l,attributes:{...ATTRIBUTE_DEFAULTS,...(l.attributes||{})}})):[];
+      const imageMap=worksheetProductImages(wb,worksheetForProductImages(wb));
+      lines.forEach((line,i)=>applyExcelPhotoFallback(line,imageMap.get(i)));
+      ship=saleNum(info.shipPriceText)*Number(info.shipQty||0);
+      quoteDate=isValidIsoDate(info.quoteDate)?info.quoteDate:(inferQuoteDateFromLines(lines)||inferQuoteDateFromFileName(file.name)||todayIso());
+    }else{
+      const sheet=wb.worksheets[0];
+      if(!sheet)throw new Error('File Excel khong co sheet bao gia.');
+      info.client=excelCellText(sheet.getCell('D5'));
+      info.representative=excelCellText(sheet.getCell('D6'));
+      info.address=excelCellText(sheet.getCell('D7'));
+      info.delivery=excelCellText(sheet.getCell('D8'));
+      info.tel=excelCellText(sheet.getCell('B9'));
+      info.email=excelCellText(sheet.getCell('E9'));
+      const imageMap=worksheetProductImages(wb,sheet);
+      for(let r=11;r<=sheet.rowCount;r++){
+        const row=sheet.getRow(r), c=excelCellText(row.getCell(3)).trim(), d=excelCellText(row.getCell(4)).trim();
+        if(c==='PVC'||/Fee ship|Phi/i.test(d)){
+          ship=saleNum(row.getCell(11).value);
+          break;
+        }
+        if(c||d){
+          const line=importLineFromExcel(row), image=productImageFromMap(imageMap,lines.length,r);
+          applyExcelPhotoFallback(line,image);
+          lines.push(line);
+        }
+      }
+      quoteDate=inferQuoteDateFromLines(lines)||inferQuoteDateFromFileName(file.name)||todayIso();
+    }
+    lines=lines.filter(l=>String(l.name||l.code||'').trim());
+    if(!lines.length)throw new Error('Khong tim thay san pham trong file bao gia.');
+    const productTotal=lines.reduce((s,l)=>s+lineAmount(l),0);
+    const subtotal=productTotal+ship;
+    const discountPercent=Number(info.discountRate||state.info.discountRate||0);
+    const discountAmount=Math.round(subtotal*discountPercent/100);
+    const net=Math.max(0,Math.round(subtotal-discountAmount));
+    const vatRate=Number(info.vatRate||state.info.vatRate||8);
+    const vat=Math.round(net*vatRate/100);
+    const items=lines.map((l,i)=>({code:saleLineCode(l,i),name:l.name||productTypeName(l.productType)||saleLineCode(l,i),dimension:l.dimension||'',quantity:Number(l.quantity||1),unit_price:lineUnitPrice(l),amount:lineAmount(l),photo:saleLinePhoto(l)}));
+    return {info,lines,items,quoteDate,ship,productTotal,discountPercent,discountAmount,net,vatRate,vat,total:net+vat};
+  }
+  function saleApplyQuote(inv,data,file){
+    inv.customer_name=data.info.client||inv.customer_name||'';
+    inv.customer_address=data.info.address||data.info.delivery||inv.customer_address||'';
+    inv.customer_phone=data.info.tel||inv.customer_phone||'';
+    inv.customer_email=data.info.email||inv.customer_email||'';
+    inv.request_date=data.quoteDate||inv.request_date||todayIso();
+    inv.quote_file_name=file?.name||inv.quote_file_name||'';
+    inv.order_code=data.items.map(x=>x.code).filter(Boolean).join(', ');
+    inv.items_json=data.items;
+    inv.item_summary=data.items.map(x=>`${x.code} ${x.name} x ${x.quantity}`).join('; ');
+    inv.goods_amount=Math.round(data.productTotal);
+    inv.discount_percent=data.discountPercent;
+    inv.discount_amount=data.discountAmount;
+    inv.shipping_fee=Math.round(data.ship);
+    inv.net_amount=data.net;
+    inv.vat_rate=data.vatRate;
+    inv.vat_amount=data.vat;
+    inv.total_amount=data.total;
+    inv.status=inv.status||'Cho xuat hoa don';
+    inv.payment_status=debtStatus(inv.total_amount,outgoingPaid(inv),inv.due_date);
+    inv.note='Tao don ban ra tu file bao gia';
+    inv.updated_at=new Date().toISOString();
+    return inv;
+  }
+  function salePaymentOptions(inv){
+    const pays=(state.accounting?.payments||[]).filter(p=>String(p.type||'').toLowerCase().includes('thu')&&(!p.related_id||String(p.related_id)===String(inv.id)));
+    return pays.map(p=>`<option value="${esc(p.id)}" ${String(p.related_id||'')===String(inv.id)?'selected':''}>${esc(compactDate(p.payment_date||p.date))} - ${money(p.amount)} - ${esc(saleShort(p.description||p.note||p.method||p.partner_name||'',46))}</option>`).join('');
+  }
+  function saleForm(inv){
+    inv=recalcOutgoingTotals(outgoingEmpty({...((inv)||{}),id:(inv&&inv.id)||''}));
+    const locked=!!inv.locked, dis=locked?'disabled':'', advanced=!!state.ui.showOutgoingAdvanced;
+    const paid=outgoingPaid(inv), remain=Math.max(0,Number(inv.total_amount||0)-paid);
+    const field=(l,k,t='text',cls='')=>`<label class="grid min-w-0 gap-1 ${cls}"><span class="text-[10px] font-bold uppercase text-black/40">${esc(l)}</span><input data-outgoing-edit="${esc(k)}" ${dis} type="${t}" value="${esc(t==='date'?(inv[k]||''):outgoingEditValue(k,inv[k]||''))}" class="h-9 rounded-md border border-black/15 bg-white px-2 text-xs font-bold disabled:bg-black/5"/></label>`;
+    return `<div class="rounded-lg border border-mint/20 bg-mint/[0.04] p-3 shadow-sm">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div><h2 class="text-base font-black">${inv.id?'Don hang ban ra':'Tao don hang ban ra'}</h2><p class="text-xs font-bold text-black/45">Don hang gom san pham, gia tien, chiet khau, phi ship; hoa don PDF/XML va dong tien duoc gan kem de doi chieu.</p></div>
+        <div class="flex flex-wrap gap-2"><button type="button" data-toggle="showOutgoingAdvanced" class="h-9 rounded-md border border-black/10 bg-white px-3 text-xs font-extrabold">${advanced?'Thu gon':'Xem them'}</button><button id="saveOutgoingInvoice" class="h-9 rounded-md bg-ink px-3 text-xs font-extrabold text-white">${inv.id?'Luu don':'Tao don hang ban ra'}</button>${inv.id?`<button data-outgoing-lock="${esc(inv.id)}" class="h-9 rounded-md border border-black/10 px-3 text-xs font-extrabold">${locked?'Mo khoa':'Khoa'}</button>`:''}</div>
+      </div>
+      <div class="mt-3 grid gap-2 rounded-lg border border-black/10 bg-white p-3 md:grid-cols-[1fr_1fr_1fr_170px] md:items-center">
+        <div><div class="text-[10px] font-bold uppercase text-black/40">Khach hang</div><div class="text-sm font-black">${esc(inv.customer_name||'Chua chon khach')}</div><div class="text-[11px] font-bold text-black/40">${esc(inv.customer_tax_code||'Thieu MST')}</div></div>
+        <div><div class="text-[10px] font-bold uppercase text-black/40">Hoa don di kem</div><div class="mt-1 flex flex-wrap gap-1"><span class="rounded-md border ${inv.pdf_url?'border-mint/25 bg-mint/10 text-mint':'border-orange-200 bg-orange-50 text-orange-600'} px-2 py-1 text-[10px] font-extrabold">PDF ${inv.pdf_url?'da co':'chua co'}</span><span class="rounded-md border ${inv.xml_url?'border-mint/25 bg-mint/10 text-mint':'border-orange-200 bg-orange-50 text-orange-600'} px-2 py-1 text-[10px] font-extrabold">XML ${inv.xml_url?'da co':'chua co'}</span></div></div>
+        <div><div class="text-[10px] font-bold uppercase text-black/40">Thu tien</div><div class="text-sm font-black">${money(paid)} / ${money(inv.total_amount)}</div><div class="text-[11px] font-bold ${remain?'text-coral':'text-mint'}">${remain?`Con phai thu ${money(remain)}`:'Da thu du'}</div></div>
+        <div class="text-right"><div class="text-[10px] font-bold uppercase text-black/40">Tong sau VAT</div><div class="text-lg font-black">${money(inv.total_amount)}</div><div class="text-[11px] font-bold text-mint">${esc(inv.status||'Cho xuat hoa don')}</div></div>
+      </div>
+      <div class="mt-3 grid gap-3 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <div class="rounded-lg border border-black/10 bg-white p-3">
+          <div class="mb-2 flex flex-wrap items-center justify-between gap-2"><div><div class="text-xs font-black uppercase text-black/45">San pham trong don ban ra</div><p class="text-[11px] font-bold text-black/40">Hien hinh, so luong, don gia de doi chieu voi bao gia va hoa don.</p></div><div class="flex flex-wrap gap-2"><label class="inline-flex h-9 cursor-pointer items-center rounded-md border border-gold/50 bg-gold/15 px-3 text-xs font-extrabold text-ink">Import bao gia<input id="outgoingImportQuotation" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="hidden"/></label><button id="createOutgoingFromInventory" class="h-9 rounded-md bg-gold px-3 text-xs font-extrabold">Chon tu kho</button></div></div>
+          ${saleItemsCards(inv,false)}
+        </div>
+        <div class="grid content-start gap-2 rounded-lg border border-black/10 bg-white p-3">
+          ${field('Tien hang','goods_amount')}${field('Chiet khau %','discount_percent')}${field('Phi ship','shipping_fee')}${field('VAT %','vat_rate')}
+          <div class="grid grid-cols-3 gap-2"><div class="rounded-md border border-black/10 bg-white p-2"><div class="text-[10px] font-bold uppercase text-black/40">Truoc VAT</div><b>${money(inv.net_amount)}</b></div><div class="rounded-md border border-black/10 bg-mint/10 p-2"><div class="text-[10px] font-bold uppercase text-black/40">VAT</div><b>${money(inv.vat_amount)}</b></div><div class="rounded-md border border-black/10 bg-gold/20 p-2"><div class="text-[10px] font-bold uppercase text-black/40">Tong</div><b>${money(inv.total_amount)}</b></div></div>
+        </div>
+      </div>
+      <div class="mt-3 grid gap-2 rounded-lg border border-black/10 bg-white p-3 md:grid-cols-4">${field('Ngay de nghi','request_date','date')}${field('Ngay hoa don','invoice_date','date')}${field('Han thanh toan','due_date','date')}${field('So hoa don','invoice_number')}${field('Khach hang','customer_name')}${field('MST khach','customer_tax_code')}${field('File bao gia','quote_file_name')}${field('Ma don/bao gia','order_code')}</div>
+      <div class="mt-3 grid gap-2 rounded-lg border border-black/10 bg-white p-3 md:grid-cols-[1fr_1fr_auto_auto] md:items-end">
+        <label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">Chon dong tien trong sao ke</span><select data-outgoing-payment-link="${esc(inv.id||'draft')}" ${dis} class="h-9 rounded-md border border-black/15 bg-white px-2 text-xs font-bold"><option value="">Chua gan dong tien</option>${salePaymentOptions(inv)}</select></label>
+        <label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">Trang thai thu tien</span><select data-outgoing-edit="payment_status" ${dis} class="h-9 rounded-md border border-black/15 bg-white px-2 text-xs font-bold">${['Chua thanh toan','Thanh toan mot phan','Da thanh toan','Qua han'].map(s=>`<option ${inv.payment_status===s?'selected':''}>${s}</option>`).join('')}</select></label>
+        <label class="inline-flex h-9 cursor-pointer items-center justify-center rounded-md border border-mint/30 bg-white px-3 text-xs font-extrabold text-mint">Chon PDF<input data-outgoing-file="pdf" ${dis} type="file" accept="application/pdf,.pdf" class="hidden"/></label>
+        <label class="inline-flex h-9 cursor-pointer items-center justify-center rounded-md border border-sky-300 bg-sky-50 px-3 text-xs font-extrabold text-sky-800">Quet XML<input data-outgoing-file="xml" ${dis} type="file" accept=".xml,text/xml,application/xml" class="hidden"/></label>
+      </div>
+      ${advanced?`<div class="mt-3 grid gap-2 rounded-lg border border-black/10 bg-white p-3 md:grid-cols-4">${field('Ky hieu','invoice_series')}${field('Ma CQT','tax_authority_code')}${field('Dia chi','customer_address')}${field('Email','customer_email')}${field('Link PDF','pdf_url')}${field('Link XML','xml_url','text','md:col-span-2')}<label class="grid gap-1 md:col-span-4"><span class="text-[10px] font-bold uppercase text-black/40">Ghi chu san pham</span><textarea data-outgoing-edit="item_summary" ${dis} class="min-h-14 rounded-md border border-black/15 p-2 text-xs font-bold">${esc(inv.item_summary||'')}</textarea></label></div>`:''}
+    </div>`;
+  }
+  function saleTable(rows){
+    return `<div class="overflow-x-auto rounded-lg border border-black/10 bg-white p-3 shadow-sm"><table class="w-full min-w-[1260px] border-collapse text-sm"><thead><tr class="border-b border-black/10 text-left text-[11px] uppercase text-black/45"><th class="w-[84px] py-2 pr-2">Ngay</th><th class="w-[110px] py-2 pr-2">So HD</th><th class="w-[170px] py-2 pr-2">Khach hang</th><th class="w-[450px] py-2 pr-2">San pham</th><th class="w-[106px] py-2 pr-2 text-right">Tong</th><th class="w-[96px] py-2 pr-2 text-right">Da thu</th><th class="w-[130px] py-2 pr-2">Trang thai</th><th class="w-[86px] py-2 text-right">Thao tac</th></tr></thead><tbody>${rows.map(x=>{const paid=outgoingPaid(x), st=debtStatus(x.total_amount,paid,x.due_date); return `<tr class="border-b border-black/10 align-top"><td class="py-2 pr-2 font-bold">${esc(compactDate(x.invoice_date||x.request_date))}</td><td class="py-2 pr-2"><b>${esc(x.invoice_number||'Cho xuat')}</b><div class="mt-1 text-[10px] font-bold text-black/40">${esc(x.order_code||'')}</div><div class="mt-1 flex flex-wrap gap-1">${x.pdf_url?'<span class="rounded bg-mint/10 px-1.5 py-0.5 text-[10px] font-bold text-mint">PDF</span>':''}${x.xml_url?'<span class="rounded bg-mint/10 px-1.5 py-0.5 text-[10px] font-bold text-mint">XML</span>':''}</div></td><td class="py-2 pr-2"><b>${esc(x.customer_name||'--')}</b><div class="text-[10px] font-bold text-black/40">${esc(x.customer_tax_code||'Thieu MST')}</div></td><td class="py-2 pr-2">${saleItemsCards(x,true)}</td><td class="py-2 pr-2 text-right"><div class="font-black">${money(x.total_amount)}</div><div class="mt-1 text-[10px] font-bold text-black/45">Giam ${Number(x.discount_percent||0)}% - Ship ${money(x.shipping_fee||0)}</div></td><td class="py-2 pr-2 text-right font-bold">${money(paid)}</td><td class="py-2 pr-2"><span class="rounded-md border px-2 py-1 text-xs font-extrabold ${accountingStatusClass(x.status)}">${esc(x.status)}</span><div class="mt-1 rounded-md border px-2 py-1 text-[10px] font-bold ${accountingStatusClass(st)}">${esc(st)}</div></td><td class="py-2"><div class="flex justify-end gap-1"><button data-outgoing-edit-row="${esc(x.id)}" class="h-8 rounded-md bg-ink px-2 text-xs font-extrabold text-white">Sua</button><button data-outgoing-delete="${esc(x.id)}" class="h-8 rounded-md border border-coral/30 px-2 text-xs font-extrabold text-coral">Xoa</button></div></td></tr>`;}).join('')}</tbody></table></div>`;
+  }
+  renderOutgoingInvoices=function(){
+    const rows=accountingRows(), edit=state.accounting.outgoingInvoices.find(x=>x.id===state.accounting.editingOutgoingId);
+    const total=rows.reduce((s,x)=>s+Number(x.total_amount||0),0), paid=rows.reduce((s,x)=>s+outgoingPaid(x),0);
+    return `<div class="grid gap-3">${accountingFilters()}<div class="grid gap-2 md:grid-cols-3"><div class="rounded-md border border-black/10 bg-white p-2"><div class="text-[10px] font-bold uppercase text-black/40">Tong ban ra</div><div class="text-sm font-black">${money(total)}</div></div><div class="rounded-md border border-black/10 bg-mint/10 p-2"><div class="text-[10px] font-bold uppercase text-black/40">Da thu</div><div class="text-sm font-black">${money(paid)}</div></div><div class="rounded-md border border-black/10 bg-gold/20 p-2"><div class="text-[10px] font-bold uppercase text-black/40">Con phai thu</div><div class="text-sm font-black">${money(Math.max(0,total-paid))}</div></div></div>${saleForm(edit)}${rows.length?saleTable(rows):'<div class="rounded-lg border border-dashed border-black/15 bg-white p-6 text-center text-sm font-bold text-black/45">Chua co don hang ban ra.</div>'}</div>`;
+  };
+  outgoingForm=saleForm;
+  outgoingTable=saleTable;
+  const prevBindSaleOrder=bind;
+  bind=function(){
+    prevBindSaleOrder.apply(this,arguments);
+    const imp=document.getElementById('outgoingImportQuotation');
+    if(imp&&imp.dataset.saleOrderImport!=='1'){
+      imp.dataset.saleOrderImport='1';
+      imp.dataset.boundOutgoingImport='1';
+      imp.onchange=async()=>{
+        if(!imp.files?.[0])return;
+        try{
+          state.accounting.syncStatus='Dang import bao gia vao don hang ban ra...';
+          render({force:true});
+          const data=await saleQuoteDataFromFile(imp.files[0]);
+          state.accounting.outgoingInvoices=Array.isArray(state.accounting.outgoingInvoices)?state.accounting.outgoingInvoices:[];
+          let inv=state.accounting.editingOutgoingId?state.accounting.outgoingInvoices.find(x=>String(x.id)===String(state.accounting.editingOutgoingId)):null;
+          if(!inv){ inv=outgoingEmpty({}); state.accounting.outgoingInvoices.unshift(inv); state.accounting.editingOutgoingId=inv.id; }
+          saleApplyQuote(inv,data,imp.files[0]);
+          saveAccounting();
+          await saveOutgoingInvoiceRemote(inv).catch(e=>{state.accounting.syncStatus='Da tao don ban ra tren may, chua dong bo duoc Supabase.'; console.warn(e);});
+          state.accounting.syncStatus='Da import bao gia vao don hang ban ra.';
+          render({force:true});
+        }catch(e){
+          state.accounting.syncStatus='Import bao gia vao don ban ra bi loi: '+(e.message||e);
+          render({force:true});
+          alert('Chua import duoc bao gia vao don ban ra: '+(e.message||e));
+        }finally{ imp.value=''; }
+      };
+    }
+    document.querySelectorAll('[data-outgoing-payment-link]').forEach(sel=>{
+      if(sel.dataset.boundPaymentLink==='1')return;
+      sel.dataset.boundPaymentLink='1';
+      sel.onchange=async()=>{
+        const inv=state.accounting.outgoingInvoices.find(x=>String(x.id)===String(state.accounting.editingOutgoingId));
+        if(!inv)return alert('Anh tao/luu don hang truoc khi gan dong tien.');
+        const pay=(state.accounting.payments||[]).find(p=>String(p.id)===String(sel.value));
+        if(!pay)return;
+        pay.related_type='outgoing';
+        pay.related_id=inv.id;
+        inv.payment_status=debtStatus(inv.total_amount,outgoingPaid(inv),inv.due_date);
+        if(inv.payment_status==='Da thanh toan')inv.status='Da thanh toan';
+        inv.updated_at=new Date().toISOString();
+        saveAccounting();
+        render({force:true});
+        await Promise.all([savePaymentRemote(pay).catch(e=>console.warn(e)),saveOutgoingInvoiceRemote(inv).catch(e=>console.warn(e))]);
+      };
+    });
+  };
+})();
 renderWebsiteWooConfig = function(){
   const c=normalizeWebsiteWooConfig(state.websiteWoo||websiteWooDefaults());
   return `<div class="rounded-lg border border-sky-200 bg-sky-50 p-3 shadow-sm"><div class="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between"><div><h2 class="text-base font-extrabold text-ink">Kết nối WooCommerce</h2><p class="mt-1 text-xs font-bold text-black/45">Website URL và key được tự lưu trên máy này ngay khi nhập.</p><p class="mt-1 text-xs font-extrabold ${websiteWooReady()?'text-mint':'text-coral'}">${esc(c.status||(websiteWooReady()?'Đã nhập đủ thông tin. Bấm “Kết nối + tải web” để kéo sản phẩm từ website về app.':'Chưa cấu hình WooCommerce.'))}</p><p class="mt-1 text-[11px] font-bold text-sky-800">Nút đồng bộ nhanh không gửi ảnh để tránh WooCommerce kẹt ở 10%. Muốn cập nhật ảnh thì bấm Woo từng dòng hoặc nút kèm ảnh.</p></div><div class="flex flex-wrap gap-2"><button id="testWooConnection" type="button" class="h-10 rounded-md border border-sky-300 bg-white px-3 text-sm font-extrabold text-sky-800 hover:bg-sky-100">Kết nối + tải web</button><button id="importWooProducts" type="button" class="h-10 rounded-md border border-sky-300 bg-white px-3 text-sm font-extrabold text-sky-800 hover:bg-sky-100">Đồng bộ lại</button><button id="uploadAllWoo" type="button" class="h-10 rounded-md bg-sky-600 px-3 text-sm font-extrabold text-white hover:bg-sky-700">Đồng bộ nhanh không ảnh</button><button id="uploadAllWooImages" type="button" class="h-10 rounded-md border border-orange-300 bg-orange-50 px-3 text-sm font-extrabold text-orange-700 hover:bg-orange-100">Đồng bộ kèm ảnh</button></div></div><div class="mt-3 grid gap-2 lg:grid-cols-3"><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/45">Website URL</span><input data-woo-config="siteUrl" value="${esc(c.siteUrl||'https://minmin-lifestyle.com')}" placeholder="https://minmin-lifestyle.com" class="h-10 rounded-md border border-black/15 bg-white px-3 text-sm font-bold outline-none focus:border-sky-400"/></label><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/45">Consumer Key</span><input data-woo-config="consumerKey" type="password" value="${esc(c.consumerKey)}" placeholder="ck_..." autocomplete="off" class="h-10 rounded-md border border-black/15 bg-white px-3 text-sm font-bold outline-none focus:border-sky-400"/></label><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/45">Consumer Secret</span><input data-woo-config="consumerSecret" type="password" value="${esc(c.consumerSecret)}" placeholder="cs_..." autocomplete="off" class="h-10 rounded-md border border-black/15 bg-white px-3 text-sm font-bold outline-none focus:border-sky-400"/></label></div></div>`;
