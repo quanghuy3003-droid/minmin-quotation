@@ -9201,6 +9201,40 @@ documentPrintCss = function(){
 /* MINMIN PATCH 2026-07-16M
    Website san pham: thu gon cac khoi phu bang dropdown de form nhap lieu gon hon. */
 (function(){
+  function mmWebsiteFilterValue(id){
+    return document.getElementById(id)?.value || '';
+  }
+  function mmApplyWebsiteListFiltersFromDom(){
+    if(state?.activeTab !== 'website') return false;
+    state.website = normalizeWebsiteProducts(state.website || websiteProductsDefaults());
+    const next = {
+      search: mmWebsiteFilterValue('websiteSearch'),
+      statusFilter: mmWebsiteFilterValue('websiteStatusFilter'),
+      categoryFilter: mmWebsiteFilterValue('websiteCategoryFilter'),
+      missingFilter: mmWebsiteFilterValue('websiteMissingFilter')
+    };
+    const changed = ['search','statusFilter','categoryFilter','missingFilter'].some(k => String(state.website[k] || '') !== String(next[k] || ''));
+    Object.assign(state.website, next);
+    if(changed){
+      saveWebsiteProducts();
+      render();
+    }
+    return changed;
+  }
+
+  document.addEventListener('change', e => {
+    if(e.target?.matches?.('#websiteStatusFilter, #websiteCategoryFilter, #websiteMissingFilter')){
+      mmApplyWebsiteListFiltersFromDom();
+    }
+  }, true);
+
+  document.addEventListener('input', e => {
+    if(e.target?.matches?.('#websiteSearch')){
+      clearTimeout(window.__minminWebsiteFilterTimer);
+      window.__minminWebsiteFilterTimer = setTimeout(mmApplyWebsiteListFiltersFromDom, 120);
+    }
+  }, true);
+
   function mmWebsiteFoldOptionalSections(){
     if(state?.activeTab !== 'website') return;
     const foldTitles = new Set(['Product attributes', 'Ảnh sản phẩm']);
