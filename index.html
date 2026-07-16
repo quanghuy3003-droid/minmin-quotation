@@ -10430,14 +10430,12 @@ documentPrintCss = function(){
     }).filter(Boolean);
   }
   function mmOutPickerItems(base={}, search=''){
-    const currentId=base?.id||state?.accounting?.editingOutgoingId||'';
-    const used=mmOutUsedCodes(currentId);
     const q=invoiceNorm(search||'');
+    const currentCodes=new Set(mmOutInvoiceCodes(base));
     const rows=(state?.inventory?.items||[]).map(normalizeInventoryItem).filter(item=>{
       if(!mmOutVatStock(item))return false;
       const keys=[item.code,item.barcodeId].filter(Boolean).map(String);
-      if(keys.some(k=>used.has(k)))return false;
-      if(keys.some(k=>mmOutInvoiceCodes(base).includes(k)))return false;
+      if(keys.some(k=>currentCodes.has(k)))return false;
       if(q&&!invoiceNorm(inventoryOutgoingSearchText(item)).includes(q))return false;
       return true;
     });
@@ -10460,7 +10458,7 @@ documentPrintCss = function(){
     return `<div id="outgoingInventoryPickerOverlay" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3">
       <div class="grid max-h-[90vh] w-full max-w-6xl grid-rows-[auto_auto_minmax(0,1fr)_auto] gap-3 overflow-hidden rounded-xl bg-white p-3 shadow-2xl">
         <div class="flex flex-wrap items-center justify-between gap-2">
-          <div><h2 class="text-base font-black">Chọn hàng VAT trong kho</h2><p class="text-xs font-bold text-black/45">Chỉ hiện hàng đặt/dự trữ VAT chưa có trong hóa đơn đầu ra khác.</p></div>
+          <div><h2 class="text-base font-black">Chọn hàng VAT trong kho</h2><p class="text-xs font-bold text-black/45">Chỉ hiện hàng đặt/dự trữ VAT; mã đã có trong hóa đơn hiện tại sẽ được ẩn.</p></div>
           <button data-outgoing-stock-close type="button" class="h-9 rounded-md border border-black/10 px-3 text-xs font-extrabold">Đóng</button>
         </div>
         <input data-outgoing-stock-search value="${esc(search||'')}" placeholder="Tìm theo tên, mã, kích thước..." class="h-10 rounded-md border border-black/15 px-3 text-sm font-bold outline-none focus:border-mint focus:ring-2 focus:ring-mint/10"/>
@@ -10508,6 +10506,28 @@ documentPrintCss = function(){
     if(state?.accounting?.view!=='outgoing')return;
     const formBtn=document.getElementById('createOutgoingFromInventory');
     const formBox=formBtn?.closest('.rounded-lg.border.border-black\\/10.bg-white');
+    if(formBtn&&!document.getElementById('outgoingImportQuotation')){
+      formBtn.insertAdjacentHTML('beforebegin', `<label class="inline-flex h-9 cursor-pointer items-center justify-center rounded-md border border-gold/50 bg-gold/15 px-3 text-xs font-extrabold text-ink hover:bg-gold/25">Import báo giá<input id="outgoingImportQuotation" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="hidden"/></label>`);
+    }
+    const importBtn=document.getElementById('outgoingImportQuotation');
+    if(importBtn&&importBtn.dataset.boundOutgoingImport!=='1'){
+      importBtn.dataset.boundOutgoingImport='1';
+      importBtn.onchange=async()=>{
+        if(!importBtn.files?.[0])return;
+        try{
+          state.accounting.syncStatus='Đang import báo giá vào kho để chọn sản phẩm đầu ra...';
+          render();
+          await importQuotationToInventory(importBtn.files[0]);
+          state.accounting.syncStatus='Đã import báo giá. Anh bấm Chọn từ kho để chọn hàng VAT.';
+          saveAccounting();
+          render();
+        }catch(e){
+          state.accounting.syncStatus='Import báo giá bị lỗi: '+(e.message||e);
+          render();
+          alert('Chưa import được báo giá: '+(e.message||e));
+        }
+      };
+    }
     if(formBox&&!formBox.dataset.outgoingProductClick){
       formBox.dataset.outgoingProductClick='1';
       formBox.classList.add('cursor-pointer');
