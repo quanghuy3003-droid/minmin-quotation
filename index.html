@@ -9934,6 +9934,98 @@ documentPrintCss = function(){
   };
 })();
 
+/* MINMIN PATCH 2026-07-16K
+   Hoa don dau ra: form gon hon, san pham hien anh + gia nhu hoa don dau vao. */
+(function(){
+  function mmOutCodes(text){
+    const raw=String(text||'');
+    const found=[...raw.matchAll(/\b(?:OD|STK|TM|FTX|FX|WL|PL|TB)[A-Z0-9-]{3,}\b/gi)].map(m=>m[0]);
+    return [...new Set(found)];
+  }
+  function mmOutStock(code){
+    const key=String(code||'').trim();
+    return key?findInventoryItem(key):null;
+  }
+  function mmOutShort(text,max=38){
+    const raw=String(text||'').replace(/\s+/g,' ').trim();
+    return raw.length>max?raw.slice(0,max-1).trim()+'...':raw;
+  }
+  function mmOutQtyForCode(inv,code){
+    const hay=String(inv.item_summary||'');
+    const escCode=String(code||'').replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    const m=hay.match(new RegExp(`${escCode}[^;\\n,]*?(?:x|SL|sl|qty)\\s*(\\d+(?:[.,]\\d+)?)`,'i'));
+    return m?Number(String(m[1]).replace(',','.'))||1:1;
+  }
+  function mmOutProductRows(inv){
+    const hay=[inv.order_code,inv.item_summary,inv.quote_file_name].filter(Boolean).join(' ');
+    const codes=mmOutCodes(hay);
+    const rows=codes.map(code=>{
+      const stock=mmOutStock(code);
+      if(!stock)return null;
+      const item=normalizeInventoryItem(stock);
+      const qty=mmOutQtyForCode(inv,code);
+      const price=Number(item.price||0);
+      return {code,item,qty,price,amount:price*qty,img:driveAssetUrl(photoSourceValue(item)||item.photoDataUrl||item.photoStorageUrl||''),name:item.name||productTypeName(item.productType)||code,dimension:item.dimension||''};
+    }).filter(Boolean);
+    if(rows.length)return rows;
+    const summary=String(inv.item_summary||'').split(/[;\n]+/).map(x=>x.trim()).filter(Boolean).slice(0,6);
+    return summary.map((name,i)=>({code:'',item:null,qty:1,price:0,amount:0,img:'',name:mmOutShort(name,56),dimension:''}));
+  }
+  function mmOutProductCards(inv,compact=false){
+    const rows=mmOutProductRows(inv);
+    if(!rows.length)return '<span class="text-xs font-bold text-black/30">--</span>';
+    return `<div class="grid ${compact?'w-[410px] max-w-[410px]':'w-full'} gap-2">${rows.slice(0,8).map(r=>`<div class="grid grid-cols-[48px_minmax(0,1fr)_90px] items-center gap-2 rounded-md border border-black/10 bg-white p-2 shadow-sm">
+      <div class="flex h-12 w-12 items-center justify-center overflow-hidden rounded border border-black/10 bg-[#F7F7F2]">${r.img?`<img src="${esc(r.img)}" class="h-full w-full object-contain" loading="lazy"/>`:'<span class="text-[9px] font-bold text-black/30">Ảnh</span>'}</div>
+      <div class="min-w-0">
+        <div class="truncate text-xs font-black text-ink">${esc(mmOutShort(r.name,42))}</div>
+        <div class="truncate text-[10px] font-bold text-mint">${esc(r.code||'--')} ${r.dimension?`· ${esc(r.dimension)}`:''}</div>
+        <div class="truncate text-[10px] font-bold text-black/45">SL ${r.qty}${r.price?` · Đơn giá ${money(r.price)}`:''}</div>
+      </div>
+      <div class="text-right text-[11px] font-black text-ink">${r.amount?money(r.amount):''}</div>
+    </div>`).join('')}${rows.length>8?`<div class="rounded-md border border-dashed border-black/15 bg-[#F7F7F2] p-2 text-center text-[10px] font-bold text-black/45">+${rows.length-8} sản phẩm khác</div>`:''}</div>`;
+  }
+  function mmOutMiniMetric(label,value,tone='bg-white'){
+    return `<div class="rounded-md border border-black/10 ${tone} p-2"><div class="text-[10px] font-bold uppercase text-black/40">${esc(label)}</div><div class="mt-0.5 text-sm font-black">${value}</div></div>`;
+  }
+  function outgoingForm(inv){
+    inv=recalcOutgoingTotals(outgoingEmpty({...((inv)||{}),id:(inv&&inv.id)||''}));
+    const locked=!!inv.locked, dis=locked?'disabled':'';
+    const field=(l,k,t='text',cls='')=>{
+      const v=t==='date'?(inv[k]??''):outgoingEditValue(k,inv[k]??'');
+      return `<label class="grid min-w-0 gap-1 ${cls}"><span class="text-[10px] font-bold uppercase text-black/40">${l}</span><input data-outgoing-edit="${k}" ${dis} type="${t}" value="${esc(v)}" class="h-9 min-w-0 rounded-md border border-black/15 bg-white px-2 text-xs font-bold disabled:bg-black/5"/></label>`;
+    };
+    const advanced=!!state.ui.showOutgoingAdvanced;
+    return `<div class="rounded-lg border border-mint/20 bg-mint/[0.04] p-3 shadow-sm">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div><h2 class="text-base font-black">${inv.id?'Hóa đơn đầu ra':'Tạo hóa đơn đầu ra'}</h2><p class="text-xs font-bold text-black/45">Chỉ giữ các trường cần kiểm tra nhanh; phần phụ nằm trong Mở rộng.</p></div>
+        <div class="flex flex-wrap gap-2"><button id="createOutgoingFromInventory" class="h-9 rounded-md bg-gold px-3 text-xs font-extrabold">Chọn từ kho</button><button type="button" data-toggle="showOutgoingAdvanced" class="h-9 rounded-md border border-black/10 bg-white px-3 text-xs font-extrabold">${advanced?'Thu gọn':'Mở rộng'}</button><button id="saveOutgoingInvoice" class="h-9 rounded-md bg-ink px-3 text-xs font-extrabold text-white">${inv.id?'Lưu':'Tạo mới'}</button>${inv.id?`<button data-outgoing-lock="${esc(inv.id)}" class="h-9 rounded-md border border-black/10 px-3 text-xs font-extrabold">${locked?'Mở khóa':'Khóa'}</button>`:''}</div>
+      </div>
+      <div class="mt-3 grid gap-3 xl:grid-cols-[1.25fr_.9fr]">
+        <div class="grid gap-2 rounded-lg border border-black/10 bg-white p-3 md:grid-cols-3">
+          ${field('Ngày đề nghị','request_date','date')}${field('Ngày hóa đơn','invoice_date','date')}${field('Hạn thanh toán','due_date','date')}
+          ${field('Khách hàng','customer_name')}${field('MST khách','customer_tax_code')}${field('Số hóa đơn','invoice_number')}
+          ${field('File báo giá','quote_file_name','text','md:col-span-2')}${field('Mã đơn/báo giá','order_code')}
+        </div>
+        <div class="grid gap-2 rounded-lg border border-black/10 bg-white p-3">
+          <div class="grid gap-2 sm:grid-cols-2">${field('Tiền hàng','goods_amount')}${field('Giảm giá %','discount_percent')}${field('Phí ship','shipping_fee')}${field('VAT %','vat_rate')}</div>
+          <div class="grid gap-2 sm:grid-cols-3">${mmOutMiniMetric('Trước VAT',money(inv.net_amount),'bg-white')}${mmOutMiniMetric('VAT',money(inv.vat_amount),'bg-mint/10')}${mmOutMiniMetric('Tổng',money(inv.total_amount),'bg-gold/20')}</div>
+          <div class="grid gap-2 sm:grid-cols-2"><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">Trạng thái</span><select data-outgoing-edit="status" ${dis} class="h-9 rounded-md border border-black/15 bg-white px-2 text-xs font-bold">${['Chờ xuất hóa đơn','Đã xuất hóa đơn','Đã gửi khách','Đã thanh toán','Hủy'].map(s=>`<option ${inv.status===s?'selected':''}>${s}</option>`).join('')}</select></label><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">Thanh toán</span><select data-outgoing-edit="payment_status" ${dis} class="h-9 rounded-md border border-black/15 bg-white px-2 text-xs font-bold">${['Chưa thanh toán','Thanh toán một phần','Đã thanh toán','Quá hạn'].map(s=>`<option ${inv.payment_status===s?'selected':''}>${s}</option>`).join('')}</select></label></div>
+        </div>
+      </div>
+      ${advanced?`<div class="mt-3 grid gap-2 rounded-lg border border-black/10 bg-white p-3 md:grid-cols-4">${field('Ký hiệu','invoice_series')}${field('Mã CQT','tax_authority_code')}${field('Địa chỉ','customer_address')}${field('Email','customer_email')}${field('Trước VAT','net_amount')}${field('Tiền VAT','vat_amount')}${field('Tổng tiền','total_amount')}${field('Link PDF','pdf_url')}${field('Link XML','xml_url','text','md:col-span-2')}</div>`:''}
+      <div class="mt-3 rounded-lg border border-black/10 bg-white p-3"><div class="mb-2 text-xs font-black uppercase text-black/45">Sản phẩm</div>${mmOutProductCards(inv,false)}<label class="mt-2 grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">Ghi chú sản phẩm</span><textarea data-outgoing-edit="item_summary" ${dis} class="min-h-16 rounded-md border border-black/15 p-2 text-xs font-bold">${esc(inv.item_summary||'')}</textarea></label></div>
+    </div>`;
+  }
+  function outgoingTable(rows){
+    return `<div class="overflow-x-auto rounded-lg border border-black/10 bg-white p-3 shadow-sm"><table class="w-full min-w-[1260px] border-collapse text-sm"><thead><tr class="border-b border-black/10 text-left text-[11px] uppercase text-black/45"><th class="w-[84px] py-2 pr-2">Ngày</th><th class="w-[110px] py-2 pr-2">Số HĐ</th><th class="w-[170px] py-2 pr-2">Khách hàng</th><th class="w-[430px] py-2 pr-2">Sản phẩm</th><th class="w-[106px] py-2 pr-2 text-right">Tổng</th><th class="w-[96px] py-2 pr-2 text-right">Đã thu</th><th class="w-[130px] py-2 pr-2">Trạng thái</th><th class="w-[74px] py-2 pr-2">File</th><th class="w-[86px] py-2 text-right">Thao tác</th></tr></thead><tbody>${rows.map(x=>{const paid=outgoingPaid(x), st=debtStatus(x.total_amount,paid,x.due_date); return `<tr class="border-b border-black/10 align-top"><td class="py-2 pr-2 font-bold">${esc(compactDate(x.invoice_date||x.request_date))}</td><td class="py-2 pr-2"><b>${esc(x.invoice_number||'Chờ xuất')}</b><div class="mt-1 text-[10px] font-bold text-black/40">${esc(x.invoice_series||x.order_code||'')}</div></td><td class="py-2 pr-2"><b class="break-words">${esc(x.customer_name||'--')}</b><div class="text-[10px] font-bold text-black/40">${esc(x.customer_tax_code||'Thiếu MST')}</div></td><td class="py-2 pr-2">${mmOutProductCards(x,true)}</td><td class="py-2 pr-2 text-right"><div class="font-black">${money(x.total_amount)}</div>${Number(x.discount_percent||0)||Number(x.shipping_fee||0)?`<div class="mt-1 text-[10px] font-bold text-black/45">Giảm ${Number(x.discount_percent||0)}% · Ship ${money(x.shipping_fee||0)}</div>`:''}</td><td class="py-2 pr-2 text-right font-bold">${money(paid)}</td><td class="py-2 pr-2"><span class="rounded-md border px-2 py-1 text-xs font-extrabold ${accountingStatusClass(x.status)}">${esc(x.status)}</span><div class="mt-1 rounded-md border px-2 py-1 text-[10px] font-bold ${accountingStatusClass(st)}">${esc(st)}</div></td><td class="py-2 pr-2"><div class="grid gap-1">${x.pdf_url?`<button data-open-url="${esc(x.pdf_url)}" class="h-7 rounded-md border border-mint/30 px-2 text-[10px] font-extrabold text-mint">PDF</button>`:''}${x.xml_url?`<button data-open-url="${esc(x.xml_url)}" class="h-7 rounded-md border border-mint/30 px-2 text-[10px] font-extrabold text-mint">XML</button>`:''}</div></td><td class="py-2"><div class="flex justify-end gap-1"><button data-outgoing-edit-row="${esc(x.id)}" class="h-8 rounded-md bg-ink px-2 text-xs font-extrabold text-white">Sửa</button><button data-outgoing-delete="${esc(x.id)}" class="h-8 rounded-md border border-coral/30 px-2 text-xs font-extrabold text-coral">Xóa</button></div></td></tr>`}).join('')}</tbody></table></div>`;
+  }
+  function renderOutgoingInvoices(){
+    const rows=accountingRows(), edit=state.accounting.outgoingInvoices.find(x=>x.id===state.accounting.editingOutgoingId);
+    const total=rows.reduce((s,x)=>s+Number(x.total_amount||0),0), paid=rows.reduce((s,x)=>s+outgoingPaid(x),0);
+    return `<div class="grid gap-3">${accountingFilters()}<div class="grid gap-2 md:grid-cols-3">${mmOutMiniMetric('Tổng bán ra',money(total),'bg-white')}${mmOutMiniMetric('Đã thu',money(paid),'bg-mint/10')}${mmOutMiniMetric('Còn phải thu',money(Math.max(0,total-paid)),'bg-gold/20')}</div>${outgoingForm(edit)}${rows.length?outgoingTable(rows):'<div class="rounded-lg border border-dashed border-black/15 bg-white p-6 text-center text-sm font-bold text-black/45">Chưa có hóa đơn đầu ra.</div>'}</div>`;
+  }
+})();
+
 /* MINMIN PATCH 2026-07-16J
    Hoa don mua vao: bo anh lap lai, moi san pham da chon chi hien 1 thumbnail. */
 (function(){
