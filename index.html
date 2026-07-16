@@ -10540,6 +10540,94 @@ documentPrintCss = function(){
   };
 })();
 
+/* MINMIN PATCH 2026-07-16O
+   Hoa don dau ra: gan nut chon PDF/XML ngay duoi so hoa don tung khach hang. */
+(function(){
+  function mmOutRowVatRate(value){
+    const m=String(value??'').match(/\d+(?:[.,]\d+)?/);
+    return m?Number(m[0].replace(',','.')):0;
+  }
+  function mmOutApplyXmlToRow(inv,parsed){
+    if(!inv||!parsed)return;
+    inv.invoice_date=parsed.invoice_date||inv.invoice_date;
+    inv.invoice_number=parsed.invoice_number||inv.invoice_number;
+    inv.invoice_series=parsed.invoice_series||inv.invoice_series;
+    inv.tax_authority_code=parsed.tax_authority_code||inv.tax_authority_code;
+    inv.customer_name=parsed.buyer_name||inv.customer_name;
+    inv.customer_tax_code=parsed.buyer_tax_code||inv.customer_tax_code;
+    inv.customer_address=parsed.buyer_address||inv.customer_address;
+    inv.item_summary=inv.item_summary||parsed.raw_item_description||'';
+    if(Number(parsed.net_amount||0)){
+      inv.goods_amount=Number(parsed.net_amount||0);
+      inv.net_amount=Number(parsed.net_amount||0);
+      inv.discount_percent=0;
+      inv.discount_amount=0;
+      inv.shipping_fee=0;
+    }
+    const rate=mmOutRowVatRate(parsed.vat_rate);
+    if(rate)inv.vat_rate=rate;
+    if(Number(parsed.vat_amount||0))inv.vat_amount=Number(parsed.vat_amount||0);
+    if(Number(parsed.total_amount||0))inv.total_amount=Number(parsed.total_amount||0);
+    if(inv.status==='Chờ xuất hóa đơn')inv.status='Đã xuất hóa đơn';
+    recalcOutgoingTotals(inv,'goods_amount');
+  }
+  async function mmOutAttachRowInvoiceFile(id,type,file){
+    const inv=(state.accounting.outgoingInvoices||[]).find(x=>String(x.id)===String(id));
+    if(!inv||!file)return;
+    if(inv.locked)return alert('Hóa đơn đang khóa. Anh mở khóa trước khi gắn file.');
+    state.accounting.syncStatus=`Đang upload ${type.toUpperCase()} hóa đơn đầu ra...`;
+    render();
+    try{
+      const code=inv.invoice_number||inv.order_code||inv.customer_name||inv.id;
+      const uploaded=await uploadFileToSupabaseStorage(file,'sale-invoice',code);
+      const url=uploaded?.publicUrl||uploaded?.viewUrl||uploaded?.downloadUrl||uploaded?.url||'';
+      if(type==='pdf')inv.pdf_url=url;
+      if(type==='xml'){
+        inv.xml_url=url;
+        const xml=await file.text();
+        const parsed=parseVietnamInvoiceXml(xml,{name:file.name||'',url,xmlUrl:url,pdfUrl:inv.pdf_url||''});
+        mmOutApplyXmlToRow(inv,parsed);
+      }
+      inv.updated_at=new Date().toISOString();
+      saveAccounting();
+      await saveOutgoingInvoiceRemote(inv).catch(e=>{state.accounting.syncStatus='Đã lưu file trên máy, chưa đồng bộ được Supabase.'; console.warn(e);});
+      state.accounting.syncStatus=`Đã lưu ${type.toUpperCase()} cho hóa đơn ${inv.invoice_number||inv.customer_name||''}.`;
+    }catch(e){
+      state.accounting.syncStatus=`Chưa upload/quét được ${type.toUpperCase()}: `+(e.message||e);
+      console.warn(e);
+    }
+    render();
+  }
+  function mmOutRowFileControls(inv){
+    const pdf=!!inv.pdf_url, xml=!!inv.xml_url;
+    return `<div data-outgoing-row-files="${esc(inv.id)}" class="mt-2 grid gap-1">
+      <div class="flex flex-wrap gap-1">
+        <label class="inline-flex h-7 cursor-pointer items-center rounded-md border ${pdf?'border-mint/25 bg-mint/10 text-mint':'border-orange-200 bg-orange-50 text-orange-600'} px-2 text-[10px] font-extrabold hover:border-mint">PDF ${pdf?'đã có':'chọn'}<input data-outgoing-row-file="${esc(inv.id)}" data-file-type="pdf" type="file" accept="application/pdf,.pdf" class="hidden"/></label>
+        <label class="inline-flex h-7 cursor-pointer items-center rounded-md border ${xml?'border-mint/25 bg-mint/10 text-mint':'border-orange-200 bg-orange-50 text-orange-600'} px-2 text-[10px] font-extrabold hover:border-sky-400">XML ${xml?'đã có':'chọn'}<input data-outgoing-row-file="${esc(inv.id)}" data-file-type="xml" type="file" accept=".xml,text/xml,application/xml" class="hidden"/></label>
+      </div>
+    </div>`;
+  }
+  function mmInjectOutgoingRowFiles(){
+    if(state?.accounting?.view!=='outgoing')return;
+    document.querySelectorAll('[data-outgoing-edit-row]').forEach(btn=>{
+      const inv=(state.accounting.outgoingInvoices||[]).find(x=>String(x.id)===String(btn.dataset.outgoingEditRow));
+      const cell=btn.closest('tr')?.children?.[1];
+      if(!inv||!cell||cell.querySelector('[data-outgoing-row-files]'))return;
+      cell.insertAdjacentHTML('beforeend',mmOutRowFileControls(inv));
+    });
+    document.querySelectorAll('[data-outgoing-row-file]').forEach(input=>{
+      if(input.dataset.boundOutgoingFile==='1')return;
+      input.dataset.boundOutgoingFile='1';
+      input.onchange=()=>{ if(input.files?.[0])mmOutAttachRowInvoiceFile(input.dataset.outgoingRowFile,input.dataset.fileType,input.files[0]); };
+    });
+  }
+  const previousBindOutgoingRowFiles=bind;
+  bind=function(){
+    previousBindOutgoingRowFiles.apply(this,arguments);
+    mmInjectOutgoingRowFiles();
+  };
+})();
+
 
 initApp();
     </script>
