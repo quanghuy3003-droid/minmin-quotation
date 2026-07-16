@@ -8608,46 +8608,67 @@ documentPrintCss = function(){
   function minminQuoteFinanceSummary(){
     const t = totals();
     return [
-      ['Phí vận chuyển', t.shipping],
+      ['Tổng giá trị', t.subtotal],
       ['Chiết khấu', t.discount],
       ['Sau chiết khấu', t.afterDiscount],
       ['VAT', t.vat],
-      ['Tổng sau VAT', t.afterVat]
-    ].map(([k,v]) => `<div class="rounded-md bg-white px-3 py-2"><div class="text-[10px] font-bold uppercase text-black/40">${esc(k)}</div><div class="mt-1 text-sm font-extrabold text-ink">${money(v)}</div></div>`).join('');
+      ['Đặt cọc', t.deposit],
+      ['Còn lại', t.remaining]
+    ].map(([k,v]) => `<div class="flex items-center justify-between gap-2 rounded-md bg-white/10 px-2 py-1.5 text-xs"><span class="text-white/65">${esc(k)}</span><b class="shrink-0 text-right text-white">${money(v)}</b></div>`).join('');
+  }
+  function minminQuoteFinanceInput(label, key, attrs = ''){
+    const isMoney = key === 'shipPriceText';
+    const value = isMoney ? moneyPlain(state.info[key] || 0) : (state.info[key] || 0);
+    const type = isMoney ? 'text' : 'number';
+    const inputMode = isMoney ? ' inputmode="numeric"' : '';
+    return `<label class="grid gap-1"><span class="text-[10px] font-bold uppercase tracking-wide text-white/50">${label}</span><input data-quote-finance="${key}" type="${type}"${inputMode} ${attrs} value="${esc(value)}" class="h-9 min-w-0 rounded-md border border-white/15 bg-white px-2 text-sm font-extrabold text-ink outline-none focus:border-gold focus:ring-4 focus:ring-gold/20" /></label>`;
   }
   function minminInjectQuoteFinanceBox(){
     if(state.activeTab !== 'quote' || document.getElementById('minminQuoteFinanceBox')) return;
     const headings = [...document.querySelectorAll('h2')];
-    const productHeading = headings.find(h => String(h.textContent || '').trim() === 'Bảng sản phẩm');
-    const target = productHeading?.closest('div');
-    if(!target) return;
     const oldFinance = headings.find(h => String(h.textContent || '').trim() === 'Phí vận chuyển & công thức')?.closest('.overflow-hidden');
     if(oldFinance) oldFinance.style.display = 'none';
-    const box = document.createElement('div');
-    box.id = 'minminQuoteFinanceBox';
-    box.className = 'overflow-hidden rounded-lg border border-gold/40 bg-gold/10 p-3 shadow-sm';
-    box.innerHTML = `
-      <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <h2 class="text-base font-extrabold">Chiết khấu & vận chuyển</h2>
-          <p class="mt-1 text-xs font-semibold text-black/45">Nhập % chiết khấu và phí vận chuyển ở đây. Tổng tiền/PDF/Excel sẽ tự tính lại.</p>
-        </div>
-        <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-5" data-quote-finance-summary>${minminQuoteFinanceSummary()}</div>
+    const aside = document.getElementById('exportExcel')?.closest('aside');
+    if(!aside) return;
+    const t = totals();
+    aside.id = 'minminQuoteFinanceBox';
+    aside.className = 'h-fit overflow-hidden rounded-lg border border-black/10 bg-ink p-3 text-white shadow-sm lg:sticky lg:top-4';
+    aside.innerHTML = `
+      <div class="rounded-md bg-white/5 p-2">
+        <p class="text-[10px] font-bold uppercase tracking-wide text-white/45">Tổng tiền sau VAT</p>
+        <p data-quote-finance-total class="mt-1 break-words text-2xl font-extrabold leading-tight">${money(t.afterVat)}</p>
+        <div data-quote-finance-words class="mt-2 rounded-md bg-white/10 p-2 text-xs leading-5 text-white/75">${esc(numberToVietnamese(t.afterVat))}</div>
       </div>
-      <div class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        <label class="grid gap-1"><span class="text-xs font-semibold uppercase tracking-wide text-black/50">Phí vận chuyển</span><input data-quote-finance="shipPriceText" inputmode="numeric" value="${esc(moneyPlain(state.info.shipPriceText || 0))}" class="h-10 rounded-md border border-black/15 bg-white px-3 text-sm font-extrabold outline-none focus:border-mint focus:ring-4 focus:ring-mint/10" /></label>
-        <label class="grid gap-1"><span class="text-xs font-semibold uppercase tracking-wide text-black/50">SL phí</span><input data-quote-finance="shipQty" type="number" min="0" value="${esc(state.info.shipQty || 0)}" class="h-10 rounded-md border border-black/15 bg-white px-3 text-sm font-extrabold outline-none focus:border-mint focus:ring-4 focus:ring-mint/10" /></label>
-        <label class="grid gap-1"><span class="text-xs font-semibold uppercase tracking-wide text-black/50">Chiết khấu %</span><input data-quote-finance="discountRate" type="number" min="0" value="${esc(state.info.discountRate || 0)}" class="h-10 rounded-md border border-black/15 bg-white px-3 text-sm font-extrabold outline-none focus:border-mint focus:ring-4 focus:ring-mint/10" /></label>
-        <label class="grid gap-1"><span class="text-xs font-semibold uppercase tracking-wide text-black/50">VAT %</span><input data-quote-finance="vatRate" type="number" min="0" value="${esc(state.info.vatRate || 0)}" class="h-10 rounded-md border border-black/15 bg-white px-3 text-sm font-extrabold outline-none focus:border-mint focus:ring-4 focus:ring-mint/10" /></label>
-        <label class="grid gap-1"><span class="text-xs font-semibold uppercase tracking-wide text-black/50">Đặt cọc %</span><input data-quote-finance="depositRate" type="number" min="0" value="${esc(state.info.depositRate || 0)}" class="h-10 rounded-md border border-black/15 bg-white px-3 text-sm font-extrabold outline-none focus:border-mint focus:ring-4 focus:ring-mint/10" /></label>
+      <div class="mt-3 grid gap-2" data-quote-finance-summary>${minminQuoteFinanceSummary()}</div>
+      <div class="my-3 h-px bg-white/15"></div>
+      <div class="grid gap-2">
+        <div class="grid grid-cols-[1fr_72px] gap-2">
+          ${minminQuoteFinanceInput('Phí vận chuyển','shipPriceText')}
+          ${minminQuoteFinanceInput('SL phí','shipQty','min="0"')}
+        </div>
+        <div class="grid grid-cols-3 gap-2">
+          ${minminQuoteFinanceInput('Chiết khấu %','discountRate','min="0"')}
+          ${minminQuoteFinanceInput('VAT %','vatRate','min="0"')}
+          ${minminQuoteFinanceInput('Đặt cọc %','depositRate','min="0"')}
+        </div>
+      </div>
+      <div class="mt-3 grid gap-2">
+        <button id="exportExcel" class="h-10 w-full rounded-md bg-coral text-sm font-extrabold text-white hover:bg-[#ff726b]">Xuất Excel</button>
+        <button id="previewPdf" class="h-10 w-full rounded-md border border-white/25 bg-white/10 text-sm font-extrabold text-white hover:bg-white/20">Xem trước PDF</button>
+        <button id="exportPdf" class="h-10 w-full rounded-md bg-white text-sm font-extrabold text-ink hover:bg-gold">Xuất PDF</button>
+        <label class="flex h-10 w-full cursor-pointer items-center justify-center rounded-md border border-white/20 bg-white/10 px-2 text-center text-xs font-extrabold text-white hover:bg-white/20">Nhập Excel cũ<input id="importExcel" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="hidden" /></label>
       </div>`;
-    target.parentNode.insertBefore(box, target);
-    box.querySelectorAll('[data-quote-finance]').forEach(input => {
+    aside.querySelectorAll('[data-quote-finance]').forEach(input => {
       const update = () => {
         const key = input.dataset.quoteFinance;
         state.info[key] = minminQuoteFinanceValue(key, input.value);
-        const summary = box.querySelector('[data-quote-finance-summary]');
+        const summary = aside.querySelector('[data-quote-finance-summary]');
         if(summary) summary.innerHTML = minminQuoteFinanceSummary();
+        const total = totals();
+        const totalNode = aside.querySelector('[data-quote-finance-total]');
+        const wordsNode = aside.querySelector('[data-quote-finance-words]');
+        if(totalNode) totalNode.textContent = money(total.afterVat);
+        if(wordsNode) wordsNode.textContent = numberToVietnamese(total.afterVat);
         scheduleWorkingStateSave();
       };
       input.oninput = update;
@@ -8696,8 +8717,8 @@ documentPrintCss = function(){
 
   const previousBindForQuoteFinanceBox = bind;
   bind = function(){
-    previousBindForQuoteFinanceBox.apply(this, arguments);
     minminInjectQuoteFinanceBox();
+    previousBindForQuoteFinanceBox.apply(this, arguments);
   };
 })();
 
