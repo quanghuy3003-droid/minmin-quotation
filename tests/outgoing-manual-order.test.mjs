@@ -22,6 +22,8 @@ assert.match(scanSource,/outgoingInvoices\.unshift\(inv\)/,'The XML workflow mus
 assert.ok(scanSource.indexOf('File XML không có dữ liệu hóa đơn hợp lệ')<scanSource.indexOf('const inv=outgoingEmpty('),'Validation must happen before order creation');
 
 assert.match(html,/Quét XML &amp; tạo đơn hàng|Quét XML & tạo đơn hàng/,'The primary action must explain that scanning creates the order');
+assert.match(html,/data-outg-scan-xml/,'The XML picker must be opened by an explicit button');
+assert.match(html,/querySelector\('\[data-outg-scan-xml\]'\)\?\.addEventListener\('click',\(\)=>document\.getElementById\('outgXmlScanner'\)\?\.click\(\)\)/,'The scan button must directly open the XML file input');
 assert.doesNotMatch(html,/data-outg-new-order/,'There must be no separate empty-order creation action');
 assert.doesNotMatch(html,/function outGCreateOrder/,'Empty orders must not be created');
 

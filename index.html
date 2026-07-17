@@ -11682,7 +11682,8 @@ documentPrintCss = function(){
         <div><h2 class="text-sm font-black">Thêm hóa đơn đầu ra</h2><p class="mt-1 text-xs font-bold text-black/45">Quét XML để tạo đơn hàng và đối chiếu chi phí.</p></div>
         <div class="flex flex-wrap gap-2">
           ${rows.length?`<select data-outg-order-select aria-label="Chọn đơn hàng" class="h-9 max-w-[260px] rounded-md border border-black/15 bg-white px-2 text-xs font-extrabold">${rows.map(row=>`<option value="${esc(row.id)}" ${String(row.id)===String(inv?.id)?'selected':''}>${esc(outGOrderName(row))} · HĐ ${esc(row.invoice_number||'chưa có số')}</option>`).join('')}</select>`:''}
-          <label class="inline-flex h-9 cursor-pointer items-center rounded-md bg-ink px-3 text-xs font-extrabold text-white">Quét XML & tạo đơn hàng<input id="outgXmlScanner" type="file" accept=".xml,text/xml,application/xml" class="hidden"/></label>
+          <button data-outg-scan-xml type="button" class="h-9 rounded-md bg-ink px-3 text-xs font-extrabold text-white">Quét XML & tạo đơn hàng</button>
+          <input id="outgXmlScanner" type="file" accept=".xml,text/xml,application/xml" class="hidden"/>
           ${inv?`<label class="inline-flex h-9 cursor-pointer items-center rounded-md border border-mint/30 bg-white px-3 text-xs font-extrabold text-mint">Gắn PDF<input data-sale-order-file="${esc(inv.id)}" data-file-type="pdf" type="file" accept="application/pdf,.pdf" class="hidden"/></label>`:''}
         </div>
       </div>
@@ -11761,6 +11762,7 @@ documentPrintCss = function(){
       scan.dataset.boundOutG='1';
       scan.onchange=()=>{ if(scan.files?.[0])outGScanXml(scan.files[0]).finally(()=>{scan.value='';}); };
     }
+    document.querySelector('[data-outg-scan-xml]')?.addEventListener('click',()=>document.getElementById('outgXmlScanner')?.click());
     document.querySelector('[data-outg-order-select]')?.addEventListener('change',event=>{state.accounting.editingOutgoingId=event.target.value; saveAccounting(); render({force:true});});
     document.querySelectorAll('[data-outg-order-name]').forEach(input=>{
       input.onkeydown=event=>{if(event.key==='Enter')input.blur(); if(event.key==='Escape'){input.value=outGOrderName((state.accounting.outgoingInvoices||[]).find(x=>String(x.id)===String(input.dataset.outgOrderName))); input.blur();}};
