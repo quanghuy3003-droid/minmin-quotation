@@ -10627,9 +10627,9 @@ documentPrintCss = function(){
   function mmJSelectedList(inv,it){
     const stocks=mmJItems(it.linked_inventory_code);
     if(!stocks.length)return '';
-    return `<div class="mt-1 grid gap-1">${stocks.map(stock=>{
+    return `<div class="mt-1 max-w-full overflow-x-auto pb-1"><div class="flex w-max gap-1.5">${stocks.map(stock=>{
       const code=stock.code||stock.barcodeId||'', img=mmJPhoto(stock);
-      return `<div class="grid grid-cols-[38px_minmax(0,1fr)_24px] items-center gap-2 rounded border border-mint/20 bg-white px-1.5 py-1">
+      return `<div class="grid w-[176px] shrink-0 grid-cols-[38px_minmax(0,1fr)_24px] items-center gap-2 rounded border border-mint/20 bg-white px-1.5 py-1">
         <span class="flex h-9 w-9 items-center justify-center overflow-hidden rounded border border-black/10 bg-[#F7F7F2]">${img?`<img src="${esc(img)}" class="h-full w-full object-contain" loading="lazy"/>`:'<span class="text-[8px] font-bold text-black/30">Ảnh</span>'}</span>
         <span class="min-w-0">
           <span class="block truncate text-[10px] font-black text-ink">${esc(mmJShort(stock))}</span>
@@ -10637,7 +10637,7 @@ documentPrintCss = function(){
         </span>
         <button data-input-invoice-stock-remove="${esc(code)}" data-invoice-id="${esc(inv.id)}" data-item-id="${esc(it.id)}" type="button" ${inv.locked?'disabled':''} class="h-6 w-6 rounded border border-coral/20 text-[12px] font-black text-coral disabled:opacity-40">×</button>
       </div>`;
-    }).join('')}</div>`;
+    }).join('')}</div></div>`;
   }
   function mmJPickButton(inv,it){
     const stocks=mmJItems(it.linked_inventory_code);
@@ -10694,15 +10694,17 @@ documentPrintCss = function(){
       const label=String(it.item_name||`Món ${i+1}`).replace(/\s+/g,' ').trim();
       const shortLabel=label.length>42?label.slice(0,41).trim()+'...':label;
       const lineTotal=Number(it.total_amount||0)||Number(it.net_amount||0)+Number(it.vat_amount||0);
-      return `<div class="grid w-full gap-2 rounded-md border border-black/10 bg-white p-2 shadow-sm">
+      return `<div class="grid w-[310px] shrink-0 gap-2 rounded-md border border-black/10 bg-white p-2 shadow-sm">
         ${mmJPickButton(inv,it)}
         <div class="truncate text-[11px] font-extrabold leading-snug">${i+1}. ${esc(shortLabel)}</div>
         <div class="truncate text-[10px] font-bold leading-snug text-black/55">SL ${esc(it.quantity||'--')} · VAT- ${money(it.net_amount||0)} · VAT+ ${money(lineTotal)}</div>
       </div>`;
     };
-    return `<div class="grid w-[390px] max-w-[390px] gap-2">
-      ${visibleItems.map(card).join('')}
-      ${items.length>20?`<div class="rounded-md border border-dashed border-black/15 bg-[#F7F7F2] p-2 text-center text-[10px] font-bold text-black/45">+${items.length-20} món khác</div>`:''}
+    return `<div class="w-[390px] max-w-[390px] overflow-x-auto pb-1">
+      <div class="flex w-max gap-2">
+        ${visibleItems.map(card).join('')}
+        ${items.length>20?`<div class="flex w-[180px] shrink-0 items-center justify-center rounded-md border border-dashed border-black/15 bg-[#F7F7F2] p-2 text-center text-[10px] font-bold text-black/45">+${items.length-20} món khác</div>`:''}
+      </div>
       ${state?.ui?.inputInvoiceStockPicker?.invoiceId===inv.id?mmJModal():''}
     </div>`;
   };
@@ -11630,14 +11632,14 @@ documentPrintCss = function(){
   function outGSelectedStockStrip(inv,line){
     const stocks=(line.selected_stock_codes||[]).map(outGStockByCode).filter(Boolean);
     if(!stocks.length)return `<button data-outg-line-picker="${esc(inv.id)}" data-line-id="${esc(line.id)}" type="button" class="grid w-full grid-cols-[44px_minmax(0,1fr)] items-center gap-2 rounded-md border border-dashed border-black/20 bg-[#F7F7F2] p-2 text-left"><span class="flex h-11 w-11 items-center justify-center rounded border border-black/10 bg-white text-[9px] font-bold text-black/30">Ảnh</span><span><b class="block text-xs">Chọn sản phẩm trong kho</b><span class="block text-[10px] font-bold text-black/45">Chỉ hiện hàng VAT, chọn bằng hình ảnh</span></span></button>`;
-    return `<div class="grid gap-1.5">${stocks.map(stock=>{
+    return `<div class="grid gap-1.5"><div class="max-w-full overflow-x-auto pb-1"><div class="flex w-max gap-1.5">${stocks.map(stock=>{
       const cost=outGCostForStock(stock), img=outGStockPhoto(stock);
-      return `<div class="grid grid-cols-[42px_minmax(0,1fr)_24px] items-center gap-2 rounded-md border border-mint/20 bg-mint/5 p-1.5">
+      return `<div class="grid w-[210px] shrink-0 grid-cols-[42px_minmax(0,1fr)_24px] items-center gap-2 rounded-md border border-mint/20 bg-mint/5 p-1.5">
         <div class="flex h-10 w-10 items-center justify-center overflow-hidden rounded border border-black/10 bg-white">${img?`<img src="${esc(img)}" class="h-full w-full object-contain" loading="lazy"/>`:'<span class="text-[9px] font-bold text-black/30">Ảnh</span>'}</div>
         <div class="min-w-0"><div class="truncate text-xs font-black">${esc(outGStockName(stock))}</div><div class="truncate text-[10px] font-bold text-mint">${esc(outGStockKey(stock))} · ${cost.hasInput?'có HĐ vào':'thiếu HĐ vào'}</div><div class="text-[10px] font-bold text-black/45">VAT vào ${money(cost.vat)} · Giá vốn ${money(cost.net)}</div></div>
         <button data-outg-stock-remove="${esc(outGStockKey(stock))}" data-invoice-id="${esc(inv.id)}" data-line-id="${esc(line.id)}" type="button" class="h-6 w-6 rounded border border-coral/20 text-xs font-black text-coral">×</button>
       </div>`;
-    }).join('')}<button data-outg-line-picker="${esc(inv.id)}" data-line-id="${esc(line.id)}" type="button" class="h-8 rounded-md border border-mint/30 bg-white text-xs font-extrabold text-mint">Chọn thêm bằng ảnh</button></div>`;
+    }).join('')}</div></div><button data-outg-line-picker="${esc(inv.id)}" data-line-id="${esc(line.id)}" type="button" class="h-8 rounded-md border border-mint/30 bg-white text-xs font-extrabold text-mint">Chọn thêm bằng ảnh</button></div>`;
   }
   function outGSelectedInputInvoiceStrip(inv,line){
     const inputs=(line.selected_input_invoice_ids||[]).map(outGInputInvoiceById).filter(Boolean);
