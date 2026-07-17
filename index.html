@@ -1608,7 +1608,7 @@ function outgoingInvoiceToSupabaseRow(inv){
   return {...row,request_date:row.request_date||null,invoice_date:row.invoice_date||null,due_date:row.due_date||null,pdf_url:driveStoredValue(row.pdf_url),xml_url:driveStoredValue(row.xml_url),updated_at:new Date().toISOString()};
 }
 function normalizePayment(row={}){
-  return {id:String(row.id||uid()),payment_date:row.payment_date||todayIso(),payment_type:row.payment_type||'Thu',related_type:row.related_type||'',related_id:String(row.related_id||''),related_label:row.related_label||row.payer_payee||'',amount:Number(row.amount||0),method:row.method||'',proof_url:row.proof_url||'',note:row.note||'',created_at:row.created_at||new Date().toISOString(),updated_at:row.updated_at||row.created_at||new Date().toISOString()};
+  return {id:String(row.id||uid()),payment_date:row.payment_date||todayIso(),payment_type:row.payment_type||'Thu',related_type:row.related_type||'',related_id:String(row.related_id||'').split(',')[0].trim(),related_label:row.related_label||row.payer_payee||'',amount:Number(row.amount||0),method:row.method||'',proof_url:row.proof_url||'',note:row.note||'',created_at:row.created_at||new Date().toISOString(),updated_at:row.updated_at||row.created_at||new Date().toISOString()};
 }
 function paymentToSupabaseRow(payment){
   const row=normalizePayment(payment);
@@ -2433,19 +2433,9 @@ async function createOrUpdateOutgoingFromInventory(selectedRows=[]){
   await saveOutgoingInvoiceRemote(inv).catch(e=>{state.accounting.syncStatus='Đã tạo từ kho trên máy, chưa đồng bộ được Supabase.'; console.warn(e); render();});
 }
 function accountingInPeriod(date){ const f=state.accounting.filters||{}; if(!f.period)return true; return String(date||'').slice(0,7)===f.period; }
-function paymentRelatedIds(payment){ return [...new Set(String(payment?.related_id||'').split(',').map(id=>id.trim()).filter(Boolean))].slice(0,2); }
+function paymentRelatedIds(payment){ return String(payment?.related_id||'').split(',').map(id=>id.trim()).filter(Boolean).slice(0,1); }
 function paymentHasInvoiceRef(payment,type,id){ return String(payment?.related_type||'')===String(type||'')&&paymentRelatedIds(payment).includes(String(id||'')); }
-function paymentAllocatedAmount(payment,type,id){
-  if(String(payment?.related_type||'')!==String(type||''))return 0;
-  let remaining=Number(payment?.amount||0);
-  for(const refId of paymentRelatedIds(payment)){
-    const invoice=paymentInvoiceByRef(type,refId), allocation=Math.min(Math.max(remaining,0),Number(invoice?.total_amount||0));
-    if(String(refId)===String(id))return allocation;
-    remaining-=allocation;
-  }
-  return 0;
-}
-function paymentSum(type,id){ return (state.accounting.payments||[]).reduce((sum,payment)=>sum+paymentAllocatedAmount(payment,type,id),0); }
+function paymentSum(type,id){ return (state.accounting.payments||[]).filter(payment=>paymentHasInvoiceRef(payment,type,id)).reduce((sum,payment)=>sum+Number(payment.amount||0),0); }
 function outgoingPaid(o){ return paymentSum('outgoing',o.id); }
 function incomingPaid(i){ return paymentSum('incoming',i.id); }
 function debtStatus(total,paid,due=''){ const remain=Math.max(0,Number(total||0)-Number(paid||0)); if(remain<=0)return 'Đã thanh toán'; if(due&&new Date(`${due}T23:59:59`)<new Date())return 'Quá hạn'; return paid>0?'Thanh toán một phần':'Chưa thanh toán'; }
@@ -2951,12 +2941,12 @@ function paymentMainLabelHtml(p){
   return `<div class="max-w-[340px] font-bold leading-snug">${esc(label)}</div>`;
 }
 function paymentInvoiceLinkControl(p){
-  const ids=paymentRelatedIds(p), refs=paymentInvoiceRefs(p), linked=refs.length>0;
+  const id=paymentRelatedIds(p)[0]||'', invoice=paymentInvoiceRefs(p)[0]||null, linked=!!invoice;
   const type=p?.related_type||(p?.payment_type==='Chi'?'incoming':'outgoing');
-  const select=(slot,label)=>`<label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">${label}</span><select data-payment-link="${esc(p?.id||'')}" data-payment-link-slot="${slot}" class="h-9 w-full rounded-md border ${ids[slot]&&paymentInvoiceByRef(type,ids[slot])?'border-mint/40 bg-mint/5 text-mint':'border-black/15 bg-white'} px-2 text-xs font-bold">${paymentInvoiceSelectOptions(type,ids[slot]||'')}</select></label>`;
-  const invoiceTotal=refs.reduce((sum,invoice)=>sum+Number(invoice.total_amount||0),0), paid=Number(p?.amount||0), difference=invoiceTotal-paid;
+  const select=`<select data-payment-link="${esc(p?.id||'')}" class="h-9 w-full rounded-md border ${linked?'border-mint/40 bg-mint/5 text-mint':'border-black/15 bg-white'} px-2 text-xs font-bold">${paymentInvoiceSelectOptions(type,id)}</select>`;
+  const invoiceTotal=Number(invoice?.total_amount||0), paid=Number(p?.amount||0), difference=invoiceTotal-paid;
   const check=!linked?'':Math.abs(difference)<1?'<span class="text-[11px] font-extrabold text-mint">✓ Khớp số tiền</span>':difference>0?`<span class="text-[11px] font-extrabold text-[#8a5a00]">⚠ Còn thiếu ${money(difference)}</span>`:`<span class="text-[11px] font-extrabold text-coral">⚠ Vượt ${money(Math.abs(difference))}</span>`;
-  return `<div class="grid gap-2">${select(0,'Hóa đơn 1')}${select(1,'Hóa đơn 2 (không bắt buộc)')}<div class="flex flex-wrap gap-x-3 gap-y-1">${linked?`<span class="text-[11px] font-extrabold text-mint">✓ Đã liên kết ${refs.length}/2 hóa đơn</span>`:''}${check}${linked?`<span class="text-[11px] font-bold text-black/45">Tổng HĐ ${money(invoiceTotal)} · Giao dịch ${money(paid)}</span>`:''}</div></div>`;
+  return `<div class="grid gap-1">${select}<div class="flex flex-wrap gap-x-3 gap-y-1">${linked?'<span class="text-[11px] font-extrabold text-mint">✓ Đã liên kết hóa đơn</span>':''}${check}${linked?`<span class="text-[11px] font-bold text-black/45">Hóa đơn ${money(invoiceTotal)} · Giao dịch ${money(paid)}</span>`:''}</div></div>`;
 }
 function paymentTable(){
   const acc=state.accounting||accountingDefaults();
@@ -3731,14 +3721,10 @@ function bindAccounting(){
     const pay=(state.accounting.payments||[]).find(x=>String(x.id)===String(el.dataset.paymentLink));
     if(!pay)return;
     const [type,id]=el.value?String(el.value).split('|'):['',''];
-    const slot=Math.max(0,Math.min(1,Number(el.dataset.paymentLinkSlot||0))), ids=paymentRelatedIds(pay);
-    if(type&&pay.related_type&&type!==pay.related_type)ids.length=0;
-    if(id)ids[slot]=id; else ids.splice(slot,1);
-    const nextIds=[...new Set(ids.filter(Boolean))].slice(0,2), targets=nextIds.map(refId=>paymentInvoiceByRef(type||pay.related_type,refId)).filter(Boolean);
-    pay.related_type=nextIds.length?(type||pay.related_type):'';
-    pay.related_id=nextIds.join(',');
-    pay.related_label=targets.length?targets.map(target=>pay.related_type==='outgoing'?`${target.customer_name||''} - ${target.invoice_number||target.order_code||''}`:`${target.seller_name||''} - ${target.invoice_number||''}`).join(' + '):(pay.note||'Không liên kết hóa đơn');
-    const target=targets[0]||null;
+    const target=paymentInvoiceByRef(type,id);
+    pay.related_type=target?type:'';
+    pay.related_id=target?String(id):'';
+    pay.related_label=target?(type==='outgoing'?`${target.customer_name||''} - ${target.invoice_number||target.order_code||''}`:`${target.seller_name||''} - ${target.invoice_number||''}`):(pay.note||'Không liên kết hóa đơn');
     if(type==='outgoing'&&target&&!pay.method)pay.method=target.quote_file_name||target.order_code||pay.method||'';
     pay.updated_at=new Date().toISOString();
     const changedOutgoing=refreshOutgoingPaymentStatuses();
@@ -11802,8 +11788,7 @@ documentPrintCss = function(){
     return (state.accounting?.payments||[]).filter(payment=>{
       const type=invoiceNorm(payment.payment_type||payment.type||'');
       if(!type.includes(wanted))return false;
-      if(payment.related_id&&String(payment.related_type||'')!==relatedType)return false;
-      if(payment.related_id&&!paymentHasInvoiceRef(payment,relatedType,inv.id)&&paymentRelatedIds(payment).length>=2)return false;
+      if(payment.related_id&&!paymentHasInvoiceRef(payment,relatedType,inv.id))return false;
       return Number(payment.amount||0)>0;
     }).map(payment=>{
       const text=invoiceNorm([payment.related_label,payment.payer_payee,payment.note,payment.method].join(' '));
@@ -11825,11 +11810,9 @@ documentPrintCss = function(){
     const inv=list.find(x=>String(x.id)===String(invoiceId));
     const payment=(state.accounting.payments||[]).find(x=>String(x.id)===String(paymentId));
     if(!inv||!payment)return;
-    const ids=payment.related_type===relatedType?paymentRelatedIds(payment):[];
-    if(!ids.includes(String(inv.id)))ids.push(String(inv.id));
     payment.related_type=relatedType;
-    payment.related_id=ids.slice(0,2).join(',');
-    payment.related_label=paymentInvoiceRefs(payment).map(item=>relatedType==='outgoing'?(item.customer_name||item.invoice_number||'Hóa đơn bán ra'):(item.seller_name||item.invoice_number||'Hóa đơn mua vào')).join(' + ');
+    payment.related_id=String(inv.id);
+    payment.related_label=relatedType==='outgoing'?(inv.customer_name||inv.invoice_number||'Hóa đơn bán ra'):(inv.seller_name||inv.invoice_number||'Hóa đơn mua vào');
     payment.updated_at=new Date().toISOString();
     inv.payment_status=debtStatus(inv.total_amount,relatedType==='outgoing'?outgoingPaid(inv):incomingPaid(inv),inv.due_date);
     inv.updated_at=new Date().toISOString();
