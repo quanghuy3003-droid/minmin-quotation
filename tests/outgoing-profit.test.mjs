@@ -72,6 +72,10 @@ assert.doesNotMatch(headerSource,/outGMetric\('VAT/,'VAT values must not use lar
 assert.match(html,/data-outg-toggle-details=/,'Each invoice needs an explicit detail collapse control');
 assert.match(html,/rows\.map\(inv=>`\$\{outGHeader\(inv\)\}\$\{!outGDetailsCollapsed\(inv\)\?outGLinesTable\(inv\):''\}`\)/,'Every expanded invoice must render its own detail table');
 assert.match(html,/Đối chiếu chi phí đầu vào/,'The detailed input-cost matching column must remain visible');
+const detailTableSource=section('function outGLinesTable','function outGPickerModal');
+const vatInIndex=detailTableSource.indexOf('>VAT v\u00e0o<'), vatOutIndex=detailTableSource.indexOf('>VAT ra<'), buyIndex=detailTableSource.indexOf('>Gi\u00e1 mua<'), sellIndex=detailTableSource.indexOf('>Gi\u00e1 b\u00e1n<'), profitIndex=detailTableSource.indexOf('>L\u1ee3i nhu\u1eadn<');
+assert.ok(vatInIndex<vatOutIndex&&vatOutIndex<buyIndex&&buyIndex<sellIndex&&sellIndex<profitIndex,'Detail columns must be VAT in, VAT out, purchase price, sale price, profit');
+assert.equal(detailTableSource.includes('>VAT l\u1ec7ch<'),false,'VAT difference must stay in the summary instead of the detail table');
 assert.match(html,/id="outgXmlScanner"/,'Outgoing view needs an XML-first order creation control');
 assert.match(html,/data-outg-order-name=/,'Order name must be directly editable in the summary card');
 assert.doesNotMatch(html,/data-outg-order-select/,'Orders must be stacked instead of hidden behind a dropdown');
