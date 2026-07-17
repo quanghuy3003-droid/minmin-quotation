@@ -70,11 +70,11 @@ assert.match(headerSource,/VAT ra/);
 assert.match(headerSource,/Chênh lệch/);
 assert.doesNotMatch(headerSource,/outGMetric\('VAT/,'VAT values must not use large standalone metric cards');
 assert.match(html,/data-outg-toggle-details=/,'Each invoice needs an explicit detail collapse control');
-assert.match(html,/active&&!outGDetailsCollapsed\(active\)\?outGLinesTable\(active\):''/,'Collapsed invoices must not render the detail table');
+assert.match(html,/rows\.map\(inv=>`\$\{outGHeader\(inv\)\}\$\{!outGDetailsCollapsed\(inv\)\?outGLinesTable\(inv\):''\}`\)/,'Every expanded invoice must render its own detail table');
 assert.match(html,/Đối chiếu chi phí đầu vào/,'The detailed input-cost matching column must remain visible');
 assert.match(html,/id="outgXmlScanner"/,'Outgoing view needs an XML-first order creation control');
 assert.match(html,/data-outg-order-name=/,'Order name must be directly editable in the summary card');
-assert.match(html,/data-outg-order-select/,'Compact order switching must remain after removing the bottom list');
+assert.doesNotMatch(html,/data-outg-order-select/,'Orders must be stacked instead of hidden behind a dropdown');
 assert.match(html,/function outGSetOrderName/,'Custom order names must be persisted');
 assert.doesNotMatch(html,/<h2 class="text-sm font-black">Các hóa đơn<\/h2>/,'The redundant bottom invoice list must be removed');
 
