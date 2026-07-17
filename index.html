@@ -11510,6 +11510,18 @@ documentPrintCss = function(){
   function outGDetailsCollapsed(inv){
     return !!state.ui?.outgoingInvoiceCollapsed?.[String(inv?.id||'')];
   }
+  function outGOrderName(inv){
+    const marker=String(inv?.note||'').match(/^\[TEN_DON_HANG:([^\]]+)\]/);
+    if(marker?.[1])return marker[1].trim();
+    const rows=accountingRows(), index=Math.max(0,rows.findIndex(x=>String(x.id)===String(inv?.id)));
+    return `Đơn hàng ${index+1}`;
+  }
+  function outGSetOrderName(inv,value){
+    const name=String(value||'').replace(/[\[\]\r\n]+/g,' ').replace(/\s+/g,' ').trim().slice(0,80)||'Đơn hàng chưa đặt tên';
+    const note=String(inv?.note||'').replace(/^\[TEN_DON_HANG:[^\]]+\]\s*/,'').trim();
+    inv.note=`[TEN_DON_HANG:${name}]${note?`\n${note}`:''}`;
+    return name;
+  }
   function outGHeader(inv){
     if(!inv)return `<div class="rounded-lg border border-dashed border-black/15 bg-white p-6 text-center text-sm font-bold text-black/45">Chưa quét hóa đơn đầu ra. Bấm Quét XML hóa đơn để bắt đầu.</div>`;
     const f=outGFinance(inv), progress=outGMatchProgress(inv), collapsed=outGDetailsCollapsed(inv);
@@ -11517,7 +11529,7 @@ documentPrintCss = function(){
     return `<section class="rounded-xl border ${progress.complete?'border-mint/30':'border-black/10'} bg-white p-3 shadow-sm">
       <div class="flex flex-wrap items-start justify-between gap-3">
         <div class="min-w-0">
-          <div class="flex flex-wrap items-center gap-2"><h2 class="text-base font-black">Đơn hàng · HĐ ${esc(inv.invoice_number||'chưa có số')}</h2>${outGBadge(progress.complete?'Đã đối chiếu':'Đang đối chiếu',progress.complete?'bg-mint/10 text-mint border-mint/25':'bg-orange-50 text-orange-600 border-orange-200')}</div>
+          <div class="flex flex-wrap items-center gap-2"><input data-outg-order-name="${esc(inv.id)}" value="${esc(outGOrderName(inv))}" aria-label="Tên đơn hàng" title="Bấm để đặt tên đơn hàng" class="h-9 min-w-[180px] max-w-[420px] rounded-md border border-transparent bg-transparent px-1 text-base font-black outline-none hover:border-black/15 focus:border-mint focus:bg-white focus:ring-2 focus:ring-mint/10"/>${outGBadge(`HĐ ${inv.invoice_number||'chưa có số'}`,'bg-sky-50 text-sky-800 border-sky-200')}${outGBadge(progress.complete?'Đã đối chiếu':'Đang đối chiếu',progress.complete?'bg-mint/10 text-mint border-mint/25':'bg-orange-50 text-orange-600 border-orange-200')}</div>
           <p class="mt-1 truncate text-xs font-bold text-black/45">${esc(inv.customer_name||'Chưa có khách hàng')} · ${esc(compactDate(inv.invoice_date||inv.request_date))} · Tổng ${money(inv.total_amount)}${inv.invoice_series?` · KH ${esc(inv.invoice_series)}`:''}</p>
         </div>
         <div class="flex flex-wrap items-center gap-2"><span class="text-xs font-extrabold ${progress.complete?'text-mint':'text-black/45'}">Đã gắn ${progress.matched}/${progress.total} dòng</span><button data-outg-toggle-details="${esc(inv.id)}" type="button" aria-expanded="${collapsed?'false':'true'}" class="h-9 rounded-md ${progress.complete&&!collapsed?'bg-mint text-white':'border border-black/15 bg-white text-ink'} px-3 text-xs font-extrabold">${buttonText} ${collapsed?'▾':'▴'}</button></div>
@@ -11627,11 +11639,13 @@ documentPrintCss = function(){
     };
     return `<div class="fixed inset-0 z-[99999] flex items-center justify-center bg-black/40 p-4"><div class="grid max-h-[90vh] w-full max-w-5xl grid-rows-[auto_auto_1fr_auto] gap-3 overflow-hidden rounded-xl bg-white p-4 shadow-xl"><div class="flex flex-wrap items-start justify-between gap-3"><div><h2 class="text-lg font-black">Chọn hóa đơn đầu vào vận chuyển</h2><p class="mt-1 text-xs font-bold text-black/45">${esc(line.item_name)} · đã chọn ${selected.size} hóa đơn</p></div><button data-outg-input-picker-close type="button" class="h-9 rounded-md border border-black/10 px-3 text-xs font-extrabold">Đóng</button></div><input data-outg-input-picker-search value="${esc(ctx.search||'')}" placeholder="Tìm số hóa đơn, nhà cung cấp, nội dung vận chuyển..." class="h-10 rounded-md border border-black/15 px-3 text-sm font-bold outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100"/><div class="overflow-y-auto rounded-lg border border-black/10 bg-[#F7F7F2] p-3"><div class="grid gap-2 md:grid-cols-2 lg:grid-cols-3">${candidates.length?candidates.map(card).join(''):'<div class="col-span-full rounded-md border border-dashed border-black/15 bg-white p-6 text-center text-sm font-bold text-black/45">Chưa có hóa đơn đầu vào vận chuyển. Hãy nhập/quét hóa đơn có nội dung vận chuyển hoặc logistics trước.</div>'}</div></div><div class="flex flex-wrap items-center justify-between gap-2"><span class="text-xs font-bold text-black/45">${candidates.length} hóa đơn vận chuyển có thể chọn</span><button data-outg-input-picker-clear type="button" class="h-9 rounded-md border border-coral/30 px-3 text-xs font-extrabold text-coral">Bỏ chọn hóa đơn</button></div></div></div>`;
   }
-  function outGImportPanel(inv){
+  function outGImportPanel(inv,rows){
     return `<div class="rounded-lg border border-black/10 bg-white p-3 shadow-sm">
       <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div><h2 class="text-sm font-black">Thêm hóa đơn đầu ra</h2><p class="mt-1 text-xs font-bold text-black/45">Quét XML để tạo đơn hàng và đối chiếu chi phí.</p></div>
         <div class="flex flex-wrap gap-2">
+          ${rows.length?`<select data-outg-order-select aria-label="Chọn đơn hàng" class="h-9 max-w-[260px] rounded-md border border-black/15 bg-white px-2 text-xs font-extrabold">${rows.map(row=>`<option value="${esc(row.id)}" ${String(row.id)===String(inv?.id)?'selected':''}>${esc(outGOrderName(row))} · HĐ ${esc(row.invoice_number||'chưa có số')}</option>`).join('')}</select>`:''}
+          <button data-outg-new-order type="button" class="h-9 rounded-md border border-sky-300 bg-sky-50 px-3 text-xs font-extrabold text-sky-800">+ Tạo đơn hàng mới</button>
           <label class="inline-flex h-9 cursor-pointer items-center rounded-md bg-ink px-3 text-xs font-extrabold text-white">Quét XML hóa đơn<input id="outgXmlScanner" type="file" accept=".xml,text/xml,application/xml" class="hidden"/></label>
           ${inv?`<label class="inline-flex h-9 cursor-pointer items-center rounded-md border border-mint/30 bg-white px-3 text-xs font-extrabold text-mint">Gắn PDF<input data-sale-order-file="${esc(inv.id)}" data-file-type="pdf" type="file" accept="application/pdf,.pdf" class="hidden"/></label>`:''}
         </div>
@@ -11647,6 +11661,7 @@ documentPrintCss = function(){
       const uploaded=await uploadFileToSupabaseStorage(file,'sale-invoice',file.name||'outgoing-xml');
       const url=uploaded?.publicUrl||uploaded?.viewUrl||uploaded?.downloadUrl||uploaded?.url||'';
       const parsed=parseVietnamInvoiceXml(xml,{name:file.name||'',url,xmlUrl:url,pdfUrl:''});
+      const nextName=`Đơn hàng ${(state.accounting.outgoingInvoices||[]).length+1}`;
       const inv=outgoingEmpty({
         request_date:parsed.invoice_date||todayIso(),
         invoice_date:parsed.invoice_date||'',
@@ -11667,7 +11682,7 @@ documentPrintCss = function(){
         status:'Đã xuất hóa đơn',
         payment_status:'Chưa thanh toán',
         items_json:(parsed.items||[]).map((it,i)=>outGNormLine({...it,id:uid()},i)),
-        note:'Quét từ XML hóa đơn đầu ra'
+        note:`[TEN_DON_HANG:${nextName}]\nQuét từ XML hóa đơn đầu ra`
       });
       state.accounting.outgoingInvoices=Array.isArray(state.accounting.outgoingInvoices)?state.accounting.outgoingInvoices:[];
       state.accounting.outgoingInvoices.unshift(inv);
@@ -11689,16 +11704,26 @@ documentPrintCss = function(){
     saveAccounting();
     saveOutgoingInvoiceRemote(inv).catch(e=>console.warn(e));
   }
+  function outGCreateOrder(){
+    state.accounting.outgoingInvoices=Array.isArray(state.accounting.outgoingInvoices)?state.accounting.outgoingInvoices:[];
+    const name=`Đơn hàng ${state.accounting.outgoingInvoices.length+1}`;
+    const inv=outgoingEmpty({customer_name:'',customer_tax_code:'',customer_address:'',item_summary:'',items_json:[],note:`[TEN_DON_HANG:${name}]\nTạo mới thủ công`});
+    state.accounting.outgoingInvoices.unshift(inv);
+    state.accounting.editingOutgoingId=inv.id;
+    saveAccounting();
+    saveOutgoingInvoiceRemote(inv).catch(e=>console.warn(e));
+    render({force:true});
+    setTimeout(()=>{const input=document.querySelector(`[data-outg-order-name="${inv.id}"]`); input?.focus(); input?.select();},0);
+  }
   renderOutgoingInvoices=function(){
     const rows=accountingRows();
     const active=state.accounting.editingOutgoingId?(state.accounting.outgoingInvoices||[]).find(x=>String(x.id)===String(state.accounting.editingOutgoingId)):rows[0];
     return `<div class="grid gap-3">
-      ${outGImportPanel(active)}
+      ${outGImportPanel(active,rows)}
       ${outGHeader(active)}
       ${active&&!outGDetailsCollapsed(active)?outGLinesTable(active):''}
       ${outGPickerModal()}
       ${outGInputInvoicePickerModal()}
-      <div class="rounded-lg border border-black/10 bg-white p-3 shadow-sm"><div class="mb-2 flex items-center justify-between"><h2 class="text-sm font-black">Các hóa đơn</h2><span class="rounded-md border border-black/10 bg-[#F7F7F2] px-2 py-1 text-[10px] font-bold">${rows.length}</span></div><div class="grid gap-2">${rows.map(inv=>{const f=outGFinance(inv), p=outGMatchProgress(inv); return `<button data-outg-open-invoice="${esc(inv.id)}" type="button" class="grid gap-2 rounded-md border ${String(active?.id)===String(inv.id)?'border-mint bg-mint/5':'border-black/10 bg-white'} p-3 text-left hover:border-mint/40 md:grid-cols-[minmax(0,1fr)_110px_110px_110px] md:items-center"><div class="min-w-0"><b class="block truncate">HĐ ${esc(inv.invoice_number||'Chưa có số')} · ${esc(inv.customer_name||'--')}</b><div class="mt-1 text-xs font-bold text-black/45">${esc(compactDate(inv.invoice_date||inv.request_date))} · gắn ${p.matched}/${p.total}</div></div><div class="text-right text-xs font-black">${money(inv.total_amount)}</div><div class="text-right text-xs font-black text-[#8a5a00]">VAT lệch ${money(f.vatDiff)}</div><div class="text-right text-xs font-black ${f.profit>=0?'text-mint':'text-coral'}">LN ${money(f.profit)}</div></button>`;}).join('')||'<div class="rounded-md border border-dashed border-black/15 bg-[#F7F7F2] p-6 text-center text-sm font-bold text-black/45">Chưa có hóa đơn đầu ra.</div>'}</div></div>
     </div>`;
   };
   const prevBindOutG=bind;
@@ -11709,7 +11734,12 @@ documentPrintCss = function(){
       scan.dataset.boundOutG='1';
       scan.onchange=()=>{ if(scan.files?.[0])outGScanXml(scan.files[0]).finally(()=>{scan.value='';}); };
     }
-    document.querySelectorAll('[data-outg-open-invoice]').forEach(btn=>btn.onclick=()=>{state.accounting.editingOutgoingId=btn.dataset.outgOpenInvoice; saveAccounting(); render({force:true});});
+    document.querySelector('[data-outg-new-order]')?.addEventListener('click',outGCreateOrder);
+    document.querySelector('[data-outg-order-select]')?.addEventListener('change',event=>{state.accounting.editingOutgoingId=event.target.value; saveAccounting(); render({force:true});});
+    document.querySelectorAll('[data-outg-order-name]').forEach(input=>{
+      input.onkeydown=event=>{if(event.key==='Enter')input.blur(); if(event.key==='Escape'){input.value=outGOrderName((state.accounting.outgoingInvoices||[]).find(x=>String(x.id)===String(input.dataset.outgOrderName))); input.blur();}};
+      input.onchange=()=>{const inv=(state.accounting.outgoingInvoices||[]).find(x=>String(x.id)===String(input.dataset.outgOrderName)); if(!inv)return; input.value=outGSetOrderName(inv,input.value); inv.updated_at=new Date().toISOString(); saveAccounting(); saveOutgoingInvoiceRemote(inv).catch(e=>console.warn(e)); render({force:true});};
+    });
     document.querySelectorAll('[data-outg-toggle-details]').forEach(btn=>btn.onclick=()=>{state.ui=state.ui||{}; state.ui.outgoingInvoiceCollapsed=state.ui.outgoingInvoiceCollapsed||{}; const id=String(btn.dataset.outgToggleDetails); state.ui.outgoingInvoiceCollapsed[id]=!state.ui.outgoingInvoiceCollapsed[id]; render({force:true});});
     document.querySelectorAll('[data-outg-line-picker]').forEach(btn=>btn.onclick=()=>{state.ui=state.ui||{}; state.ui.outgoingVatPicker={invoiceId:btn.dataset.outgLinePicker,lineId:btn.dataset.lineId,search:''}; render({force:true});});
     document.querySelectorAll('[data-outg-picker-close]').forEach(btn=>btn.onclick=()=>{state.ui.outgoingVatPicker=null; render({force:true});});
