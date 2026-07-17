@@ -2907,14 +2907,19 @@ function paymentInvoiceLinkSummaryForMonth(month){
   });
   return `<div class="mt-2 overflow-x-auto rounded-md border border-black/10"><table class="w-full min-w-[680px] border-collapse text-xs"><thead><tr class="border-b border-black/10 bg-black/[0.03] text-left uppercase text-black/45"><th class="p-2">Liên kết hóa đơn</th><th class="p-2 text-right">Thu đã liên kết</th><th class="p-2 text-right">Chi đã liên kết</th><th class="p-2 text-right">Số dòng</th><th class="p-2">Chứng từ</th></tr></thead><tbody>${Object.values(grouped).map(g=>`<tr class="border-b border-black/5"><td class="p-2 font-bold">${esc(g.label||'--')}</td><td class="p-2 text-right font-extrabold text-mint">${g.thu?money(g.thu):'--'}</td><td class="p-2 text-right font-extrabold text-[#8a5a00]">${g.chi?money(g.chi):'--'}</td><td class="p-2 text-right">${g.items.length}</td><td class="p-2">${g.items.find(x=>x.proof_url)?`<button data-open-url="${esc(g.items.find(x=>x.proof_url).proof_url)}" class="h-7 rounded-md border border-mint/30 px-2 text-[11px] font-extrabold text-mint">Mở</button>`:'--'}</td></tr>`).join('')}</tbody></table></div>`;
 }
+function paymentInvoiceByRef(type,id){
+  if(!type||!id)return null;
+  const invoices=type==='outgoing'?(state.accounting?.outgoingInvoices||[]):type==='incoming'?(state.inputInvoices?.invoices||[]):[];
+  return invoices.find(invoice=>String(invoice.id)===String(id))||null;
+}
 function paymentInvoiceSelectOptions(selectedType='',selectedId=''){
-  const selectedKey=selectedType&&selectedId?`${selectedType}|${selectedId}`:'';
-  const linkedKeys=new Set((state.accounting?.payments||[]).filter(payment=>payment.related_type&&payment.related_id).map(payment=>`${payment.related_type}|${payment.related_id}`));
+  const selectedKey=paymentInvoiceByRef(selectedType,selectedId)?`${selectedType}|${selectedId}`:'';
+  const linkedKeys=new Set((state.accounting?.payments||[]).filter(payment=>paymentInvoiceByRef(payment.related_type,payment.related_id)).map(payment=>`${payment.related_type}|${payment.related_id}`));
   const available=type=>invoice=>{const key=`${type}|${invoice.id}`; return key===selectedKey||!linkedKeys.has(key);};
   const outs=((state.accounting?.outgoingInvoices)||[]).filter(available('outgoing'));
   const ins=((state.inputInvoices?.invoices)||[]).filter(available('incoming'));
-  const opt=(type,id,label)=>`<option value="${esc(type+'|'+id)}" ${selectedType===type&&String(selectedId)===String(id)?'selected':''}>${esc(label)}</option>`;
-  return `<option value="" ${!selectedType&&!selectedId?'selected':''}>Chưa liên kết hóa đơn</option><optgroup label="Hóa đơn đầu ra / khách thanh toán">${outs.map(x=>opt('outgoing',x.id,`${compactDate(x.invoice_date||x.request_date)} · ${x.customer_name||'Khách'} · HĐ ${x.invoice_number||x.order_code||'chưa có số'} · ${money(x.total_amount||0)}`)).join('')}</optgroup><optgroup label="Hóa đơn đầu vào / nhà cung cấp">${ins.map(x=>opt('incoming',x.id,`${compactDate(x.invoice_date||x.period)} · ${x.seller_name||'Nhà cung cấp'} · HĐ ${x.invoice_number||'chưa có số'} · ${money(x.total_amount||0)}`)).join('')}</optgroup>`;
+  const opt=(type,id,label)=>`<option value="${esc(type+'|'+id)}" ${selectedKey===`${type}|${id}`?'selected':''}>${esc(label)}</option>`;
+  return `<option value="" ${!selectedKey?'selected':''}>Chưa liên kết hóa đơn</option><optgroup label="Hóa đơn đầu ra / khách thanh toán">${outs.map(x=>opt('outgoing',x.id,`${compactDate(x.invoice_date||x.request_date)} · ${x.customer_name||'Khách'} · HĐ ${x.invoice_number||x.order_code||'chưa có số'} · ${money(x.total_amount||0)}`)).join('')}</optgroup><optgroup label="Hóa đơn đầu vào / nhà cung cấp">${ins.map(x=>opt('incoming',x.id,`${compactDate(x.invoice_date||x.period)} · ${x.seller_name||'Nhà cung cấp'} · HĐ ${x.invoice_number||'chưa có số'} · ${money(x.total_amount||0)}`)).join('')}</optgroup>`;
 }
 
 function paymentShortText(v, limit=90){
@@ -2939,7 +2944,7 @@ function paymentMainLabelHtml(p){
   return `<div class="max-w-[340px] font-bold leading-snug">${esc(label)}</div>`;
 }
 function paymentInvoiceLinkControl(p){
-  const linked=!!(p?.related_type&&p?.related_id);
+  const linked=!!paymentInvoiceByRef(p?.related_type,p?.related_id);
   return `<div class="grid gap-1"><select data-payment-link="${esc(p?.id||'')}" class="h-9 w-full rounded-md border ${linked?'border-mint/40 bg-mint/5 text-mint':'border-black/15 bg-white'} px-2 text-xs font-bold">${paymentInvoiceSelectOptions(p?.related_type,p?.related_id)}</select>${linked?'<span class="text-[11px] font-extrabold text-mint">✓ Đã liên kết hóa đơn</span>':''}</div>`;
 }
 function paymentTable(){
