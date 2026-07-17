@@ -16,4 +16,11 @@ const extractionPanel=html.slice(extractionStart,extractionEnd);
 assert.doesNotMatch(extractionPanel,/Sửa dữ liệu/,'The extraction panel must not repeat the edit action');
 assert.doesNotMatch(extractionPanel,/Đánh dấu đã kiểm tra/,'The extraction panel must not repeat the review action');
 
+const tableStart=html.indexOf('function inputInvoiceTable');
+const tableEnd=html.indexOf('function renderToolsTab',tableStart);
+const invoiceTable=html.slice(tableStart,tableEnd);
+assert.match(invoiceTable,/data-input-invoice-delete="\$\{esc\(x\.id\)\}"/,'Every input-invoice row needs a delete action');
+assert.match(invoiceTable,/>Xóa<\/button>/,'The row delete action must show the word Xóa');
+assert.match(html,/confirm\('Xóa dòng hóa đơn này\?/,'Deleting an invoice must require confirmation');
+
 console.log('Input invoice editor collapse checks passed.');
