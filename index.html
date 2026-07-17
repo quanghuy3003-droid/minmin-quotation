@@ -11562,7 +11562,7 @@ documentPrintCss = function(){
     return name;
   }
   function outGHeader(inv){
-    if(!inv)return `<div class="rounded-lg border border-dashed border-black/15 bg-white p-6 text-center text-sm font-bold text-black/45">Chưa quét hóa đơn đầu ra. Bấm Quét XML hóa đơn để bắt đầu.</div>`;
+    if(!inv)return `<div class="rounded-lg border border-dashed border-sky-200 bg-sky-50 p-6 text-center text-sm font-bold text-sky-800">Bấm “Tạo đơn mới & quét XML” để bắt đầu. App sẽ tạo đơn rồi mở file XML ngay.</div>`;
     const f=outGFinance(inv), progress=outGMatchProgress(inv), collapsed=outGDetailsCollapsed(inv);
     const buttonText=collapsed?'Mở đối chiếu':(progress.complete?'Hoàn tất & thu gọn':'Thu gọn chi tiết');
     const missing=Math.max(0,progress.total-progress.matched);
@@ -11682,8 +11682,8 @@ documentPrintCss = function(){
         <div><h2 class="text-sm font-black">Thêm hóa đơn đầu ra</h2><p class="mt-1 text-xs font-bold text-black/45">Quét XML để tạo đơn hàng và đối chiếu chi phí.</p></div>
         <div class="flex flex-wrap gap-2">
           ${rows.length?`<select data-outg-order-select aria-label="Chọn đơn hàng" class="h-9 max-w-[260px] rounded-md border border-black/15 bg-white px-2 text-xs font-extrabold">${rows.map(row=>`<option value="${esc(row.id)}" ${String(row.id)===String(inv?.id)?'selected':''}>${esc(outGOrderName(row))} · HĐ ${esc(row.invoice_number||'chưa có số')}</option>`).join('')}</select>`:''}
-          <button data-outg-new-order type="button" class="h-9 rounded-md border border-sky-300 bg-sky-50 px-3 text-xs font-extrabold text-sky-800">+ Tạo đơn hàng mới</button>
-          ${inv?`<label class="inline-flex h-9 cursor-pointer items-center rounded-md bg-ink px-3 text-xs font-extrabold text-white">Quét XML hóa đơn<input id="outgXmlScanner" type="file" accept=".xml,text/xml,application/xml" class="hidden"/></label>`:'<button type="button" disabled title="Tạo đơn hàng mới trước khi quét XML" class="h-9 cursor-not-allowed rounded-md bg-black/15 px-3 text-xs font-extrabold text-black/40">Quét XML hóa đơn</button>'}
+          <button data-outg-new-order type="button" class="h-9 rounded-md border border-sky-300 bg-sky-50 px-3 text-xs font-extrabold text-sky-800">+ Tạo đơn mới & quét XML</button>
+          ${inv?`<label class="inline-flex h-9 cursor-pointer items-center rounded-md bg-ink px-3 text-xs font-extrabold text-white">Đổi / gắn XML<input id="outgXmlScanner" type="file" accept=".xml,text/xml,application/xml" class="hidden"/></label>`:''}
           ${inv?`<label class="inline-flex h-9 cursor-pointer items-center rounded-md border border-mint/30 bg-white px-3 text-xs font-extrabold text-mint">Gắn PDF<input data-sale-order-file="${esc(inv.id)}" data-file-type="pdf" type="file" accept="application/pdf,.pdf" class="hidden"/></label>`:''}
         </div>
       </div>
@@ -11749,10 +11749,11 @@ documentPrintCss = function(){
     const inv=outgoingEmpty({customer_name:'',customer_tax_code:'',customer_address:'',item_summary:'',items_json:[],note:`${OUTGOING_MANAGED_MARKER}[TEN_DON_HANG:${name}]\nTạo mới bằng nút Thêm đơn hàng`});
     state.accounting.outgoingInvoices.unshift(inv);
     state.accounting.editingOutgoingId=inv.id;
+    state.accounting.syncStatus='Đã tạo đơn mới. Hãy chọn file XML cho đơn này.';
     saveAccounting();
     saveOutgoingInvoiceRemote(inv).catch(e=>console.warn(e));
     render({force:true});
-    setTimeout(()=>{const input=document.querySelector(`[data-outg-order-name="${inv.id}"]`); input?.focus(); input?.select();},0);
+    document.getElementById('outgXmlScanner')?.click();
   }
   renderOutgoingInvoices=function(){
     const rows=accountingRows();

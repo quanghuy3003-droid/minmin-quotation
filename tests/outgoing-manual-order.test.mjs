@@ -24,6 +24,9 @@ assert.doesNotMatch(scanSource,/outgoingInvoices\.unshift/,'XML scanning must no
 const createSource=between('function outGCreateOrder','renderOutgoingInvoices=function');
 assert.match(createSource,/OUTGOING_MANAGED_MARKER/,'The create-order button must mark its orders as managed');
 assert.match(createSource,/outgoingInvoices\.unshift\(inv\)/,'Only the explicit create action may append an order in this workflow');
-assert.match(html,/Tạo đơn hàng mới trước khi quét XML/,'The XML action must be disabled until an order exists');
+assert.match(createSource,/getElementById\('outgXmlScanner'\)\?\.click\(\)/,'Creating an order must immediately open the XML picker');
+assert.match(html,/\+ Tạo đơn mới &amp; quét XML|\+ Tạo đơn mới & quét XML/,'The primary action must explain the one-step flow');
+assert.match(html,/Đổi \/ gắn XML/,'An existing order needs a separate replace/attach XML action');
+assert.doesNotMatch(html,/Tạo đơn hàng mới trước khi quét XML/,'The confusing disabled XML button must be removed');
 
 console.log('Manual outgoing-order creation checks passed.');
