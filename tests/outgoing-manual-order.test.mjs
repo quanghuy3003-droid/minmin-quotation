@@ -43,5 +43,9 @@ assert.doesNotMatch(html,/data-outg-new-order/,'There must be no separate empty-
 assert.doesNotMatch(html,/function outGCreateOrder/,'Empty orders must not be created');
 assert.doesNotMatch(html,/data-outg-order-select/,'The outgoing page must not have an order dropdown');
 assert.match(html,/rows\.map\(inv=>`\$\{outGHeader\(inv\)\}\$\{!outGDetailsCollapsed\(inv\)\?outGLinesTable\(inv\):''\}`\)\.join\(''\)/,'Every order must render as a stacked card');
+assert.match(html,/data-outg-delete-order="\$\{esc\(inv\.id\)\}"/,'Every order card needs its own delete button');
+const deleteSource=between('async function outGDeleteOrder','renderOutgoingInvoices=function');
+assert.ok(deleteSource.indexOf('confirm(')<deleteSource.indexOf('outgoingInvoices='),'An order must never be deleted before explicit confirmation');
+assert.match(deleteSource,/deleteOutgoingInvoiceRemote\(id\)/,'Confirmed deletion must also remove the remote order');
 
 console.log('XML-first outgoing-order creation checks passed.');
