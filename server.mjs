@@ -20,7 +20,7 @@ const types = {
   ".jpg": "image/jpeg",
 };
 
-const server = createServer((request, response) => {
+createServer((request, response) => {
   const url = new URL(request.url, `http://localhost:${port}`);
 
   if (url.pathname === "/api/drive-upload") {
@@ -59,10 +59,6 @@ const server = createServer((request, response) => {
     response.writeHead(200, { "Content-Type": types[".html"] });
     createReadStream(fallbackPath).pipe(response);
   }
-});
-
-server.listen(port, "127.0.0.1", () => {
+}).listen(port, "127.0.0.1", () => {
   console.log(`App bao gia dang chay tai http://localhost:${port}`);
 });
-
-export { server };

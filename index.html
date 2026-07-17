@@ -11709,6 +11709,9 @@ documentPrintCss = function(){
     document.querySelectorAll('[data-outg-line-picker]').forEach(btn=>btn.onclick=()=>{state.ui=state.ui||{}; state.ui.outgoingVatPicker={invoiceId:btn.dataset.outgLinePicker,lineId:btn.dataset.lineId,search:''}; render({force:true});});
     document.querySelectorAll('[data-outg-picker-close]').forEach(btn=>btn.onclick=()=>{state.ui.outgoingVatPicker=null; render({force:true});});
     document.querySelectorAll('[data-outg-picker-search]').forEach(inp=>inp.oninput=()=>{state.ui.outgoingVatPicker={...(state.ui.outgoingVatPicker||{}),search:inp.value}; render({force:true});});
+    document.querySelectorAll('[data-outg-input-picker]').forEach(btn=>btn.onclick=()=>{state.ui=state.ui||{}; state.ui.outgoingInputPicker={invoiceId:btn.dataset.outgInputPicker,lineId:btn.dataset.lineId,search:''}; render({force:true});});
+    document.querySelectorAll('[data-outg-input-picker-close]').forEach(btn=>btn.onclick=()=>{state.ui.outgoingInputPicker=null; render({force:true});});
+    document.querySelectorAll('[data-outg-input-picker-search]').forEach(inp=>inp.oninput=()=>{state.ui.outgoingInputPicker={...(state.ui.outgoingInputPicker||{}),search:inp.value}; render({force:true});});
     document.querySelectorAll('[data-outg-stock-toggle]').forEach(btn=>btn.onclick=()=>{
       const ctx=state.ui?.outgoingVatPicker, inv=(state.accounting.outgoingInvoices||[]).find(x=>String(x.id)===String(ctx?.invoiceId));
       if(!inv)return;
@@ -11720,12 +11723,43 @@ documentPrintCss = function(){
       outGSaveLines(inv);
       render({force:true});
     });
+    document.querySelectorAll('[data-outg-input-toggle]').forEach(btn=>btn.onclick=()=>{
+      const ctx=state.ui?.outgoingInputPicker, inv=(state.accounting.outgoingInvoices||[]).find(x=>String(x.id)===String(ctx?.invoiceId));
+      if(!inv)return;
+      const lines=outGLines(inv), line=lines.find(x=>String(x.id)===String(ctx.lineId));
+      if(!line)return;
+      const id=String(btn.dataset.outgInputToggle);
+      line.selected_input_invoice_ids=line.selected_input_invoice_ids.includes(id)?line.selected_input_invoice_ids.filter(x=>x!==id):[...line.selected_input_invoice_ids,id];
+      inv.items_json=lines;
+      outGSaveLines(inv);
+      render({force:true});
+    });
+    document.querySelectorAll('[data-outg-input-remove]').forEach(btn=>btn.onclick=()=>{
+      const inv=(state.accounting.outgoingInvoices||[]).find(x=>String(x.id)===String(btn.dataset.invoiceId));
+      if(!inv)return;
+      const lines=outGLines(inv), line=lines.find(x=>String(x.id)===String(btn.dataset.lineId));
+      if(!line)return;
+      line.selected_input_invoice_ids=line.selected_input_invoice_ids.filter(x=>x!==String(btn.dataset.outgInputRemove));
+      inv.items_json=lines;
+      outGSaveLines(inv);
+      render({force:true});
+    });
     document.querySelectorAll('[data-outg-stock-remove]').forEach(btn=>btn.onclick=()=>{
       const inv=(state.accounting.outgoingInvoices||[]).find(x=>String(x.id)===String(btn.dataset.invoiceId));
       if(!inv)return;
       const lines=outGLines(inv), line=lines.find(x=>String(x.id)===String(btn.dataset.lineId));
       if(!line)return;
       line.selected_stock_codes=line.selected_stock_codes.filter(x=>x!==btn.dataset.outgStockRemove);
+      inv.items_json=lines;
+      outGSaveLines(inv);
+      render({force:true});
+    });
+    document.querySelector('[data-outg-input-picker-clear]')?.addEventListener('click',()=>{
+      const ctx=state.ui?.outgoingInputPicker, inv=(state.accounting.outgoingInvoices||[]).find(x=>String(x.id)===String(ctx?.invoiceId));
+      if(!inv)return;
+      const lines=outGLines(inv), line=lines.find(x=>String(x.id)===String(ctx.lineId));
+      if(!line)return;
+      line.selected_input_invoice_ids=[];
       inv.items_json=lines;
       outGSaveLines(inv);
       render({force:true});

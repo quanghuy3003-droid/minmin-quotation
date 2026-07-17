@@ -1,0 +1,11 @@
+# Deploy only the static app, its browser libraries, and the one API function.
+# In particular, server.mjs is for local Windows use and must never be detected
+# as the production entrypoint by Vercel.
+/*
+!/api/
+!/vendor/
+!/index.html
+!/vercel.json
+
+/api/*
+!/api/drive-upload.js
