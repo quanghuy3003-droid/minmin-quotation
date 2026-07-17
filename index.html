@@ -11925,6 +11925,45 @@ documentPrintCss = function(){
   };
 })();
 
+/* MINMIN PATCH 2026-07-17I
+   Thu/chi: cong tat ca giao dich da link cung hoa don de tinh con thieu/da du. */
+(function(){
+  function mmPayInvoiceTotal(type,id){
+    return (state.accounting?.payments||[])
+      .filter(payment=>paymentHasInvoiceRef(payment,type,id))
+      .reduce((sum,payment)=>sum+Number(payment.amount||0),0);
+  }
+  paymentInvoiceSelectOptions = function(selectedType='',selectedId=''){
+    const selectedKey=paymentInvoiceByRef(selectedType,selectedId)?`${selectedType}|${selectedId}`:'';
+    const available=type=>invoice=>{
+      const key=`${type}|${invoice.id}`;
+      if(key===selectedKey)return true;
+      return Math.max(0,Number(invoice.total_amount||0)-mmPayInvoiceTotal(type,invoice.id))>0;
+    };
+    const outs=((state.accounting?.outgoingInvoices)||[]).filter(available('outgoing'));
+    const ins=((state.inputInvoices?.invoices)||[]).filter(available('incoming'));
+    const opt=(type,id,label)=>`<option value="${esc(type+'|'+id)}" ${selectedKey===`${type}|${id}`?'selected':''}>${esc(label)}</option>`;
+    return `<option value="" ${!selectedKey?'selected':''}>Chưa liên kết hóa đơn</option>${selectedType!=='incoming'?`<optgroup label="Hóa đơn đầu ra / khách thanh toán">${outs.map(x=>opt('outgoing',x.id,`${compactDate(x.invoice_date||x.request_date)} · ${x.customer_name||'Khách'} · HĐ ${x.invoice_number||x.order_code||'chưa có số'} · ${money(x.total_amount||0)} · còn ${money(Math.max(0,Number(x.total_amount||0)-mmPayInvoiceTotal('outgoing',x.id)))}`)).join('')}</optgroup>`:''}${selectedType!=='outgoing'?`<optgroup label="Hóa đơn đầu vào / nhà cung cấp">${ins.map(x=>opt('incoming',x.id,`${compactDate(x.invoice_date||x.period)} · ${x.seller_name||'Nhà cung cấp'} · HĐ ${x.invoice_number||'chưa có số'} · ${money(x.total_amount||0)} · còn ${money(Math.max(0,Number(x.total_amount||0)-mmPayInvoiceTotal('incoming',x.id)))}`)).join('')}</optgroup>`:''}`;
+  };
+  paymentInvoiceLinkControl = function(p){
+    const id=paymentRelatedIds(p)[0]||'', invoice=paymentInvoiceRefs(p)[0]||null, linked=!!invoice;
+    const type=p?.related_type||(p?.payment_type==='Chi'?'incoming':'outgoing');
+    const select=`<select data-payment-link="${esc(p?.id||'')}" class="h-9 w-full rounded-md border ${linked?'border-mint/40 bg-mint/5 text-mint':'border-black/15 bg-white'} px-2 text-xs font-bold">${paymentInvoiceSelectOptions(type,id)}</select>`;
+    if(!linked)return `<div class="grid gap-1">${select}<div class="text-[11px] font-bold text-black/40">Chưa liên kết hóa đơn</div></div>`;
+    const invoiceTotal=Number(invoice.total_amount||0);
+    const linkedPaid=mmPayInvoiceTotal(type,id);
+    const currentAmount=Number(p?.amount||0);
+    const difference=invoiceTotal-linkedPaid;
+    const paidLabel=type==='outgoing'?'Đã thu theo hóa đơn':'Đã chi theo hóa đơn';
+    const check=Math.abs(difference)<1
+      ? '<span class="text-[11px] font-extrabold text-mint">✓ Đã đủ tiền</span>'
+      : difference>0
+        ? `<span class="text-[11px] font-extrabold text-[#8a5a00]">⚠ Còn thiếu ${money(difference)}</span>`
+        : `<span class="text-[11px] font-extrabold text-coral">⚠ Vượt ${money(Math.abs(difference))}</span>`;
+    return `<div class="grid gap-1">${select}<div class="flex flex-wrap gap-x-3 gap-y-1"><span class="text-[11px] font-extrabold text-mint">✓ Đã liên kết hóa đơn</span>${check}<span class="text-[11px] font-bold text-black/45">Hóa đơn ${money(invoiceTotal)} · ${paidLabel} ${money(linkedPaid)} · Dòng này ${money(currentAmount)}</span></div></div>`;
+  };
+})();
+
 
 initApp();
     </script>
