@@ -46,7 +46,7 @@ assert.equal(result.inputNet,5000000,'Product cost and shipping input cost must 
 assert.equal(result.profit,7000000,'Profit must equal invoice net revenue minus every matched input cost');
 
 const orderNameSource=section('function outGOrderName','function outGHeader');
-const orderNames=new Function('accountingRows','OUTGOING_MANAGED_MARKER',`${orderNameSource}; return {outGOrderName,outGSetOrderName};`)(()=>[],'[TAO_TU_NUT_DON_HANG_V2]');
+const orderNames=new Function('accountingRows','OUTGOING_MANAGED_MARKER',`${orderNameSource}; return {outGOrderName,outGSetOrderName};`)(()=>[],'[TAO_TU_QUET_XML_V3]');
 const namedOrder={note:'Ghi chú kế toán đang có'};
 assert.equal(orderNames.outGSetOrderName(namedOrder,'  Showroom Quận 1  '),'Showroom Quận 1');
 assert.equal(orderNames.outGOrderName(namedOrder),'Showroom Quận 1');
@@ -72,7 +72,7 @@ assert.match(headerSource,/VAT ra/);
 assert.match(headerSource,/Chênh lệch/);
 assert.doesNotMatch(headerSource,/outGMetric\('VAT/,'VAT values should not use large standalone metric cards');
 assert.match(html,/active&&!outGDetailsCollapsed\(active\)\?outGLinesTable\(active\):''/,'Collapsed invoices must not render the detail table');
-assert.match(html,/data-outg-new-order/,'Outgoing view needs a create-order button');
+assert.match(html,/id="outgXmlScanner"/,'Outgoing view needs an XML-first order creation control');
 assert.match(html,/data-outg-order-name=/,'Order name must be directly editable in the summary card');
 assert.match(html,/data-outg-order-select/,'Compact order switching must remain after removing the bottom list');
 assert.match(html,/function outGSetOrderName/,'Custom order names must be persisted');

@@ -9,24 +9,20 @@ const between=(start,end)=>{
   return html.slice(from,to);
 };
 
-assert.match(html,/const OUTGOING_MANAGED_MARKER='\[TAO_TU_NUT_DON_HANG_V2\]'/);
+assert.match(html,/const OUTGOING_MANAGED_MARKER='\[TAO_TU_QUET_XML_V3\]'/);
 assert.match(html,/outgoingInvoices:\(outgoing\|\|\[\]\)\.map\(normalizeOutgoingInvoice\)\.filter\(isManagedOutgoingInvoice\)/,'Remote legacy orders must not return to the app');
 assert.match(html,/state\.accounting\.outgoingInvoices=\(state\.accounting\.outgoingInvoices\|\|\[\]\)\.filter\(isManagedOutgoingInvoice\)/,'Local legacy orders must not be uploaded again');
-assert.match(html,/saveOutgoingInvoiceRemote\(inv\)\{ if\(!isManagedOutgoingInvoice\(inv\)\)return;/,'Only button-created orders may be saved remotely');
+assert.match(html,/saveOutgoingInvoiceRemote\(inv\)\{ if\(!isManagedOutgoingInvoice\(inv\)\)return;/,'Only XML-created orders may be saved remotely');
 
 const scanSource=between('async function outGScanXml','function outGSaveLines');
-assert.match(scanSource,/const inv=accountingRows\(\)\.find/,'XML scanning must require the selected managed order');
-assert.match(scanSource,/Hãy bấm “Tạo đơn hàng mới” trước/);
-assert.match(scanSource,/confirm\(`/,'Replacing an order XML must require confirmation');
-assert.doesNotMatch(scanSource,/outgoingEmpty\(/,'XML scanning must not create an order');
-assert.doesNotMatch(scanSource,/outgoingInvoices\.unshift/,'XML scanning must not append an order');
+assert.match(scanSource,/parseVietnamInvoiceXml\(xml/,'The XML must be parsed before creating an order');
+assert.match(scanSource,/File XML không có dữ liệu hóa đơn hợp lệ/,'Invalid XML must be rejected');
+assert.match(scanSource,/const inv=outgoingEmpty\(/,'A valid XML must create the order');
+assert.match(scanSource,/outgoingInvoices\.unshift\(inv\)/,'The XML workflow must append the parsed order');
+assert.ok(scanSource.indexOf('File XML không có dữ liệu hóa đơn hợp lệ')<scanSource.indexOf('const inv=outgoingEmpty('),'Validation must happen before order creation');
 
-const createSource=between('function outGCreateOrder','renderOutgoingInvoices=function');
-assert.match(createSource,/OUTGOING_MANAGED_MARKER/,'The create-order button must mark its orders as managed');
-assert.match(createSource,/outgoingInvoices\.unshift\(inv\)/,'Only the explicit create action may append an order in this workflow');
-assert.match(createSource,/getElementById\('outgXmlScanner'\)\?\.click\(\)/,'Creating an order must immediately open the XML picker');
-assert.match(html,/\+ Tạo đơn mới &amp; quét XML|\+ Tạo đơn mới & quét XML/,'The primary action must explain the one-step flow');
-assert.match(html,/Đổi \/ gắn XML/,'An existing order needs a separate replace/attach XML action');
-assert.doesNotMatch(html,/Tạo đơn hàng mới trước khi quét XML/,'The confusing disabled XML button must be removed');
+assert.match(html,/Quét XML &amp; tạo đơn hàng|Quét XML & tạo đơn hàng/,'The primary action must explain that scanning creates the order');
+assert.doesNotMatch(html,/data-outg-new-order/,'There must be no separate empty-order creation action');
+assert.doesNotMatch(html,/function outGCreateOrder/,'Empty orders must not be created');
 
-console.log('Manual outgoing-order creation checks passed.');
+console.log('XML-first outgoing-order creation checks passed.');

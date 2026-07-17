@@ -1596,7 +1596,7 @@ function mergeRemoteByUpdatedAt(remote,local){
   });
   return [...byId.values()].sort((a,b)=>accountingUpdatedAt(b).localeCompare(accountingUpdatedAt(a)));
 }
-const OUTGOING_MANAGED_MARKER='[TAO_TU_NUT_DON_HANG_V2]';
+const OUTGOING_MANAGED_MARKER='[TAO_TU_QUET_XML_V3]';
 function isManagedOutgoingInvoice(inv){ return String(inv?.note||'').includes(OUTGOING_MANAGED_MARKER); }
 function normalizeOutgoingInvoice(row={}){
   const goods=Number(row.goods_amount||row.items_subtotal||0);
@@ -11562,7 +11562,7 @@ documentPrintCss = function(){
     return name;
   }
   function outGHeader(inv){
-    if(!inv)return `<div class="rounded-lg border border-dashed border-sky-200 bg-sky-50 p-6 text-center text-sm font-bold text-sky-800">Bấm “Tạo đơn mới & quét XML” để bắt đầu. App sẽ tạo đơn rồi mở file XML ngay.</div>`;
+    if(!inv)return `<div class="rounded-lg border border-dashed border-sky-200 bg-sky-50 p-6 text-center text-sm font-bold text-sky-800">Bấm “Quét XML & tạo đơn hàng” để bắt đầu. Chọn XML thành công thì đơn hàng mới được tạo.</div>`;
     const f=outGFinance(inv), progress=outGMatchProgress(inv), collapsed=outGDetailsCollapsed(inv);
     const buttonText=collapsed?'Mở đối chiếu':(progress.complete?'Hoàn tất & thu gọn':'Thu gọn chi tiết');
     const missing=Math.max(0,progress.total-progress.matched);
@@ -11682,8 +11682,7 @@ documentPrintCss = function(){
         <div><h2 class="text-sm font-black">Thêm hóa đơn đầu ra</h2><p class="mt-1 text-xs font-bold text-black/45">Quét XML để tạo đơn hàng và đối chiếu chi phí.</p></div>
         <div class="flex flex-wrap gap-2">
           ${rows.length?`<select data-outg-order-select aria-label="Chọn đơn hàng" class="h-9 max-w-[260px] rounded-md border border-black/15 bg-white px-2 text-xs font-extrabold">${rows.map(row=>`<option value="${esc(row.id)}" ${String(row.id)===String(inv?.id)?'selected':''}>${esc(outGOrderName(row))} · HĐ ${esc(row.invoice_number||'chưa có số')}</option>`).join('')}</select>`:''}
-          <button data-outg-new-order type="button" class="h-9 rounded-md border border-sky-300 bg-sky-50 px-3 text-xs font-extrabold text-sky-800">+ Tạo đơn mới & quét XML</button>
-          ${inv?`<label class="inline-flex h-9 cursor-pointer items-center rounded-md bg-ink px-3 text-xs font-extrabold text-white">Đổi / gắn XML<input id="outgXmlScanner" type="file" accept=".xml,text/xml,application/xml" class="hidden"/></label>`:''}
+          <label class="inline-flex h-9 cursor-pointer items-center rounded-md bg-ink px-3 text-xs font-extrabold text-white">Quét XML & tạo đơn hàng<input id="outgXmlScanner" type="file" accept=".xml,text/xml,application/xml" class="hidden"/></label>
           ${inv?`<label class="inline-flex h-9 cursor-pointer items-center rounded-md border border-mint/30 bg-white px-3 text-xs font-extrabold text-mint">Gắn PDF<input data-sale-order-file="${esc(inv.id)}" data-file-type="pdf" type="file" accept="application/pdf,.pdf" class="hidden"/></label>`:''}
         </div>
       </div>
@@ -11691,18 +11690,16 @@ documentPrintCss = function(){
   }
   async function outGScanXml(file){
     if(!file)return;
-    const inv=accountingRows().find(x=>String(x.id)===String(state.accounting.editingOutgoingId));
-    if(!inv){alert('Hãy bấm “Tạo đơn hàng mới” trước, sau đó mới quét XML vào đơn đó.'); return;}
-    if((inv.xml_url||outGLines(inv).length)&&!confirm(`Đơn “${outGOrderName(inv)}” đã có dữ liệu. Thay nội dung bằng XML mới?`))return;
     state.accounting.syncStatus='Đang đọc XML hóa đơn đầu ra...';
     render({force:true});
     try{
       const xml=await file.text();
+      const parsed=parseVietnamInvoiceXml(xml,{name:file.name||'',url:'',xmlUrl:'',pdfUrl:''});
+      if(!parsed.invoice_number&&!(parsed.items||[]).length&&!Number(parsed.total_amount||0))throw new Error('File XML không có dữ liệu hóa đơn hợp lệ.');
       const uploaded=await uploadFileToSupabaseStorage(file,'sale-invoice',file.name||'outgoing-xml');
       const url=uploaded?.publicUrl||uploaded?.viewUrl||uploaded?.downloadUrl||uploaded?.url||'';
-      const parsed=parseVietnamInvoiceXml(xml,{name:file.name||'',url,xmlUrl:url,pdfUrl:''});
-      const orderName=outGOrderName(inv), preservedNote=String(inv.note||'').replace(OUTGOING_MANAGED_MARKER,'').replace(/\[TEN_DON_HANG:[^\]]+\]\s*/,'').trim();
-      Object.assign(inv,{
+      const orderName=`Đơn hàng ${accountingRows().length+1}`;
+      const inv=outgoingEmpty({
         request_date:parsed.invoice_date||todayIso(),
         invoice_date:parsed.invoice_date||'',
         invoice_number:parsed.invoice_number||'',
@@ -11722,9 +11719,11 @@ documentPrintCss = function(){
         status:'Đã xuất hóa đơn',
         payment_status:'Chưa thanh toán',
         items_json:(parsed.items||[]).map((it,i)=>outGNormLine({...it,id:uid()},i)),
-        note:`${OUTGOING_MANAGED_MARKER}[TEN_DON_HANG:${orderName}]\n${preservedNote||'Quét từ XML hóa đơn đầu ra'}`,
+        note:`${OUTGOING_MANAGED_MARKER}[TEN_DON_HANG:${orderName}]\nTạo từ XML hóa đơn đầu ra`,
         updated_at:new Date().toISOString()
       });
+      state.accounting.outgoingInvoices=Array.isArray(state.accounting.outgoingInvoices)?state.accounting.outgoingInvoices:[];
+      state.accounting.outgoingInvoices.unshift(inv);
       state.accounting.editingOutgoingId=inv.id;
       saveAccounting();
       await saveOutgoingInvoiceRemote(inv).catch(e=>{console.warn(e); state.accounting.syncStatus='Đã đọc XML trên máy, chưa đồng bộ được Supabase.';});
@@ -11742,18 +11741,6 @@ documentPrintCss = function(){
     inv.updated_at=new Date().toISOString();
     saveAccounting();
     saveOutgoingInvoiceRemote(inv).catch(e=>console.warn(e));
-  }
-  function outGCreateOrder(){
-    state.accounting.outgoingInvoices=Array.isArray(state.accounting.outgoingInvoices)?state.accounting.outgoingInvoices:[];
-    const name=`Đơn hàng ${accountingRows().length+1}`;
-    const inv=outgoingEmpty({customer_name:'',customer_tax_code:'',customer_address:'',item_summary:'',items_json:[],note:`${OUTGOING_MANAGED_MARKER}[TEN_DON_HANG:${name}]\nTạo mới bằng nút Thêm đơn hàng`});
-    state.accounting.outgoingInvoices.unshift(inv);
-    state.accounting.editingOutgoingId=inv.id;
-    state.accounting.syncStatus='Đã tạo đơn mới. Hãy chọn file XML cho đơn này.';
-    saveAccounting();
-    saveOutgoingInvoiceRemote(inv).catch(e=>console.warn(e));
-    render({force:true});
-    document.getElementById('outgXmlScanner')?.click();
   }
   renderOutgoingInvoices=function(){
     const rows=accountingRows();
@@ -11774,7 +11761,6 @@ documentPrintCss = function(){
       scan.dataset.boundOutG='1';
       scan.onchange=()=>{ if(scan.files?.[0])outGScanXml(scan.files[0]).finally(()=>{scan.value='';}); };
     }
-    document.querySelector('[data-outg-new-order]')?.addEventListener('click',outGCreateOrder);
     document.querySelector('[data-outg-order-select]')?.addEventListener('change',event=>{state.accounting.editingOutgoingId=event.target.value; saveAccounting(); render({force:true});});
     document.querySelectorAll('[data-outg-order-name]').forEach(input=>{
       input.onkeydown=event=>{if(event.key==='Enter')input.blur(); if(event.key==='Escape'){input.value=outGOrderName((state.accounting.outgoingInvoices||[]).find(x=>String(x.id)===String(input.dataset.outgOrderName))); input.blur();}};
