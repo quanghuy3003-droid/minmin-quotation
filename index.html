@@ -1596,6 +1596,8 @@ function mergeRemoteByUpdatedAt(remote,local){
   });
   return [...byId.values()].sort((a,b)=>accountingUpdatedAt(b).localeCompare(accountingUpdatedAt(a)));
 }
+const OUTGOING_MANAGED_MARKER='[TAO_TU_NUT_DON_HANG_V2]';
+function isManagedOutgoingInvoice(inv){ return String(inv?.note||'').includes(OUTGOING_MANAGED_MARKER); }
 function normalizeOutgoingInvoice(row={}){
   const goods=Number(row.goods_amount||row.items_subtotal||0);
   const itemsJson=Array.isArray(row.items_json)?row.items_json:(Array.isArray(row.itemsJson)?row.itemsJson:[]);
@@ -1617,10 +1619,12 @@ async function fetchAccountingFromSupabase(){
     supabaseRequest('/rest/v1/outgoing_invoices?select=*&order=updated_at.desc&limit=500').catch(()=>[]),
     supabaseRequest('/rest/v1/payments?select=*&order=updated_at.desc&limit=1000').catch(()=>[])
   ]);
-  return {outgoingInvoices:(outgoing||[]).map(normalizeOutgoingInvoice),payments:(payments||[]).map(normalizePayment)};
+  return {outgoingInvoices:(outgoing||[]).map(normalizeOutgoingInvoice).filter(isManagedOutgoingInvoice),payments:(payments||[]).map(normalizePayment)};
 }
 async function syncAccountingFromSupabase(options={}){
   const auto=!!options.auto, silent=!!options.silent, activityToken=options.activityToken;
+  state.accounting.outgoingInvoices=(state.accounting.outgoingInvoices||[]).filter(isManagedOutgoingInvoice);
+  if(state.accounting.editingOutgoingId&&!state.accounting.outgoingInvoices.some(inv=>String(inv.id)===String(state.accounting.editingOutgoingId)))state.accounting.editingOutgoingId='';
   const hadLocal=(state.accounting.outgoingInvoices||[]).length||(state.accounting.payments||[]).length;
   const before=JSON.stringify([state.accounting.outgoingInvoices||[],state.accounting.payments||[]]);
   state.accounting.syncStatus=auto?'Đang kiểm tra dữ liệu kế toán trên Supabase...':'Đang đồng bộ kế toán...';
@@ -1648,7 +1652,7 @@ async function syncAccountingFromSupabase(options={}){
     return false;
   }
 }
-async function saveOutgoingInvoiceRemote(inv){ await supabaseRequest('/rest/v1/outgoing_invoices?on_conflict=id',{method:'POST',headers:{'Content-Type':'application/json',Prefer:'resolution=merge-duplicates'},body:JSON.stringify(outgoingInvoiceToSupabaseRow(inv))}); }
+async function saveOutgoingInvoiceRemote(inv){ if(!isManagedOutgoingInvoice(inv))return; await supabaseRequest('/rest/v1/outgoing_invoices?on_conflict=id',{method:'POST',headers:{'Content-Type':'application/json',Prefer:'resolution=merge-duplicates'},body:JSON.stringify(outgoingInvoiceToSupabaseRow(inv))}); }
 async function deleteOutgoingInvoiceRemote(id){ await supabaseRequest(`/rest/v1/outgoing_invoices?id=eq.${encodeURIComponent(id)}`,{method:'DELETE'}); }
 async function savePaymentRemote(payment){ await supabaseRequest('/rest/v1/payments?on_conflict=id',{method:'POST',headers:{'Content-Type':'application/json',Prefer:'resolution=merge-duplicates'},body:JSON.stringify(paymentToSupabaseRow(payment))}); }
 async function deletePaymentRemote(id){ await supabaseRequest(`/rest/v1/payments?id=eq.${encodeURIComponent(id)}`,{method:'DELETE'}); }
@@ -2450,7 +2454,7 @@ function refreshOutgoingPaymentStatuses(){
 function accountingStatusClass(s){ return String(s||'').includes('Quá hạn')||String(s||'').includes('Thiếu')||String(s||'').includes('trùng')?'bg-coral/10 text-coral border-coral/20':String(s||'').includes('Đã')||String(s||'').includes('Hợp lệ')||String(s||'').includes('đủ')?'bg-mint/10 text-mint border-mint/20':String(s||'').includes('Chờ')||String(s||'').includes('một phần')?'bg-gold/20 text-[#8a5a00] border-gold/30':'bg-black/5 text-black/55 border-black/10'; }
 function accountingNav(){ const tabs=[['overview','Tổng quan'],['incoming','Hóa đơn đầu vào'],['outgoing','Hóa đơn đầu ra'],['debts','Công nợ'],['payments','Thanh toán'],['reports','Báo cáo']]; return `<div class="flex flex-wrap gap-2">${tabs.map(([id,label])=>`<button data-accounting-view="${id}" type="button" class="h-9 rounded-md px-3 text-xs font-extrabold ${state.accounting.view===id?'bg-ink text-white':'border border-black/10 bg-white text-ink hover:border-mint'}">${label}</button>`).join('')}</div>`; }
 function accountingFilters(){ const f=state.accounting.filters||{}; return `<div class="grid gap-2 rounded-lg border border-black/10 bg-white p-3 shadow-sm md:grid-cols-4"><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">Tháng</span><input data-accounting-filter="period" type="month" value="${esc(f.period||'')}" class="h-9 rounded-md border border-black/15 px-2 text-xs font-bold"/></label><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">Năm</span><input data-accounting-filter="year" type="number" value="${esc(f.year||'')}" class="h-9 rounded-md border border-black/15 px-2 text-xs font-bold"/></label><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">Tìm kiếm</span><input data-accounting-filter="search" value="${esc(f.search||'')}" class="h-9 rounded-md border border-black/15 px-2 text-xs font-bold"/></label><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">Trạng thái</span><select data-accounting-filter="status" class="h-9 rounded-md border border-black/15 px-2 text-xs font-bold"><option value="">Tất cả</option>${['Chờ xuất hóa đơn','Đã xuất hóa đơn','Đã gửi khách','Đã thanh toán','Thanh toán một phần','Chưa thanh toán','Quá hạn','Hủy'].map(s=>`<option ${f.status===s?'selected':''}>${s}</option>`).join('')}</select></label></div>`; }
-function accountingRows(){ const f=state.accounting.filters||{}, q=invoiceNorm(f.search); return (state.accounting.outgoingInvoices||[]).filter(x=>(!f.period||String(x.invoice_date||x.request_date||'').slice(0,7)===f.period)&&(!f.year||String(x.invoice_date||x.request_date||'').includes(f.year))&&(!f.status||x.status===f.status||x.payment_status===f.status)&&(!q||invoiceNorm([x.customer_name,x.customer_tax_code,x.invoice_number,x.quote_file_name,x.item_summary].join(' ')).includes(q))); }
+function accountingRows(){ const f=state.accounting.filters||{}, q=invoiceNorm(f.search); return (state.accounting.outgoingInvoices||[]).filter(isManagedOutgoingInvoice).filter(x=>(!f.period||String(x.invoice_date||x.request_date||'').slice(0,7)===f.period)&&(!f.year||String(x.invoice_date||x.request_date||'').includes(f.year))&&(!f.status||x.status===f.status||x.payment_status===f.status)&&(!q||invoiceNorm([x.customer_name,x.customer_tax_code,x.invoice_number,x.quote_file_name,x.item_summary].join(' ')).includes(q))); }
 function accountingOverview(){ const incoming=(state.inputInvoices.invoices||[]).filter(x=>accountingInPeriod(x.invoice_date||x.period)), outgoing=accountingRows(), payments=state.accounting.payments.filter(x=>accountingInPeriod(x.payment_date)), revenue=outgoing.reduce((s,x)=>s+Number(x.total_amount||0),0), outVat=outgoing.reduce((s,x)=>s+Number(x.vat_amount||0),0), inVat=incoming.reduce((s,x)=>s+Number(x.vat_amount||0),0), inputCost=incoming.reduce((s,x)=>s+Number(x.total_amount||0),0), receivable=outgoing.reduce((s,x)=>s+Math.max(0,Number(x.total_amount||0)-outgoingPaid(x)),0), payable=incoming.reduce((s,x)=>s+Math.max(0,Number(x.total_amount||0)-incomingPaid(x)),0), needReview=incoming.filter(x=>x.validation_status!=='Hợp lệ'||!x.reviewed_by_accountant).length+outgoing.filter(x=>!x.invoice_number||!x.customer_tax_code).length; const metric=(l,v,t='')=>`<div class="rounded-lg border border-black/10 ${t||'bg-white'} p-3 shadow-sm"><div class="text-[10px] font-bold uppercase text-black/40">${l}</div><div class="mt-1 text-lg font-extrabold">${v}</div></div>`; const top=list=>Object.values(list.reduce((a,x)=>{const k=x.customer_name||x.seller_name||'Không rõ'; a[k]=a[k]||{name:k,total:0}; a[k].total+=Number(x.total_amount||0); return a;},{})).sort((a,b)=>b.total-a.total).slice(0,5); return `<div class="grid gap-3">${accountingFilters()}<div class="grid gap-2 md:grid-cols-4">${metric('Doanh thu đầu ra',money(revenue),'bg-mint/10')}${metric('VAT đầu ra',money(outVat))}${metric('VAT đầu vào',money(inVat))}${metric('VAT tạm tính',money(Math.max(0,outVat-inVat)),'bg-gold/20')}${metric('Chi phí đầu vào',money(inputCost))}${metric('Phải thu',money(receivable),'bg-coral/10')}${metric('Phải trả',money(payable))}${metric('Cần kiểm tra',needReview,'bg-gold/20')}</div><div class="grid gap-3 lg:grid-cols-2"><div class="rounded-lg border border-black/10 bg-white p-3 shadow-sm"><h2 class="text-base font-extrabold">Top khách hàng</h2>${top(outgoing).map(x=>`<div class="mt-2 flex justify-between gap-3 border-b border-black/5 pb-2"><b>${esc(x.name)}</b><span>${money(x.total)}</span></div>`).join('')||'<p class="mt-2 text-sm font-bold text-black/40">Chưa có dữ liệu.</p>'}</div><div class="rounded-lg border border-black/10 bg-white p-3 shadow-sm"><h2 class="text-base font-extrabold">Top nhà cung cấp</h2>${top(incoming).map(x=>`<div class="mt-2 flex justify-between gap-3 border-b border-black/5 pb-2"><b>${esc(x.name)}</b><span>${money(x.total)}</span></div>`).join('')||'<p class="mt-2 text-sm font-bold text-black/40">Chưa có dữ liệu.</p>'}</div></div></div>`; }
 function outgoingFormulaBox(inv){
   const goods=Number(inv.goods_amount||0);
@@ -11546,15 +11550,15 @@ documentPrintCss = function(){
     return !!state.ui?.outgoingInvoiceCollapsed?.[String(inv?.id||'')];
   }
   function outGOrderName(inv){
-    const marker=String(inv?.note||'').match(/^\[TEN_DON_HANG:([^\]]+)\]/);
+    const marker=String(inv?.note||'').match(/\[TEN_DON_HANG:([^\]]+)\]/);
     if(marker?.[1])return marker[1].trim();
     const rows=accountingRows(), index=Math.max(0,rows.findIndex(x=>String(x.id)===String(inv?.id)));
     return `Đơn hàng ${index+1}`;
   }
   function outGSetOrderName(inv,value){
     const name=String(value||'').replace(/[\[\]\r\n]+/g,' ').replace(/\s+/g,' ').trim().slice(0,80)||'Đơn hàng chưa đặt tên';
-    const note=String(inv?.note||'').replace(/^\[TEN_DON_HANG:[^\]]+\]\s*/,'').trim();
-    inv.note=`[TEN_DON_HANG:${name}]${note?`\n${note}`:''}`;
+    const note=String(inv?.note||'').replace(/\[TEN_DON_HANG:[^\]]+\]\s*/,'').replace(OUTGOING_MANAGED_MARKER,'').trim();
+    inv.note=`${OUTGOING_MANAGED_MARKER}[TEN_DON_HANG:${name}]${note?`\n${note}`:''}`;
     return name;
   }
   function outGHeader(inv){
@@ -11679,7 +11683,7 @@ documentPrintCss = function(){
         <div class="flex flex-wrap gap-2">
           ${rows.length?`<select data-outg-order-select aria-label="Chọn đơn hàng" class="h-9 max-w-[260px] rounded-md border border-black/15 bg-white px-2 text-xs font-extrabold">${rows.map(row=>`<option value="${esc(row.id)}" ${String(row.id)===String(inv?.id)?'selected':''}>${esc(outGOrderName(row))} · HĐ ${esc(row.invoice_number||'chưa có số')}</option>`).join('')}</select>`:''}
           <button data-outg-new-order type="button" class="h-9 rounded-md border border-sky-300 bg-sky-50 px-3 text-xs font-extrabold text-sky-800">+ Tạo đơn hàng mới</button>
-          <label class="inline-flex h-9 cursor-pointer items-center rounded-md bg-ink px-3 text-xs font-extrabold text-white">Quét XML hóa đơn<input id="outgXmlScanner" type="file" accept=".xml,text/xml,application/xml" class="hidden"/></label>
+          ${inv?`<label class="inline-flex h-9 cursor-pointer items-center rounded-md bg-ink px-3 text-xs font-extrabold text-white">Quét XML hóa đơn<input id="outgXmlScanner" type="file" accept=".xml,text/xml,application/xml" class="hidden"/></label>`:'<button type="button" disabled title="Tạo đơn hàng mới trước khi quét XML" class="h-9 cursor-not-allowed rounded-md bg-black/15 px-3 text-xs font-extrabold text-black/40">Quét XML hóa đơn</button>'}
           ${inv?`<label class="inline-flex h-9 cursor-pointer items-center rounded-md border border-mint/30 bg-white px-3 text-xs font-extrabold text-mint">Gắn PDF<input data-sale-order-file="${esc(inv.id)}" data-file-type="pdf" type="file" accept="application/pdf,.pdf" class="hidden"/></label>`:''}
         </div>
       </div>
@@ -11687,6 +11691,9 @@ documentPrintCss = function(){
   }
   async function outGScanXml(file){
     if(!file)return;
+    const inv=accountingRows().find(x=>String(x.id)===String(state.accounting.editingOutgoingId));
+    if(!inv){alert('Hãy bấm “Tạo đơn hàng mới” trước, sau đó mới quét XML vào đơn đó.'); return;}
+    if((inv.xml_url||outGLines(inv).length)&&!confirm(`Đơn “${outGOrderName(inv)}” đã có dữ liệu. Thay nội dung bằng XML mới?`))return;
     state.accounting.syncStatus='Đang đọc XML hóa đơn đầu ra...';
     render({force:true});
     try{
@@ -11694,8 +11701,8 @@ documentPrintCss = function(){
       const uploaded=await uploadFileToSupabaseStorage(file,'sale-invoice',file.name||'outgoing-xml');
       const url=uploaded?.publicUrl||uploaded?.viewUrl||uploaded?.downloadUrl||uploaded?.url||'';
       const parsed=parseVietnamInvoiceXml(xml,{name:file.name||'',url,xmlUrl:url,pdfUrl:''});
-      const nextName=`Đơn hàng ${(state.accounting.outgoingInvoices||[]).length+1}`;
-      const inv=outgoingEmpty({
+      const orderName=outGOrderName(inv), preservedNote=String(inv.note||'').replace(OUTGOING_MANAGED_MARKER,'').replace(/\[TEN_DON_HANG:[^\]]+\]\s*/,'').trim();
+      Object.assign(inv,{
         request_date:parsed.invoice_date||todayIso(),
         invoice_date:parsed.invoice_date||'',
         invoice_number:parsed.invoice_number||'',
@@ -11715,10 +11722,9 @@ documentPrintCss = function(){
         status:'Đã xuất hóa đơn',
         payment_status:'Chưa thanh toán',
         items_json:(parsed.items||[]).map((it,i)=>outGNormLine({...it,id:uid()},i)),
-        note:`[TEN_DON_HANG:${nextName}]\nQuét từ XML hóa đơn đầu ra`
+        note:`${OUTGOING_MANAGED_MARKER}[TEN_DON_HANG:${orderName}]\n${preservedNote||'Quét từ XML hóa đơn đầu ra'}`,
+        updated_at:new Date().toISOString()
       });
-      state.accounting.outgoingInvoices=Array.isArray(state.accounting.outgoingInvoices)?state.accounting.outgoingInvoices:[];
-      state.accounting.outgoingInvoices.unshift(inv);
       state.accounting.editingOutgoingId=inv.id;
       saveAccounting();
       await saveOutgoingInvoiceRemote(inv).catch(e=>{console.warn(e); state.accounting.syncStatus='Đã đọc XML trên máy, chưa đồng bộ được Supabase.';});
@@ -11739,8 +11745,8 @@ documentPrintCss = function(){
   }
   function outGCreateOrder(){
     state.accounting.outgoingInvoices=Array.isArray(state.accounting.outgoingInvoices)?state.accounting.outgoingInvoices:[];
-    const name=`Đơn hàng ${state.accounting.outgoingInvoices.length+1}`;
-    const inv=outgoingEmpty({customer_name:'',customer_tax_code:'',customer_address:'',item_summary:'',items_json:[],note:`[TEN_DON_HANG:${name}]\nTạo mới thủ công`});
+    const name=`Đơn hàng ${accountingRows().length+1}`;
+    const inv=outgoingEmpty({customer_name:'',customer_tax_code:'',customer_address:'',item_summary:'',items_json:[],note:`${OUTGOING_MANAGED_MARKER}[TEN_DON_HANG:${name}]\nTạo mới bằng nút Thêm đơn hàng`});
     state.accounting.outgoingInvoices.unshift(inv);
     state.accounting.editingOutgoingId=inv.id;
     saveAccounting();
@@ -11750,7 +11756,7 @@ documentPrintCss = function(){
   }
   renderOutgoingInvoices=function(){
     const rows=accountingRows();
-    const active=state.accounting.editingOutgoingId?(state.accounting.outgoingInvoices||[]).find(x=>String(x.id)===String(state.accounting.editingOutgoingId)):rows[0];
+    const active=state.accounting.editingOutgoingId?rows.find(x=>String(x.id)===String(state.accounting.editingOutgoingId)):rows[0];
     return `<div class="grid gap-3">
       ${outGImportPanel(active,rows)}
       ${outGHeader(active)}
