@@ -11502,27 +11502,34 @@ documentPrintCss = function(){
   function outGMetric(label,value,tone='bg-white'){
     return `<div class="rounded-lg border border-black/10 ${tone} p-3 shadow-sm"><div class="text-[10px] font-bold uppercase text-black/40">${esc(label)}</div><div class="mt-1 text-base font-black">${value}</div></div>`;
   }
+  function outGMatchProgress(inv){
+    const actionable=outGLines(inv).filter(line=>['product','shipping'].includes(outGLineKind(line)));
+    const matched=actionable.filter(line=>outGLineKind(line)==='shipping'?(line.selected_input_invoice_ids||[]).length:(line.selected_stock_codes||[]).length).length;
+    return {matched,total:actionable.length,complete:!!actionable.length&&matched===actionable.length};
+  }
+  function outGDetailsCollapsed(inv){
+    return !!state.ui?.outgoingInvoiceCollapsed?.[String(inv?.id||'')];
+  }
   function outGHeader(inv){
     if(!inv)return `<div class="rounded-lg border border-dashed border-black/15 bg-white p-6 text-center text-sm font-bold text-black/45">Chưa quét hóa đơn đầu ra. Bấm Quét XML hóa đơn để bắt đầu.</div>`;
-    const f=outGFinance(inv), paid=outgoingPaid(inv), remain=Math.max(0,Number(inv.total_amount||0)-paid);
-    return `<div class="grid gap-3 lg:grid-cols-[minmax(0,1fr)_360px]">
-      <div class="rounded-lg border border-black/10 bg-white p-3 shadow-sm">
-        <div class="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h2 class="text-base font-black">Hóa đơn đầu ra ${esc(inv.invoice_number||'chưa có số')}</h2>
-            <p class="mt-1 text-xs font-bold text-black/45">${esc(inv.customer_name||'Chưa có khách hàng')} · MST ${esc(inv.customer_tax_code||'thiếu')}</p>
-          </div>
-          <div class="flex flex-wrap gap-1">${outGBadge(inv.xml_url?'XML đã quét':'XML chưa có',inv.xml_url?'bg-mint/10 text-mint border-mint/25':'bg-orange-50 text-orange-600 border-orange-200')}${outGBadge(inv.pdf_url?'PDF đã có':'PDF chưa có',inv.pdf_url?'bg-mint/10 text-mint border-mint/25':'bg-orange-50 text-orange-600 border-orange-200')}</div>
+    const f=outGFinance(inv), progress=outGMatchProgress(inv), collapsed=outGDetailsCollapsed(inv);
+    const buttonText=collapsed?'Mở đối chiếu':(progress.complete?'Hoàn tất & thu gọn':'Thu gọn chi tiết');
+    return `<section class="rounded-xl border ${progress.complete?'border-mint/30':'border-black/10'} bg-white p-3 shadow-sm">
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div class="min-w-0">
+          <div class="flex flex-wrap items-center gap-2"><h2 class="text-base font-black">Đơn hàng · HĐ ${esc(inv.invoice_number||'chưa có số')}</h2>${outGBadge(progress.complete?'Đã đối chiếu':'Đang đối chiếu',progress.complete?'bg-mint/10 text-mint border-mint/25':'bg-orange-50 text-orange-600 border-orange-200')}</div>
+          <p class="mt-1 truncate text-xs font-bold text-black/45">${esc(inv.customer_name||'Chưa có khách hàng')} · ${esc(compactDate(inv.invoice_date||inv.request_date))} · Tổng ${money(inv.total_amount)}${inv.invoice_series?` · KH ${esc(inv.invoice_series)}`:''}</p>
         </div>
-        <div class="mt-3 grid gap-2 md:grid-cols-4">
-          <div><div class="text-[10px] font-bold uppercase text-black/40">Ngày hóa đơn</div><b>${esc(compactDate(inv.invoice_date||inv.request_date))}</b></div>
-          <div><div class="text-[10px] font-bold uppercase text-black/40">Ký hiệu</div><b>${esc(inv.invoice_series||'--')}</b></div>
-          <div><div class="text-[10px] font-bold uppercase text-black/40">Tổng sau VAT</div><b>${money(inv.total_amount)}</b></div>
-          <div><div class="text-[10px] font-bold uppercase text-black/40">Còn phải thu</div><b class="${remain?'text-coral':'text-mint'}">${money(remain)}</b></div>
-        </div>
+        <div class="flex flex-wrap items-center gap-2"><span class="text-xs font-extrabold ${progress.complete?'text-mint':'text-black/45'}">Đã gắn ${progress.matched}/${progress.total} dòng</span><button data-outg-toggle-details="${esc(inv.id)}" type="button" aria-expanded="${collapsed?'false':'true'}" class="h-9 rounded-md ${progress.complete&&!collapsed?'bg-mint text-white':'border border-black/15 bg-white text-ink'} px-3 text-xs font-extrabold">${buttonText} ${collapsed?'▾':'▴'}</button></div>
       </div>
-      <div class="grid gap-2">${outGMetric('VAT đầu ra',money(f.saleVat),'bg-white')}${outGMetric('VAT đầu vào đã khớp',money(f.inputVat),'bg-mint/10')}${outGMetric('Giá vốn / chi phí đầu vào',money(f.inputNet),'bg-sky-50')}${outGMetric('VAT chênh lệch',money(f.vatDiff),'bg-gold/20')}${outGMetric('Lợi nhuận = trước VAT - chi phí',money(f.profit),f.profit>=0?'bg-mint/10':'bg-coral/10')}</div>
-    </div>`;
+      <div class="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4">
+        ${outGMetric('VAT ra',money(f.saleVat),'bg-white')}
+        ${outGMetric('VAT vào',money(f.inputVat),'bg-mint/10')}
+        ${outGMetric('Chênh lệch VAT',money(f.vatDiff),'bg-gold/20')}
+        <div class="rounded-lg border border-black/10 ${f.profit>=0?'bg-mint/10':'bg-coral/10'} p-3 shadow-sm"><div class="text-[10px] font-bold uppercase text-black/40">Lợi nhuận</div><div class="mt-1 text-base font-black ${f.profit>=0?'text-mint':'text-coral'}">${money(f.profit)}</div><div class="mt-1 text-[10px] font-bold text-black/45">Doanh thu ${money(f.saleNet)} − chi phí ${money(f.inputNet)}</div></div>
+      </div>
+      ${collapsed?'<div class="mt-2 text-[11px] font-bold text-black/40">Chi tiết sản phẩm đã được thu gọn. Bấm “Mở đối chiếu” để xem hoặc chỉnh sửa.</div>':''}
+    </section>`;
   }
   function outGLineCost(line){
     const amounts=outGSignedLineAmounts(line);
@@ -11622,14 +11629,13 @@ documentPrintCss = function(){
   }
   function outGImportPanel(inv){
     return `<div class="rounded-lg border border-black/10 bg-white p-3 shadow-sm">
-      <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-        <div><h2 class="text-base font-black">Đầu ra mới</h2><p class="mt-1 text-xs font-bold text-black/45">Quét XML, ghép sản phẩm với giá vốn và ghép phí vận chuyển với hóa đơn đầu vào để tính đúng lợi nhuận.</p></div>
+      <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div><h2 class="text-sm font-black">Thêm hóa đơn đầu ra</h2><p class="mt-1 text-xs font-bold text-black/45">Quét XML để tạo đơn hàng và đối chiếu chi phí.</p></div>
         <div class="flex flex-wrap gap-2">
           <label class="inline-flex h-9 cursor-pointer items-center rounded-md bg-ink px-3 text-xs font-extrabold text-white">Quét XML hóa đơn<input id="outgXmlScanner" type="file" accept=".xml,text/xml,application/xml" class="hidden"/></label>
           ${inv?`<label class="inline-flex h-9 cursor-pointer items-center rounded-md border border-mint/30 bg-white px-3 text-xs font-extrabold text-mint">Gắn PDF<input data-sale-order-file="${esc(inv.id)}" data-file-type="pdf" type="file" accept="application/pdf,.pdf" class="hidden"/></label>`:''}
         </div>
       </div>
-      <div class="mt-3 rounded-md border border-mint/20 bg-mint/[0.04] p-3 text-xs font-bold text-black/55">Công thức: lợi nhuận = doanh thu trước VAT trên hóa đơn − giá vốn sản phẩm − chi phí vận chuyển đầu vào. Chiết khấu là khoản giảm doanh thu và không cần hình ảnh.</div>
     </div>`;
   }
   async function outGScanXml(file){
@@ -11686,15 +11692,13 @@ documentPrintCss = function(){
   renderOutgoingInvoices=function(){
     const rows=accountingRows();
     const active=state.accounting.editingOutgoingId?(state.accounting.outgoingInvoices||[]).find(x=>String(x.id)===String(state.accounting.editingOutgoingId)):rows[0];
-    const totals=rows.reduce((a,x)=>{const f=outGFinance(x); a.sale+=f.saleTotal; a.cost+=f.inputNet; a.vatOut+=f.saleVat; a.vatIn+=f.inputVat; a.profit+=f.profit; return a;},{sale:0,cost:0,vatOut:0,vatIn:0,profit:0});
     return `<div class="grid gap-3">
-      <div class="grid gap-2 md:grid-cols-5">${outGMetric('Tổng đầu ra',money(totals.sale),'bg-white')}${outGMetric('Giá vốn / chi phí đầu vào',money(totals.cost),'bg-sky-50')}${outGMetric('VAT đầu ra',money(totals.vatOut),'bg-white')}${outGMetric('VAT chênh lệch',money(totals.vatOut-totals.vatIn),'bg-gold/20')}${outGMetric('Lợi nhuận sau chi phí',money(totals.profit),totals.profit>=0?'bg-mint/10':'bg-coral/10')}</div>
       ${outGImportPanel(active)}
       ${outGHeader(active)}
-      ${active?outGLinesTable(active):''}
+      ${active&&!outGDetailsCollapsed(active)?outGLinesTable(active):''}
       ${outGPickerModal()}
       ${outGInputInvoicePickerModal()}
-      <div class="rounded-lg border border-black/10 bg-white p-3 shadow-sm"><div class="mb-2 flex items-center justify-between"><h2 class="text-sm font-black uppercase">Hóa đơn đầu ra đã quét</h2><span class="rounded-md border border-black/10 bg-[#F7F7F2] px-2 py-1 text-[10px] font-bold">${rows.length} dòng</span></div><div class="grid gap-2">${rows.map(inv=>{const f=outGFinance(inv); return `<button data-outg-open-invoice="${esc(inv.id)}" type="button" class="grid gap-2 rounded-md border ${String(active?.id)===String(inv.id)?'border-mint bg-mint/5':'border-black/10 bg-white'} p-3 text-left hover:border-mint/40 md:grid-cols-[1fr_120px_120px_120px] md:items-center"><div><b>${esc(inv.invoice_number||'Chưa có số')} · ${esc(inv.customer_name||'--')}</b><div class="mt-1 text-xs font-bold text-black/45">${esc(compactDate(inv.invoice_date||inv.request_date))} · ${outGLines(inv).length} dòng sản phẩm</div></div><div class="text-right text-xs font-black">${money(inv.total_amount)}</div><div class="text-right text-xs font-black text-[#8a5a00]">VAT lệch ${money(f.vatDiff)}</div><div class="text-right text-xs font-black ${f.profit>=0?'text-mint':'text-coral'}">LN ${money(f.profit)}</div></button>`;}).join('')||'<div class="rounded-md border border-dashed border-black/15 bg-[#F7F7F2] p-6 text-center text-sm font-bold text-black/45">Chưa có hóa đơn đầu ra.</div>'}</div></div>
+      <div class="rounded-lg border border-black/10 bg-white p-3 shadow-sm"><div class="mb-2 flex items-center justify-between"><h2 class="text-sm font-black">Các hóa đơn</h2><span class="rounded-md border border-black/10 bg-[#F7F7F2] px-2 py-1 text-[10px] font-bold">${rows.length}</span></div><div class="grid gap-2">${rows.map(inv=>{const f=outGFinance(inv), p=outGMatchProgress(inv); return `<button data-outg-open-invoice="${esc(inv.id)}" type="button" class="grid gap-2 rounded-md border ${String(active?.id)===String(inv.id)?'border-mint bg-mint/5':'border-black/10 bg-white'} p-3 text-left hover:border-mint/40 md:grid-cols-[minmax(0,1fr)_110px_110px_110px] md:items-center"><div class="min-w-0"><b class="block truncate">HĐ ${esc(inv.invoice_number||'Chưa có số')} · ${esc(inv.customer_name||'--')}</b><div class="mt-1 text-xs font-bold text-black/45">${esc(compactDate(inv.invoice_date||inv.request_date))} · gắn ${p.matched}/${p.total}</div></div><div class="text-right text-xs font-black">${money(inv.total_amount)}</div><div class="text-right text-xs font-black text-[#8a5a00]">VAT lệch ${money(f.vatDiff)}</div><div class="text-right text-xs font-black ${f.profit>=0?'text-mint':'text-coral'}">LN ${money(f.profit)}</div></button>`;}).join('')||'<div class="rounded-md border border-dashed border-black/15 bg-[#F7F7F2] p-6 text-center text-sm font-bold text-black/45">Chưa có hóa đơn đầu ra.</div>'}</div></div>
     </div>`;
   };
   const prevBindOutG=bind;
@@ -11706,6 +11710,7 @@ documentPrintCss = function(){
       scan.onchange=()=>{ if(scan.files?.[0])outGScanXml(scan.files[0]).finally(()=>{scan.value='';}); };
     }
     document.querySelectorAll('[data-outg-open-invoice]').forEach(btn=>btn.onclick=()=>{state.accounting.editingOutgoingId=btn.dataset.outgOpenInvoice; saveAccounting(); render({force:true});});
+    document.querySelectorAll('[data-outg-toggle-details]').forEach(btn=>btn.onclick=()=>{state.ui=state.ui||{}; state.ui.outgoingInvoiceCollapsed=state.ui.outgoingInvoiceCollapsed||{}; const id=String(btn.dataset.outgToggleDetails); state.ui.outgoingInvoiceCollapsed[id]=!state.ui.outgoingInvoiceCollapsed[id]; render({force:true});});
     document.querySelectorAll('[data-outg-line-picker]').forEach(btn=>btn.onclick=()=>{state.ui=state.ui||{}; state.ui.outgoingVatPicker={invoiceId:btn.dataset.outgLinePicker,lineId:btn.dataset.lineId,search:''}; render({force:true});});
     document.querySelectorAll('[data-outg-picker-close]').forEach(btn=>btn.onclick=()=>{state.ui.outgoingVatPicker=null; render({force:true});});
     document.querySelectorAll('[data-outg-picker-search]').forEach(inp=>inp.oninput=()=>{state.ui.outgoingVatPicker={...(state.ui.outgoingVatPicker||{}),search:inp.value}; render({force:true});});

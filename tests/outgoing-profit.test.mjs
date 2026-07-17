@@ -48,5 +48,13 @@ assert.equal(result.profit,7000000,'Profit must equal invoice net revenue minus 
 assert.match(html,/Chọn hóa đơn đầu vào vận chuyển/);
 assert.match(html,/Khoản chiết khấu giảm doanh thu · không cần hình ảnh/);
 assert.match(html,/selected_input_invoice_ids/);
+assert.match(html,/data-outg-toggle-details=/,'Each invoice needs an explicit detail collapse control');
+assert.match(html,/Hoàn tất & thu gọn/,'Completed matching needs a compact completion action');
+assert.match(html,/Đã gắn \$\{progress\.matched\}\/\$\{progress\.total\} dòng/,'Invoice card needs visible matching progress');
+assert.match(html,/outGMetric\('VAT ra'/);
+assert.match(html,/outGMetric\('VAT vào'/);
+assert.match(html,/outGMetric\('Chênh lệch VAT'/);
+assert.match(html,/>Lợi nhuận</);
+assert.match(html,/active&&!outGDetailsCollapsed\(active\)\?outGLinesTable\(active\):''/,'Collapsed invoices must not render the detail table');
 
 console.log('Outgoing profit and cost classification checks passed.');
