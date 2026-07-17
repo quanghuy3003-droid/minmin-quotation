@@ -11549,10 +11549,13 @@ documentPrintCss = function(){
   function outGDetailsCollapsed(inv){
     return !!state.ui?.outgoingInvoiceCollapsed?.[String(inv?.id||'')];
   }
+  function outGManagedRows(){
+    return (state.accounting?.outgoingInvoices||[]).filter(isManagedOutgoingInvoice).sort((a,b)=>accountingUpdatedAt(b).localeCompare(accountingUpdatedAt(a)));
+  }
   function outGOrderName(inv){
     const marker=String(inv?.note||'').match(/\[TEN_DON_HANG:([^\]]+)\]/);
     if(marker?.[1])return marker[1].trim();
-    const rows=accountingRows(), index=Math.max(0,rows.findIndex(x=>String(x.id)===String(inv?.id)));
+    const rows=outGManagedRows(), index=Math.max(0,rows.findIndex(x=>String(x.id)===String(inv?.id)));
     return `Đơn hàng ${index+1}`;
   }
   function outGSetOrderName(inv,value){
@@ -11699,7 +11702,7 @@ documentPrintCss = function(){
       if(!parsed.invoice_number&&!(parsed.items||[]).length&&!Number(parsed.total_amount||0))throw new Error('File XML không có dữ liệu hóa đơn hợp lệ.');
       const uploaded=await uploadFileToSupabaseStorage(file,'sale-invoice',file.name||'outgoing-xml');
       const url=uploaded?.publicUrl||uploaded?.viewUrl||uploaded?.downloadUrl||uploaded?.url||'';
-      const orderName=`${accountingRows().length+1}`;
+      const orderName=`${outGManagedRows().length+1}`;
       const inv=outgoingEmpty({
         request_date:parsed.invoice_date||todayIso(),
         invoice_date:parsed.invoice_date||'',
@@ -11744,7 +11747,7 @@ documentPrintCss = function(){
     saveOutgoingInvoiceRemote(inv).catch(e=>console.warn(e));
   }
   renderOutgoingInvoices=function(){
-    const rows=accountingRows();
+    const rows=outGManagedRows();
     const active=state.accounting.editingOutgoingId?rows.find(x=>String(x.id)===String(state.accounting.editingOutgoingId)):rows[0];
     return `<div class="grid gap-3">
       ${outGImportPanel(active,rows)}
