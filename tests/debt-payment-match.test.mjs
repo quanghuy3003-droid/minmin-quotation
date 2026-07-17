@@ -12,7 +12,7 @@ const between=(start,end)=>{
 const candidates=between('function debtCompatiblePayments','function debtPaymentPicker');
 assert.match(candidates,/kind==='receivable'\?'outgoing':'incoming'/,'Receivables and payables must target different invoice types');
 assert.match(candidates,/kind==='receivable'\?'thu':'chi'/,'Receivables match receipts while payables match expenses');
-assert.match(candidates,/payment\.related_id&&!/,'Payments already linked to another invoice must be excluded');
+assert.match(candidates,/paymentRelatedIds\(payment\)\.length>=2/,'Only payments already linked to two other invoices must be excluded');
 assert.match(candidates,/Math\.abs\(amount-remain\)<1/,'Exact remaining amounts must receive compatibility priority');
 
 const picker=between('function debtPaymentPicker','async function debtLinkPayment');
@@ -21,7 +21,7 @@ assert.match(picker,/Ch\u1ecdn giao d\u1ecbch ph\u00f9 h\u1ee3p|Chọn giao dị
 
 const link=between('async function debtLinkPayment','renderDebts=function');
 assert.match(link,/payment\.related_type=relatedType/);
-assert.match(link,/payment\.related_id=String\(inv\.id\)/);
+assert.match(link,/ids\.slice\(0,2\)\.join\(','\)/,'Debt matching must preserve at most two invoice links');
 assert.match(link,/savePaymentRemote\(payment\)/,'The selected payment link must sync remotely');
 assert.match(link,/saveOutgoingInvoiceRemote\(inv\):saveInputInvoiceRemote\(inv\)/,'Both sales and purchase invoices must sync after matching');
 
