@@ -11762,6 +11762,54 @@ documentPrintCss = function(){
     render({force:true});
     await deleteOutgoingInvoiceRemote(id).catch(e=>{state.accounting.syncStatus='Đã xóa đơn trên máy, chưa xóa được trên Supabase.'; console.warn(e); render({force:true});});
   }
+  function debtCompatiblePayments(kind,inv){
+    const relatedType=kind==='receivable'?'outgoing':'incoming';
+    const wanted=kind==='receivable'?'thu':'chi';
+    const remain=Math.max(0,Number(inv?.total_amount||0)-(relatedType==='outgoing'?outgoingPaid(inv):incomingPaid(inv)));
+    const partner=invoiceNorm(relatedType==='outgoing'?inv?.customer_name:inv?.seller_name);
+    return (state.accounting?.payments||[]).filter(payment=>{
+      const type=invoiceNorm(payment.payment_type||payment.type||'');
+      if(!type.includes(wanted))return false;
+      if(payment.related_id&&!(String(payment.related_type||'')===relatedType&&String(payment.related_id)===String(inv.id)))return false;
+      return Number(payment.amount||0)>0;
+    }).map(payment=>{
+      const text=invoiceNorm([payment.related_label,payment.payer_payee,payment.note,payment.method].join(' '));
+      const amount=Number(payment.amount||0), exact=Math.abs(amount-remain)<1, partnerMatch=!!partner&&text.includes(partner);
+      return {payment,score:(payment.related_id?8:0)+(exact?4:0)+(partnerMatch?2:0)};
+    }).sort((a,b)=>b.score-a.score||String(b.payment.payment_date||b.payment.date||'').localeCompare(String(a.payment.payment_date||a.payment.date||''))).map(x=>x.payment).slice(0,60);
+  }
+  function debtPaymentPicker(kind,inv){
+    const relatedType=kind==='receivable'?'outgoing':'incoming';
+    const paid=relatedType==='outgoing'?outgoingPaid(inv):incomingPaid(inv), remain=Math.max(0,Number(inv.total_amount||0)-paid);
+    if(remain<=0)return '<span class="text-xs font-extrabold text-mint">✓ Đã đối chiếu đủ</span>';
+    const choices=debtCompatiblePayments(kind,inv);
+    return `<select data-debt-payment-pick="${esc(inv.id)}" data-debt-kind="${esc(kind)}" aria-label="Chọn thanh toán tương thích" class="h-8 min-w-[220px] rounded-md border border-gold/40 bg-gold/10 px-2 text-[11px] font-extrabold text-ink"><option value="">${choices.length?'Chọn giao dịch phù hợp':'Chưa có giao dịch phù hợp'}</option>${choices.map(payment=>{const selected=String(payment.related_type||'')===relatedType&&String(payment.related_id||'')===String(inv.id); return `<option value="${esc(payment.id)}" ${selected?'selected':''}>${esc(compactDate(payment.payment_date||payment.date))} · ${money(payment.amount)} · ${esc(String(payment.related_label||payment.note||payment.method||'Thanh toán').slice(0,48))}</option>`;}).join('')}</select>`;
+  }
+  async function debtLinkPayment(kind,invoiceId,paymentId){
+    if(!paymentId)return;
+    const relatedType=kind==='receivable'?'outgoing':'incoming';
+    const list=relatedType==='outgoing'?(state.accounting.outgoingInvoices||[]):(state.inputInvoices.invoices||[]);
+    const inv=list.find(x=>String(x.id)===String(invoiceId));
+    const payment=(state.accounting.payments||[]).find(x=>String(x.id)===String(paymentId));
+    if(!inv||!payment)return;
+    payment.related_type=relatedType;
+    payment.related_id=String(inv.id);
+    payment.related_label=relatedType==='outgoing'?(inv.customer_name||inv.invoice_number||'Hóa đơn bán ra'):(inv.seller_name||inv.invoice_number||'Hóa đơn mua vào');
+    payment.updated_at=new Date().toISOString();
+    inv.payment_status=debtStatus(inv.total_amount,relatedType==='outgoing'?outgoingPaid(inv):incomingPaid(inv),inv.due_date);
+    inv.updated_at=new Date().toISOString();
+    if(relatedType==='outgoing'&&inv.payment_status==='Đã thanh toán')inv.status='Đã thanh toán';
+    saveAccounting();
+    if(relatedType==='incoming')saveInputInvoices();
+    render({force:true});
+    await Promise.all([savePaymentRemote(payment),relatedType==='outgoing'?saveOutgoingInvoiceRemote(inv):saveInputInvoiceRemote(inv)]).catch(e=>{state.accounting.syncStatus='Đã đối chiếu trên máy, chưa đồng bộ được Supabase.'; console.warn(e); render({force:true});});
+  }
+  renderDebts=function(){
+    const outs=accountingRows().map(inv=>({kind:'receivable',label:'Phải thu',inv,name:inv.customer_name,code:inv.invoice_number||inv.order_code,total:Number(inv.total_amount||0),paid:outgoingPaid(inv),status:debtStatus(inv.total_amount,outgoingPaid(inv),inv.due_date)}));
+    const ins=(state.inputInvoices.invoices||[]).filter(inv=>accountingInPeriod(inv.invoice_date||inv.period)).map(inv=>({kind:'payable',label:'Phải trả',inv,name:inv.seller_name,code:inv.invoice_number,total:Number(inv.total_amount||0),paid:incomingPaid(inv),status:debtStatus(inv.total_amount,incomingPaid(inv))}));
+    const rows=[...outs,...ins];
+    return `<div class="overflow-x-auto rounded-lg border border-black/10 bg-white p-3 shadow-sm">${accountingFilters()}<table class="mt-3 w-full min-w-[1120px] border-collapse text-sm"><thead><tr class="border-b border-black/10 text-left text-xs uppercase text-black/45"><th class="py-2 pr-2">Loại</th><th class="py-2 pr-2">Đối tượng</th><th class="py-2 pr-2">Mã/HĐ</th><th class="py-2 pr-2 text-right">Tổng</th><th class="py-2 pr-2 text-right">Đã TT</th><th class="py-2 pr-2 text-right">Còn lại</th><th class="py-2 pr-2">Trạng thái</th><th class="py-2">Đối chiếu thanh toán</th></tr></thead><tbody>${rows.map(row=>`<tr class="border-b border-black/10"><td class="py-2 pr-2 font-extrabold">${esc(row.label)}</td><td class="py-2 pr-2 font-bold">${esc(row.name||'--')}</td><td class="py-2 pr-2">${esc(row.code||'--')}</td><td class="py-2 pr-2 text-right font-bold">${money(row.total)}</td><td class="py-2 pr-2 text-right font-bold">${money(row.paid)}</td><td class="py-2 pr-2 text-right font-extrabold">${money(Math.max(0,row.total-row.paid))}</td><td class="py-2 pr-2"><span class="rounded-md border px-2 py-1 text-xs font-extrabold ${accountingStatusClass(row.status)}">${esc(row.status)}</span></td><td class="py-2">${debtPaymentPicker(row.kind,row.inv)}</td></tr>`).join('')}</tbody></table></div>`;
+  };
   renderOutgoingInvoices=function(){
     const rows=outGManagedRows();
     return `<div class="grid gap-3">
@@ -11780,6 +11828,7 @@ documentPrintCss = function(){
       scan.onchange=()=>{ if(scan.files?.[0])outGScanXml(scan.files[0]).finally(()=>{scan.value='';}); };
     }
     document.querySelectorAll('[data-outg-delete-order]').forEach(btn=>btn.onclick=()=>outGDeleteOrder(btn.dataset.outgDeleteOrder));
+    document.querySelectorAll('[data-debt-payment-pick]').forEach(select=>select.onchange=()=>debtLinkPayment(select.dataset.debtKind,select.dataset.debtPaymentPick,select.value));
     document.querySelectorAll('[data-outg-order-name]').forEach(input=>{
       input.onkeydown=event=>{if(event.key==='Enter')input.blur(); if(event.key==='Escape'){input.value=outGOrderName((state.accounting.outgoingInvoices||[]).find(x=>String(x.id)===String(input.dataset.outgOrderName))); input.blur();}};
       input.onchange=()=>{const inv=(state.accounting.outgoingInvoices||[]).find(x=>String(x.id)===String(input.dataset.outgOrderName)); if(!inv)return; input.value=outGSetOrderName(inv,input.value); inv.updated_at=new Date().toISOString(); saveAccounting(); saveOutgoingInvoiceRemote(inv).catch(e=>console.warn(e)); render({force:true});};
