@@ -11563,24 +11563,21 @@ documentPrintCss = function(){
   }
   function outGHeader(inv){
     if(!inv)return `<div class="rounded-lg border border-dashed border-sky-200 bg-sky-50 p-6 text-center text-sm font-bold text-sky-800">Chưa quét hóa đơn đầu ra. Bấm “Quét XML hóa đơn” để bắt đầu.</div>`;
-    const f=outGFinance(inv), paid=outgoingPaid(inv), remain=Math.max(0,Number(inv.total_amount||0)-paid);
-    return `<section class="grid gap-3 lg:grid-cols-[minmax(0,1fr)_270px]">
-      <div class="min-h-[220px] rounded-lg border border-black/10 bg-white p-3 shadow-sm">
-        <div class="flex flex-wrap items-start justify-between gap-3">
-          <div class="min-w-0">
-            <div class="flex flex-wrap items-center gap-2"><span class="text-base font-black">Hóa đơn đầu ra</span><input data-outg-order-name="${esc(inv.id)}" value="${esc(outGOrderName(inv))}" aria-label="Tên đơn hàng" title="Bấm để đặt tên đơn hàng" class="h-8 min-w-[150px] max-w-[360px] rounded-md border border-transparent bg-transparent px-1 text-base font-black outline-none hover:border-black/15 focus:border-mint focus:bg-white focus:ring-2 focus:ring-mint/10"/></div>
-            <p class="mt-1 text-xs font-bold text-black/45">${esc(inv.customer_name||'Chưa có khách hàng')} · MST ${esc(inv.customer_tax_code||'thiếu')}</p>
-          </div>
-          <div class="flex flex-wrap gap-1">${outGBadge(inv.xml_url?'XML đã quét':'XML chưa có',inv.xml_url?'bg-mint/10 text-mint border-mint/25':'bg-orange-50 text-orange-600 border-orange-200')}${outGBadge(inv.pdf_url?'PDF đã có':'PDF chưa có',inv.pdf_url?'bg-mint/10 text-mint border-mint/25':'bg-orange-50 text-orange-600 border-orange-200')}</div>
+    const f=outGFinance(inv), progress=outGMatchProgress(inv), collapsed=outGDetailsCollapsed(inv);
+    const buttonText=collapsed?'Mở đối chiếu':(progress.complete?'Hoàn tất & thu gọn':'Thu gọn chi tiết');
+    const missing=Math.max(0,progress.total-progress.matched);
+    return `<section class="rounded-xl border ${progress.complete?'border-mint/40 bg-mint/10':'border-orange-200 bg-orange-50'} p-3 shadow-sm">
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div class="min-w-0">
+          <div class="flex flex-wrap items-center gap-2"><input data-outg-order-name="${esc(inv.id)}" value="${esc(outGOrderName(inv))}" aria-label="Tên đơn hàng" title="Bấm để đặt tên đơn hàng" class="h-9 min-w-[180px] max-w-[420px] rounded-md border border-transparent bg-transparent px-1 text-base font-black outline-none hover:border-black/15 focus:border-mint focus:bg-white focus:ring-2 focus:ring-mint/10"/>${outGBadge(`HĐ ${inv.invoice_number||'chưa có số'}`,'bg-white/80 text-sky-800 border-sky-200')}${outGBadge(progress.complete?'✓ Đã đủ liên kết':`! Còn thiếu ${missing} liên kết`,progress.complete?'bg-white/80 text-mint border-mint/30':'bg-white/80 text-orange-700 border-orange-300')}</div>
+          <p class="mt-1 truncate text-xs font-bold text-black/45">${esc(inv.customer_name||'Chưa có khách hàng')} · ${esc(compactDate(inv.invoice_date||inv.request_date))} · Tổng ${money(inv.total_amount)}${inv.invoice_series?` · KH ${esc(inv.invoice_series)}`:''}</p>
         </div>
-        <div class="mt-4 grid gap-3 md:grid-cols-4">
-          <div><div class="text-[10px] font-bold uppercase text-black/40">Ngày hóa đơn</div><b>${esc(compactDate(inv.invoice_date||inv.request_date))}</b></div>
-          <div><div class="text-[10px] font-bold uppercase text-black/40">Ký hiệu</div><b>${esc(inv.invoice_series||'--')}</b></div>
-          <div><div class="text-[10px] font-bold uppercase text-black/40">Tổng sau VAT</div><b>${money(inv.total_amount)}</b></div>
-          <div><div class="text-[10px] font-bold uppercase text-black/40">Còn phải thu</div><b class="${remain?'text-coral':'text-mint'}">${money(remain)}</b></div>
-        </div>
+        <div class="flex flex-wrap items-center gap-2"><span class="text-xs font-extrabold ${progress.complete?'text-mint':'text-orange-700'}">${progress.matched}/${progress.total} dòng</span><button data-outg-toggle-details="${esc(inv.id)}" type="button" aria-expanded="${collapsed?'false':'true'}" class="h-9 rounded-md ${progress.complete&&!collapsed?'bg-mint text-white':'border border-black/15 bg-white text-ink'} px-3 text-xs font-extrabold">${buttonText} ${collapsed?'▾':'▴'}</button></div>
       </div>
-      <div class="grid gap-2">${outGMetric('VAT đầu ra',money(f.saleVat),'bg-white')}${outGMetric('VAT đầu vào đã khớp',money(f.inputVat),'bg-mint/10')}${outGMetric('VAT chênh lệch',money(f.vatDiff),'bg-gold/20')}${outGMetric('Lợi nhuận tạm tính',money(f.profit),f.profit>=0?'bg-mint/10':'bg-coral/10')}</div>
+      <div class="mt-3 grid gap-2 lg:grid-cols-2">
+        <div class="rounded-lg border border-black/10 bg-white/80 p-3"><div class="mb-2 text-[10px] font-black uppercase tracking-wide text-black/40">Kết quả đơn hàng</div><div class="grid grid-cols-3 gap-2"><div><span class="block text-[10px] font-bold text-black/45">Doanh thu</span><b class="text-sm">${money(f.saleNet)}</b></div><div><span class="block text-[10px] font-bold text-black/45">Chi phí vào</span><b class="text-sm">${money(f.inputNet)}</b></div><div><span class="block text-[10px] font-bold text-black/45">Lợi nhuận</span><b class="text-sm ${f.profit>=0?'text-mint':'text-coral'}">${money(f.profit)}</b></div></div></div>
+        <div class="rounded-lg border border-black/10 bg-white/80 p-3"><div class="mb-2 text-[10px] font-black uppercase tracking-wide text-black/40">Thuế GTGT</div><div class="grid grid-cols-3 gap-2"><div><span class="block text-[10px] font-bold text-black/45">VAT vào</span><b class="text-sm">${money(f.inputVat)}</b></div><div><span class="block text-[10px] font-bold text-black/45">VAT ra</span><b class="text-sm">${money(f.saleVat)}</b></div><div><span class="block text-[10px] font-bold text-black/45">Chênh lệch</span><b class="text-sm ${f.vatDiff>=0?'text-[#8a5a00]':'text-coral'}">${money(f.vatDiff)}</b></div></div></div>
+      </div>
     </section>`;
   }
   function outGLineCost(line){
@@ -11752,7 +11749,7 @@ documentPrintCss = function(){
     return `<div class="grid gap-3">
       ${outGImportPanel(active,rows)}
       ${outGHeader(active)}
-        ${active?outGLinesTable(active):''}
+        ${active&&!outGDetailsCollapsed(active)?outGLinesTable(active):''}
       ${outGPickerModal()}
       ${outGInputInvoicePickerModal()}
     </div>`;
