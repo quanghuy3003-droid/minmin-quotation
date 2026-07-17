@@ -47,5 +47,10 @@ assert.match(html,/data-outg-delete-order="\$\{esc\(inv\.id\)\}"/,'Every order c
 const deleteSource=between('async function outGDeleteOrder','renderOutgoingInvoices=function');
 assert.ok(deleteSource.indexOf('confirm(')<deleteSource.indexOf('outgoingInvoices='),'An order must never be deleted before explicit confirmation');
 assert.match(deleteSource,/deleteOutgoingInvoiceRemote\(id\)/,'Confirmed deletion must also remove the remote order');
+const pdfControlSource=between('function outGPdfControl','function outGHeader');
+assert.match(pdfControlSource,/if\(inv\?\.pdf_url\).*data-open-url/s,'An attached PDF must become an open-file action');
+assert.match(pdfControlSource,/bg-mint\/10/,'An attached PDF control must be green');
+assert.match(pdfControlSource,/return `<label.*data-sale-order-file/s,'A missing PDF must remain a file picker');
+assert.match(pdfControlSource,/bg-black\/5/,'A missing PDF control must be gray');
 
 console.log('XML-first outgoing-order creation checks passed.');
