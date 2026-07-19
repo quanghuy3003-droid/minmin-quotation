@@ -1,12 +1,14 @@
 import { createServer } from "node:http";
-import { createReadStream, statSync } from "node:fs";
+import { createReadStream, existsSync, statSync } from "node:fs";
 import { createRequire } from "node:module";
-import { extname, join, normalize } from "node:path";
+import { dirname, extname, join, normalize } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const port = Number(process.env.PORT || 5173);
-const root = new URL(".", import.meta.url).pathname;
+const root = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
-const driveUploadHandler = require("./api/drive-upload.js");
+const driveUploadPath = join(root, "api", "drive-upload.js");
+const driveUploadHandler = existsSync(driveUploadPath) ? require(driveUploadPath) : null;
 
 const types = {
   ".html": "text/html; charset=utf-8",
@@ -22,6 +24,11 @@ createServer((request, response) => {
   const url = new URL(request.url, `http://localhost:${port}`);
 
   if (url.pathname === "/api/drive-upload") {
+    if (!driveUploadHandler) {
+      response.writeHead(503, { "Content-Type": "application/json; charset=utf-8" });
+      response.end(JSON.stringify({ error: "Drive upload API is not installed in this app copy." }));
+      return;
+    }
     response.status = code => {
       response.statusCode = code;
       return response;
@@ -36,8 +43,9 @@ createServer((request, response) => {
     return;
   }
 
-  const safePath = normalize(url.pathname).replace(/^(\.\.[/\\])+/, "");
-  const filePath = join(root, safePath === "/" ? "index.html" : safePath);
+  const requestedPath = decodeURIComponent(url.pathname).replace(/^[/\\]+/, "");
+  const safePath = normalize(requestedPath).replace(/^(\.\.[/\\])+/, "");
+  const filePath = join(root, safePath || "index.html");
 
   try {
     const stat = statSync(filePath);
