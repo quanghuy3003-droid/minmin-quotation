@@ -19,6 +19,23 @@ node server.mjs
 
 Mo `http://localhost:5173`.
 
+## App ho so thue xe
+
+Co the mo truc tiep file `thue-xe.html`, hoac chay chung server:
+
+```bash
+node server.mjs
+```
+
+Mo `http://localhost:5173/thue-xe.html`.
+
+App co 2 tab:
+
+- `Hop dong`: nhap thong tin khach thue, don gia, thoi gian thue va tong tien de xuat hop dong Word.
+- `Bien ban ban giao`: dung lai cung thong tin khach va thoi gian de xuat bien ban Word.
+
+Mau Word da duoc nhung vao `rental-templates.js`, nen nut xuat Word co the chay ngay trong trinh duyet va khong can server API. Hai mau Word goc van duoc copy vao thu muc `templates/`; app chi thay noi dung can dien trong file xuat ra, khong sua file goc tren Google Drive.
+
 ## Luu anh va hoa don PDF tren Google Drive
 
 App upload anh san pham va hoa don PDF len Google Drive, sau do chi luu link trong kho/Supabase.
