@@ -9185,6 +9185,14 @@ documentPrintCss = function(){
   bind = function(){
     minminInjectQuoteFinanceBox();
     previousBindForQuoteFinanceBox.apply(this, arguments);
+    const ex=document.getElementById('exportExcel');
+    if(ex)ex.onclick=()=>exportQuotation().catch(e=>alert('Chưa xuất được Excel: '+e.message));
+    const previewPdf=document.getElementById('previewPdf');
+    if(previewPdf)previewPdf.onclick=()=>exportPdfA4({preview:true}).catch(e=>alert('Chưa xem trước được PDF: '+e.message));
+    const pdf=document.getElementById('exportPdf');
+    if(pdf)pdf.onclick=()=>exportPdfA4().catch(e=>alert('Chưa xuất được PDF: '+e.message));
+    const im=document.getElementById('importExcel');
+    if(im)im.onchange=()=>{if(im.files[0]) importQuotationExcel(im.files[0]).catch(e=>alert('Chưa nhập được Excel: '+e.message));};
   };
 })();
 
