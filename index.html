@@ -4289,20 +4289,25 @@ async function exportPdfA4(options={}){
     return `<section class="a4-page summary-page">${rowsForTop.length?`<div class="summary-top-table">${tableHtml({header:true,rows:rowsForTop,ship:true,summary:'first2'})}</div>`:''}<table class="summary-totals"><tbody>${summaryRows.map(([label,value,hot])=>`<tr class="${hot?'hot':''}"><td>${esc(label)}</td><td>${moneyCell(value)}</td></tr>`).join('')}</tbody></table><div class="words"><b>Số tiền bằng chữ</b><span>${esc(words)}</span></div><div class="terms">${NOTE_LINES.map(n=>`<p>${esc(n)}</p>`).join('')}</div>${state.info.qrDataUrl?`<img class="qr" src="${state.info.qrDataUrl}"/>`:''}<div class="date">${esc(dateText)}&nbsp;&nbsp; Ho Chi Minh City</div></section>`;
   }
   const pages=[];
+  const pageCapacity=({first=false,final=false}={})=>{
+    const top=first?284:72, pageHeight=794, headerHeight=32, rowHeight=128;
+    const reservedForClosing=final?(22+18*2):0;
+    return Math.max(1,Math.floor((pageHeight-top-headerHeight-reservedForClosing)/rowHeight));
+  };
   let pos=0;
-  const firstTake=Math.min(rows.length,3);
-  pos=firstTake;
-  if(rows.length<=3){
-    pages.push(quotationPageHtml({header:true,rows:rows.slice(0,firstTake),ship:true,summary:'first2'}));
+  if(rows.length<=pageCapacity({first:true,final:true})){
+    pages.push(quotationPageHtml({header:true,rows,ship:true,summary:'first2'}));
   }else{
+    const firstTake=Math.min(rows.length,pageCapacity({first:true,final:false}));
     pages.push(quotationPageHtml({header:true,rows:rows.slice(0,firstTake),ship:false,summary:false}));
-    while(rows.length-pos>4){
-      const chunk=rows.slice(pos,pos+4);
+    pos=firstTake;
+    while(rows.length-pos>pageCapacity({final:true})){
+      const take=pageCapacity({final:false});
+      const chunk=rows.slice(pos,pos+take);
       pos+=chunk.length;
       pages.push(quotationPageHtml({header:true,rows:chunk,ship:false,summary:false}));
     }
-    const lastChunk=rows.slice(pos);
-    pages.push(quotationPageHtml({header:true,rows:lastChunk,ship:true,summary:'first2'}));
+    pages.push(quotationPageHtml({header:true,rows:rows.slice(pos),ship:true,summary:'first2'}));
   }
   pages.push(summaryPageHtml());
   const holder=document.createElement('div');
