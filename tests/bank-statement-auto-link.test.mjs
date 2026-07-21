@@ -17,5 +17,7 @@ assert.match(html,/Dòng tiền sẽ vào tab Đối soát của nhà cung cấp
 assert.match(html,/function originalStatementDescription/,'Statement descriptions need a dedicated immutable source');
 assert.match(html,/payment\.related_label=originalStatementDescription\(payment\)/,'Selecting a supplier must preserve the original statement description');
 assert.match(html,/function restoreSupplierStatementLabels/,'Previously overwritten statement descriptions must be repaired');
+assert.match(html,/filters\.reconcileUnit=supplier\.key/,'Selecting a supplier must make it the active reconciliation unit');
+assert.match(html,/Hóa đơn nhà cung cấp tự cập nhật từ mục Mua vào/,'The reconciliation screen must explain its live invoice source');
 
 console.log('Bank statement invoice auto-link checks passed.');
