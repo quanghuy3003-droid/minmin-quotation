@@ -5,5 +5,7 @@ outputs/
 tmp/
 node_modules/
 .vercel/
+.qa/
+.qa-server-*.log
 Untitled/
 website/

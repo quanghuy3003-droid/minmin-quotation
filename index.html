@@ -12497,6 +12497,84 @@ documentPrintCss = function(){
   };
 })();
 
+/* Payment request uses the retained Word template as the layout authority. */
+const PAYMENT_REQUEST_TEMPLATE_URL='assets/templates/payment-request-template.docx';
+function paymentRequestValues(){
+  const d=ensureDocumentSuite(), paid=docPaidPercentValue(), amount=docRemainingByPaidPercent();
+  const words=String(docNumberWords(amount)||'').replace(/\s+đồng\.?$/i,'').trim();
+  return {
+    CUSTOMER_NAME:d.partyA?.company||state.info?.client||'',
+    CUSTOMER_ADDRESS:d.partyA?.address||state.info?.address||'',
+    CONTRACT_NO:d.contractNo||'',
+    CONTRACT_DATE:docDate(d.contractDate),
+    PAYMENT_PERCENT:String(Math.max(0,100-paid)),
+    PAYMENT_AMOUNT:new Intl.NumberFormat('vi-VN').format(amount),
+    PAYMENT_AMOUNT_WORDS:words.charAt(0).toUpperCase()+words.slice(1),
+    SIGNER_NAME:'NGUYỄN HỒ QUANG HUY'
+  };
+}
+function paymentRequestXmlEscape(value){return String(value??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+async function buildPaymentRequestDocxBlob(){
+  const response=await fetch('/api/payment-request',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(paymentRequestValues())});
+  if(!response.ok){let message='Không tạo được file Word theo mẫu.';try{message=(await response.json()).error||message}catch{}throw new Error(message);}
+  return response.blob();
+}
+async function ensurePaymentRequestPdfRenderer(){
+  const run=async(url,test)=>{if(test())return;const response=await fetch(url,{cache:'no-store'});if(!response.ok)throw new Error('Không tải được thư viện '+url);(0,eval)(await response.text());if(!test())throw new Error('Thư viện không khởi tạo: '+url);};
+  await run('vendor/jszip.min.js',()=>!!window.JSZip);
+  await run('vendor/docx-preview.min.js',()=>!!window.docx?.renderAsync);
+}
+function paymentRequestPreviewHtml(){
+  const v=paymentRequestValues();
+  return `<div class="payment-request-sheet"><img class="payment-request-logo" src="assets/templates/payment-request-logo.jpg" alt="MINMIN LIFESTYLE"><h1>ĐỀ NGHỊ THANH TOÁN</h1><div class="payment-request-body"><p>Kính gửi: <b>${esc(v.CUSTOMER_NAME)}</b></p><p>Địa chỉ: ${esc(v.CUSTOMER_ADDRESS)}</p><p>Chúng tôi kính gửi đề nghị thanh toán phần còn lại (${esc(v.PAYMENT_PERCENT)}%) theo hợp đồng số <b>${esc(v.CONTRACT_NO)}</b> ngày ${esc(v.CONTRACT_DATE)}.</p><p>Vui lòng chuyển khoản thanh toán theo thông tin như sau:</p><div class="payment-request-bank"><p><b>Số tiền: ${esc(v.PAYMENT_AMOUNT)} VNĐ</b></p><p class="payment-request-words"><b>(Bằng chữ: ${esc(v.PAYMENT_AMOUNT_WORDS)} đồng.</b>)</p><p><b>- Bên thụ hưởng:</b></p><p>Tên tài khoản: CÔNG TY TNHH MINMIN LIFESTYLE</p><p>Tài khoản: 388683838</p><p>Ngân hàng: Ngân Hàng ACB – CN Phổ Quang</p></div><p class="payment-request-regards">Trân trọng,</p><p class="payment-request-signer"><b>${esc(v.SIGNER_NAME)}</b></p></div><div class="payment-request-footer"><div class="payment-request-footer-inner"><span class="payment-request-footer-brand">MINMIN<br><small>LIFESTYLE</small></span><span class="payment-request-footer-site">https://minmin-lifestyle.com/</span></div></div></div>`;
+}
+const __minminPaymentTaskContentBase=renderDocumentTaskContent;
+renderDocumentTaskContent=function(task){return task==='payment'?paymentRequestPreviewHtml():__minminPaymentTaskContentBase(task);};
+const __minminPaymentTaskPagesBase=renderDocumentTaskPages;
+renderDocumentTaskPages=function(task){return task==='payment'?docPageObjects([{className:'payment-template',html:paymentRequestPreviewHtml()}]):__minminPaymentTaskPagesBase(task);};
+const __minminPaymentPrintCssBase=documentPrintCss;
+documentPrintCss=function(){return __minminPaymentPrintCssBase()+`
+.doc-page.payment-template{padding:0!important;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.45}
+.payment-request-sheet{box-sizing:border-box;position:relative;width:100%;min-height:1123px;padding:77px 94px 105px 113px;font-family:Arial,Helvetica,sans-serif;color:#111;background:#fff}
+.payment-request-logo{display:block;width:152px;height:auto;object-fit:contain}
+.payment-request-sheet h1{margin:68px 0 48px;text-align:center;font-size:20px;line-height:1.2;font-weight:700;letter-spacing:0}
+.payment-request-body p{margin:0 0 13px;line-height:1.5}.payment-request-bank{margin:28px 0 0 36px}.payment-request-bank p{margin-bottom:8px}.payment-request-words{font-style:italic}.payment-request-regards{margin-top:30px!important}.payment-request-signer{margin-top:82px!important}
+.payment-request-footer{position:absolute;left:113px;right:94px;bottom:40px;border-top:1px solid #8c8c8c;border-bottom:1px solid #8c8c8c;padding:6px 0}.payment-request-footer-inner{display:flex;align-items:center;height:36px}.payment-request-footer-brand{width:142px;border-right:1px solid #8c8c8c;color:#777;font-size:15px;font-weight:800;line-height:.8;letter-spacing:3px}.payment-request-footer-brand small{font-size:6px;font-weight:400;letter-spacing:3px}.payment-request-footer-site{padding-left:18px;color:#555;font-size:10px}
+@media print{.doc-page.payment-template{padding:0!important}.payment-request-sheet{min-height:297mm;padding:20.3mm 24.9mm 27.8mm 29.9mm}.payment-request-footer{left:29.9mm;right:24.9mm;bottom:10.6mm}}
+`;};
+const __minminExportDocumentWordBase=exportDocumentWord;
+exportDocumentWord=async function(){
+  if(ensureDocumentSuite().activeTask!=='payment')return __minminExportDocumentWordBase();
+  try{downloadBlob(await buildPaymentRequestDocxBlob(),docCurrentFileName('docx'));}
+  catch(e){console.error(e);alert('Chưa xuất được Word theo mẫu: '+(e?.message||e));}
+};
+async function exportPaymentRequestPdfFromDocx(){
+  const blob=await buildPaymentRequestDocxBlob();
+  await ensurePaymentRequestPdfRenderer();
+  await loadAnyScript(['vendor/html2canvas.min.js','https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js'],()=>window.html2canvas);
+  await loadAnyScript(['vendor/jspdf.umd.min.js','https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js'],()=>window.jspdf);
+  const host=document.createElement('div'); host.style.cssText='position:fixed;left:-12000px;top:0;width:794px;background:#fff;z-index:-1'; document.body.appendChild(host);
+  try{
+    await window.docx.renderAsync(blob,host,null,{inWrapper:true,breakPages:true,ignoreWidth:false,ignoreHeight:false,ignoreFonts:false,useBase64URL:true});
+    if(document.fonts?.ready)await document.fonts.ready;
+    const pages=[...host.querySelectorAll('section.docx')]; if(!pages.length)throw new Error('Không dựng được trang từ DOCX.');
+    const {jsPDF}=window.jspdf, pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+    for(let i=0;i<pages.length;i++){
+      const canvas=await html2canvas(pages[i],{scale:2,useCORS:true,backgroundColor:'#fff',logging:false});
+      if(i)pdf.addPage('a4','portrait');
+      const ratio=Math.min(210/canvas.width,297/canvas.height), w=canvas.width*ratio, h=canvas.height*ratio;
+      pdf.addImage(canvas.toDataURL('image/jpeg',0.96),'JPEG',(210-w)/2,(297-h)/2,w,h,undefined,'FAST');
+    }
+    pdf.save(docCurrentFileName('pdf'));
+  }finally{host.remove();}
+}
+const __minminPrintDocumentTaskBase=printDocumentTask;
+printDocumentTask=async function(){
+  if(ensureDocumentSuite().activeTask!=='payment')return __minminPrintDocumentTaskBase();
+  try{await exportPaymentRequestPdfFromDocx();}
+  catch(e){console.error(e);alert('Chưa xuất được PDF từ file Word mẫu: '+(e?.message||e));}
+};
+
 
 initApp();
     </script>

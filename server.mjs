@@ -9,6 +9,8 @@ const root = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
 const driveUploadPath = join(root, "api", "drive-upload.js");
 const driveUploadHandler = existsSync(driveUploadPath) ? require(driveUploadPath) : null;
+const paymentRequestPath = join(root, "api", "payment-request.js");
+const paymentRequestHandler = existsSync(paymentRequestPath) ? require(paymentRequestPath) : null;
 
 const types = {
   ".html": "text/html; charset=utf-8",
@@ -40,6 +42,16 @@ createServer((request, response) => {
       response.end(JSON.stringify(data));
     };
     driveUploadHandler(request, response);
+    return;
+  }
+
+  if (url.pathname === "/api/payment-request") {
+    if (!paymentRequestHandler) {
+      response.writeHead(503, { "Content-Type": "application/json; charset=utf-8" });
+      response.end(JSON.stringify({ error: "Payment request API is not installed." }));
+      return;
+    }
+    paymentRequestHandler(request, response);
     return;
   }
 
