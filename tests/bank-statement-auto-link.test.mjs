@@ -19,8 +19,9 @@ assert.match(html,/data-reconcile-details-toggle/,'The long reconciliation table
 assert.match(html,/reconcileDetailsCollapsed=!state\.accounting\.filters\.reconcileDetailsCollapsed/,'The collapse control must persist and toggle its state');
 assert.match(html,/balance=data\.invoiceTotal-data\.paymentTotal/,'Supplier balance must follow invoices minus payments');
 assert.match(html,/cộng riêng tổng hóa đơn phải thu và tổng tiền đã thanh toán/,'The reconciliation screen must explain the supplier-ledger method');
-assert.match(html,/Phải thu · \$\{invoices\.length\} hóa đơn/,'Invoice count must be visible beside the receivable total');
-assert.match(html,/Đã thanh toán · \$\{payments\.length\} giao dịch/,'Payment count must be visible beside the paid total');
+assert.match(html,/Hóa đơn · \$\{invoices\.length\}/,'Invoice count must be visible beside the invoice total');
+assert.match(html,/Giao dịch · \$\{payments\.length\}/,'Transaction count must be visible beside the payment total');
+assert.match(html,/const balanceLabel=matched\?'Đã khớp':`Đang lệch/,'The result must use a short, clear mismatch label');
 assert.match(html,/Không ghép từng dòng với nhau/,'Reconciliation must compare totals without row-level matching');
 assert.match(html,/Giao dịch sao kê \(\$\{payments\.length\}\)/,'Statement transactions must remain a separate dated list');
 assert.match(html,/Hóa đơn nhà cung cấp \(\$\{invoices\.length\}\)/,'Supplier invoices must remain a separate dated list');
