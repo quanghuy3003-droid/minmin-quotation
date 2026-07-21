@@ -10,5 +10,9 @@ assert.match(html,/trùng tên công ty/,'Suggestions must explain company-name 
 assert.match(html,/best\.score<65/,'Low-confidence candidates must not be linked automatically');
 assert.match(html,/best\.score-second\.score<20/,'Ambiguous candidates must remain unlinked');
 assert.match(html,/★ Gợi ý/,'The best invoice suggestion must be visibly promoted');
+assert.match(html,/data-payment-supplier/,'Expense rows must select a supplier instead of requiring an invoice');
+assert.match(html,/payment\.related_type=supplier\?'supplier':''/,'Supplier selection must persist on the payment');
+assert.match(html,/payment\?\.related_type==='supplier'/,'Reconciliation must include payments assigned to a supplier');
+assert.match(html,/Dòng tiền sẽ vào tab Đối soát của nhà cung cấp/,'The supplier selector must explain the reconciliation flow');
 
 console.log('Bank statement invoice auto-link checks passed.');
