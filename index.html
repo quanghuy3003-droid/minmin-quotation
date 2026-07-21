@@ -2941,6 +2941,7 @@ async function importBankStatementPdf(file){
       updated_at:now
     };
     state.accounting.payments.unshift(p);
+    window.__MINMIN_AUTO_LINK_STATEMENT__?.(p);
     added.push(p);
     existing.add(dup);
   });
@@ -12349,6 +12350,76 @@ documentPrintCss = function(){
     previousBindReconcile.apply(this,arguments);
     document.querySelectorAll('[data-reconcile-unit]').forEach(select=>select.onchange=()=>{state.accounting.filters.reconcileUnit=select.value; saveAccounting(); render({force:true});});
   };
+})();
+
+/* MINMIN PATCH 2026-07-21B
+   Sao ke: xep hang goi y va tu lien ket hoa don khi ten/MST hoac so tien con lai khop duy nhat. */
+(function(){
+  function autoLinkText(payment){
+    return invoiceNorm([payment?.related_label,payment?.payer_payee,payment?.note,payment?.method].join(' '));
+  }
+  function autoLinkPartyCore(value){
+    return invoiceNorm(value||'').replace(/\b(cong ty|tnhh|co phan|trach nhiem huu han|thuong mai|dich vu|viet nam)\b/g,' ').replace(/\s+/g,' ').trim();
+  }
+  function autoLinkDateGap(payment,invoice){
+    const a=new Date(`${payment?.payment_date||''}T00:00:00`), b=new Date(`${invoice?.invoice_date||invoice?.request_date||invoice?.period||''}T00:00:00`);
+    return Number.isFinite(+a)&&Number.isFinite(+b)?Math.abs(+a-+b)/86400000:9999;
+  }
+  function autoLinkScore(payment,type,invoice){
+    const text=autoLinkText(payment), name=invoiceNorm(type==='incoming'?invoice?.seller_name:invoice?.customer_name), core=autoLinkPartyCore(name);
+    const tax=String(type==='incoming'?invoice?.seller_tax_code:invoice?.customer_tax_code||'').replace(/\D/g,'');
+    const paid=type==='incoming'?incomingPaid(invoice):outgoingPaid(invoice), remain=Math.max(0,Number(invoice?.total_amount||0)-paid), amount=Number(payment?.amount||0);
+    const exactRemain=remain>0&&Math.abs(amount-remain)<1, exactTotal=Number(invoice?.total_amount||0)>0&&Math.abs(amount-Number(invoice.total_amount))<1;
+    const fullName=!!name&&name.length>=6&&text.includes(name), coreName=!!core&&core.length>=6&&text.includes(core), taxMatch=tax.length>=8&&text.includes(tax);
+    let score=taxMatch?130:fullName?120:coreName?100:0;
+    if(exactRemain)score+=80; else if(exactTotal)score+=60;
+    const gap=autoLinkDateGap(payment,invoice); if(gap<=31)score+=8; else if(gap<=90)score+=4;
+    if(amount>0&&remain>0&&amount<=remain)score+=2;
+    return {score,reason:taxMatch?'trùng MST':(fullName||coreName)?'trùng tên công ty':exactRemain?'trùng số tiền còn lại':exactTotal?'trùng tổng hóa đơn':gap<=31?'ngày gần nhất':''};
+  }
+  function autoLinkCandidates(payment,type){
+    const rows=type==='incoming'?(state.inputInvoices?.invoices||[]):((state.accounting?.outgoingInvoices)||[]).filter(isManagedOutgoingInvoice);
+    return rows.map(invoice=>({invoice,...autoLinkScore(payment,type,invoice)})).filter(x=>Math.max(0,Number(x.invoice.total_amount||0)-(type==='incoming'?incomingPaid(x.invoice):outgoingPaid(x.invoice)))>0||paymentHasInvoiceRef(payment,type,x.invoice.id)).sort((a,b)=>b.score-a.score||autoLinkDateGap(payment,a.invoice)-autoLinkDateGap(payment,b.invoice));
+  }
+  function autoLinkOne(payment,persist=false){
+    if(!payment||paymentRelatedIds(payment)[0])return null;
+    const type=payment.payment_type==='Chi'?'incoming':'outgoing', candidates=autoLinkCandidates(payment,type), best=candidates[0], second=candidates[1];
+    if(!best||best.score<65||(second&&best.score-second.score<20))return null;
+    payment.related_type=type;
+    payment.related_id=String(best.invoice.id);
+    payment.related_label=type==='incoming'?`${best.invoice.seller_name||''} - ${best.invoice.invoice_number||''}`:`${best.invoice.customer_name||''} - ${best.invoice.invoice_number||best.invoice.order_code||''}`;
+    payment.updated_at=new Date().toISOString();
+    if(persist)savePaymentRemote(payment).catch(e=>console.warn('Chưa đồng bộ liên kết gợi ý:',e));
+    return best;
+  }
+  window.__MINMIN_AUTO_LINK_STATEMENT__=payment=>autoLinkOne(payment,false);
+  async function autoLinkAllStatements(){
+    const changed=[];
+    (state.accounting?.payments||[]).filter(p=>/sao kê/i.test([p.method,p.note].join(' '))&&!paymentRelatedIds(p)[0]).forEach(payment=>{if(autoLinkOne(payment,false))changed.push(payment);});
+    if(!changed.length){alert('Chưa có giao dịch nào đủ chắc chắn để tự liên kết. Các hóa đơn phù hợp đã được đưa lên đầu danh sách để anh chọn.');return;}
+    saveAccounting(); render({force:true});
+    await Promise.all(changed.map(savePaymentRemote).map(p=>p.catch(e=>console.warn(e))));
+    state.accounting.syncStatus=`Đã tự liên kết ${changed.length} giao dịch sao kê với hóa đơn phù hợp.`; saveAccounting(); render({force:true});
+  }
+  paymentInvoiceSelectOptions=function(selectedType='',selectedId='',payment=null){
+    const selectedKey=paymentInvoiceByRef(selectedType,selectedId)?`${selectedType}|${selectedId}`:'', type=selectedType||(payment?.payment_type==='Chi'?'incoming':'outgoing');
+    const available=kind=>invoice=>`${kind}|${invoice.id}`===selectedKey||Math.max(0,Number(invoice.total_amount||0)-(kind==='incoming'?incomingPaid(invoice):outgoingPaid(invoice)))>0;
+    const ranked=kind=>autoLinkCandidates(payment||{},kind).filter(x=>available(kind)(x.invoice));
+    const outs=ranked('outgoing'), ins=ranked('incoming');
+    const opt=(kind,row)=>{const x=row.invoice, suggested=row.score>=65, remain=Math.max(0,Number(x.total_amount||0)-(kind==='incoming'?incomingPaid(x):outgoingPaid(x))); return `<option value="${esc(kind+'|'+x.id)}" ${selectedKey===`${kind}|${x.id}`?'selected':''}>${suggested?'★ Gợi ý · ':''}${esc(compactDate(x.invoice_date||x.request_date||x.period))} · ${esc(kind==='incoming'?(x.seller_name||'Nhà cung cấp'):(x.customer_name||'Khách'))} · HĐ ${esc(x.invoice_number||x.order_code||'chưa có số')} · còn ${money(remain)}${suggested&&row.reason?` · ${esc(row.reason)}`:''}</option>`;};
+    return `<option value="" ${!selectedKey?'selected':''}>Chưa liên kết hóa đơn</option>${type!=='incoming'?`<optgroup label="Hóa đơn đầu ra / khách thanh toán">${outs.map(row=>opt('outgoing',row)).join('')}</optgroup>`:''}${type!=='outgoing'?`<optgroup label="Hóa đơn đầu vào / nhà cung cấp">${ins.map(row=>opt('incoming',row)).join('')}</optgroup>`:''}`;
+  };
+  paymentInvoiceLinkControl=function(p){
+    const id=paymentRelatedIds(p)[0]||'', invoice=paymentInvoiceRefs(p)[0]||null, linked=!!invoice, type=p?.related_type||(p?.payment_type==='Chi'?'incoming':'outgoing');
+    const select=`<select data-payment-link="${esc(p?.id||'')}" class="h-9 w-full rounded-md border ${linked?'border-mint/40 bg-mint/5 text-mint':'border-black/15 bg-white'} px-2 text-xs font-bold">${paymentInvoiceSelectOptions(type,id,p)}</select>`;
+    if(!linked){const best=autoLinkCandidates(p,type)[0]; return `<div class="grid gap-1">${select}<div class="text-[11px] font-bold ${best?.score>=65?'text-mint':'text-black/40'}">${best?.score>=65?`★ Đã đưa hóa đơn gợi ý lên đầu (${esc(best.reason||'phù hợp nhất')})`:'Chưa đủ thông tin để tự gắn chắc chắn'}</div></div>`;}
+    const total=Number(invoice.total_amount||0), paid=type==='incoming'?incomingPaid(invoice):outgoingPaid(invoice), diff=total-paid;
+    return `<div class="grid gap-1">${select}<div class="flex flex-wrap gap-x-3 gap-y-1"><span class="text-[11px] font-extrabold text-mint">✓ Đã liên kết hóa đơn</span><span class="text-[11px] font-extrabold ${Math.abs(diff)<1?'text-mint':diff>0?'text-[#8a5a00]':'text-coral'}">${Math.abs(diff)<1?'Đã đủ tiền':diff>0?`Còn thiếu ${money(diff)}`:`Vượt ${money(Math.abs(diff))}`}</span><span class="text-[11px] font-bold text-black/45">Hóa đơn ${money(total)} · Đã đối chiếu ${money(paid)}</span></div></div>`;
+  };
+  const previousPaymentTableAutoLink=paymentTable;
+  paymentTable=function(){return previousPaymentTableAutoLink.apply(this,arguments).replace('<div class="mt-3 grid gap-2 md:grid-cols-3">','<div class="mt-3 flex justify-end"><button data-payment-auto-link type="button" class="h-9 rounded-md border border-mint/30 bg-mint/5 px-3 text-xs font-extrabold text-mint">Tự liên kết sao kê</button></div><div class="mt-3 grid gap-2 md:grid-cols-3">');};
+  const previousBindAutoLink=bind;
+  bind=function(){previousBindAutoLink.apply(this,arguments); document.querySelectorAll('[data-payment-auto-link]').forEach(button=>button.onclick=()=>autoLinkAllStatements());};
 })();
 
 
