@@ -14,5 +14,8 @@ assert.match(html,/data-payment-supplier/,'Expense rows must select a supplier i
 assert.match(html,/payment\.related_type=supplier\?'supplier':''/,'Supplier selection must persist on the payment');
 assert.match(html,/payment\?\.related_type==='supplier'/,'Reconciliation must include payments assigned to a supplier');
 assert.match(html,/Dòng tiền sẽ vào tab Đối soát của nhà cung cấp/,'The supplier selector must explain the reconciliation flow');
+assert.match(html,/function originalStatementDescription/,'Statement descriptions need a dedicated immutable source');
+assert.match(html,/payment\.related_label=originalStatementDescription\(payment\)/,'Selecting a supplier must preserve the original statement description');
+assert.match(html,/function restoreSupplierStatementLabels/,'Previously overwritten statement descriptions must be repaired');
 
 console.log('Bank statement invoice auto-link checks passed.');

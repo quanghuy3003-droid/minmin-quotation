@@ -12388,13 +12388,17 @@ documentPrintCss = function(){
     const tax=String(invoice?.seller_tax_code||'').replace(/\D/g,'');
     return tax?`tax:${tax}`:`name:${invoiceNorm(invoice?.seller_name||'khong-ro')}`;
   }
+  function originalStatementDescription(payment){
+    const note=String(payment?.note||''), match=note.match(/(?:^|\|)\s*Nội dung:\s*(.+)$/i);
+    return String(match?.[1]||payment?.related_label||'Sao kê ngân hàng').trim();
+  }
   function autoLinkOne(payment,persist=false){
     if(!payment||paymentRelatedIds(payment)[0])return null;
     const type=payment.payment_type==='Chi'?'incoming':'outgoing', candidates=autoLinkCandidates(payment,type), best=candidates[0], second=candidates[1];
     if(!best||best.score<65||(second&&best.score-second.score<20))return null;
     payment.related_type=type==='incoming'?'supplier':type;
     payment.related_id=type==='incoming'?autoLinkSupplierKey(best.invoice):String(best.invoice.id);
-    payment.related_label=type==='incoming'?(best.invoice.seller_name||'Nhà cung cấp'):`${best.invoice.customer_name||''} - ${best.invoice.invoice_number||best.invoice.order_code||''}`;
+    payment.related_label=type==='incoming'?originalStatementDescription(payment):`${best.invoice.customer_name||''} - ${best.invoice.invoice_number||best.invoice.order_code||''}`;
     payment.updated_at=new Date().toISOString();
     if(persist)savePaymentRemote(payment).catch(e=>console.warn('Chưa đồng bộ liên kết gợi ý:',e));
     return best;
@@ -12425,6 +12429,16 @@ documentPrintCss = function(){
     const options=paymentSupplierRows().map(row=>`<option value="${esc(row.key)}" ${selected===row.key?'selected':''}>${esc(row.name)}</option>`).join('');
     return `<div class="grid gap-1"><select data-payment-supplier="${esc(p?.id||'')}" class="h-9 w-full rounded-md border ${selected?'border-mint/40 bg-mint/5 text-mint':'border-black/15 bg-white'} px-2 text-xs font-bold"><option value="">Chọn nhà cung cấp</option>${options}</select><div class="text-[11px] font-bold ${selected?'text-mint':'text-black/40'}">${selected?'✓ Dòng tiền sẽ vào tab Đối soát của nhà cung cấp':'Chọn nhà cung cấp để đối soát với hóa đơn đầu vào'}</div></div>`;
   }
+  function restoreSupplierStatementLabels(){
+    const changed=[];
+    (state.accounting?.payments||[]).filter(payment=>payment.related_type==='supplier').forEach(payment=>{
+      const original=originalStatementDescription(payment);
+      if(original&&original!==payment.related_label){payment.related_label=original; payment.updated_at=new Date().toISOString(); changed.push(payment);}
+    });
+    if(!changed.length)return;
+    saveAccounting();
+    changed.forEach(payment=>savePaymentRemote(payment).catch(e=>console.warn('Chưa phục hồi nội dung sao kê trên Supabase:',e)));
+  }
   paymentInvoiceSelectOptions=function(selectedType='',selectedId='',payment=null){
     const selectedKey=paymentInvoiceByRef(selectedType,selectedId)?`${selectedType}|${selectedId}`:'', type=selectedType||(payment?.payment_type==='Chi'?'incoming':'outgoing');
     const available=kind=>invoice=>`${kind}|${invoice.id}`===selectedKey||Math.max(0,Number(invoice.total_amount||0)-(kind==='incoming'?incomingPaid(invoice):outgoingPaid(invoice)))>0;
@@ -12453,11 +12467,12 @@ documentPrintCss = function(){
       if(!payment)return;
       payment.related_type=supplier?'supplier':'';
       payment.related_id=supplier?supplier.key:'';
-      payment.related_label=supplier?supplier.name:(payment.note||'Sao kê ngân hàng');
+      payment.related_label=originalStatementDescription(payment);
       payment.updated_at=new Date().toISOString();
       saveAccounting(); render({force:true});
       await savePaymentRemote(payment).catch(e=>{state.accounting.syncStatus='Đã chọn nhà cung cấp trên máy, chưa đồng bộ được Supabase.'; console.warn(e); render({force:true});});
     });
+    restoreSupplierStatementLabels();
   };
 })();
 
