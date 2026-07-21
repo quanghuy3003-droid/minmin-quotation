@@ -387,7 +387,7 @@ function saveInventory(){
   try{ localStorage.setItem(INVENTORY_DELETED_KEY, JSON.stringify(state.inventory.deletedItems||{})); }catch(e){ console.warn('Không lưu được danh sách kho đã xóa:', e); }
   scheduleWorkingStateSave();
 }
-function inputInvoiceDefaults(){ return {view:'list', period:`${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}`, note:'', companyTaxCode:'', filters:{period:'',year:String(new Date().getFullYear()),supplier:'',category:'',status:'',reviewed:''}, invoices:[], files:[], rules:DEFAULT_ACCOUNTING_RULES.map(r=>({...r,id:uid()})), editingId:'', syncStatus:''}; }
+function inputInvoiceDefaults(){ return {view:'list', period:`${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}`, note:'', companyTaxCode:'', filters:{period:'',year:String(new Date().getFullYear()),supplier:'',invoiceNumber:'',search:'',category:'',status:'',reviewed:''}, invoices:[], files:[], rules:DEFAULT_ACCOUNTING_RULES.map(r=>({...r,id:uid()})), editingId:'', syncStatus:''}; }
 function loadInputInvoices(){ try{ const raw=JSON.parse(localStorage.getItem(INPUT_INVOICE_KEY)||'null'); return {...inputInvoiceDefaults(),...(raw||{}),filters:{...inputInvoiceDefaults().filters,...(raw?.filters||{})},rules:Array.isArray(raw?.rules)&&raw.rules.length?raw.rules:DEFAULT_ACCOUNTING_RULES.map(r=>({...r,id:uid()})),invoices:Array.isArray(raw?.invoices)?raw.invoices.map(normalizeInputInvoiceRecord):[],files:Array.isArray(raw?.files)?raw.files:[]}; }catch(e){ console.warn('Không đọc được module hóa đơn đầu vào:', e); return inputInvoiceDefaults(); } }
 function saveInputInvoices(){ try{ localStorage.setItem(INPUT_INVOICE_KEY, JSON.stringify(lightInputInvoices())); }catch(e){ alert('Dữ liệu hóa đơn đang quá lớn để lưu trong trình duyệt. Anh nên lưu file lên Supabase Storage.'); console.warn(e); } scheduleWorkingStateSave(); }
 function accountingDefaults(){ const now=new Date(); return {view:'overview',filters:{period:`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`,year:String(now.getFullYear()),search:'',status:'',type:''},outgoingInvoices:[],payments:[],suppliers:[],editingOutgoingId:'',editingPaymentId:'',syncStatus:''}; }
@@ -1133,7 +1133,7 @@ async function processInputInvoiceFiles(){
   render();
 }
 function sampleInputInvoices(){ const base=[['Đèn nhập kho','Công ty Đèn Sài Gòn','0301111111','Đèn trang trí, chao đèn',12000000,960000,12960000],['Vận chuyển','Logistics Việt','0312222222','Phí vận chuyển hàng mua',1500000,120000,1620000],['Phần mềm','Vercel Inc','US123','Dịch vụ phần mềm hosting Vercel',800000,0,800000],['Ship khách','Giao Hàng Nhanh','0313333333','Ship hàng giao khách',300000,24000,324000],['Thiếu MST','Nhà cung cấp thiếu MST','','Văn phòng phẩm',500000,40000,540000],['Trùng hóa đơn','Công ty Đèn Sài Gòn','0301111111','Đèn trang trí, chao đèn',12000000,960000,12960000]]; state.inputInvoices.invoices=base.map((r,i)=>validateInputInvoice(applyAccountingRule(invoiceEmpty({invoice_date:todayIso(),invoice_number:i===5?'000001':String(i+1).padStart(6,'0'),invoice_series:'C25TMM',seller_name:r[1],seller_tax_code:r[2],buyer_name:'MINMIN LIFESTYLE',buyer_tax_code:state.inputInvoices.companyTaxCode||'0310000000',raw_item_description:r[3],net_amount:r[4],vat_rate:r[5]?8:0,vat_amount:r[5],total_amount:r[6],period:state.inputInvoices.period,source_file_name:`Mau-hoa-don-${i+1}.xml`,confidence_score:i===4?0.62:0.95})))); saveInputInvoices(); render(); }
-function inputInvoiceFiltered(){ const f=state.inputInvoices.filters||{}; return (state.inputInvoices.invoices||[]).filter(x=>(!f.period||x.period===f.period)&&(!f.year||String(x.invoice_date||x.period||'').includes(f.year))&&(!f.supplier||invoiceNorm(x.seller_name).includes(invoiceNorm(f.supplier)))&&(!f.category||x.category===f.category)&&(!f.status||x.validation_status===f.status)&&(!f.reviewed||(f.reviewed==='yes'?x.reviewed_by_accountant:!x.reviewed_by_accountant))); }
+function inputInvoiceFiltered(){ const f=state.inputInvoices.filters||{}; return (state.inputInvoices.invoices||[]).filter(x=>(!f.period||x.period===f.period)&&(!f.year||String(x.invoice_date||x.period||'').includes(f.year))&&(!f.supplier||invoiceNorm([x.seller_name,x.seller_tax_code].join(' ')).includes(invoiceNorm(f.supplier)))&&(!f.invoiceNumber||invoiceNorm([x.invoice_number,x.invoice_series].join(' ')).includes(invoiceNorm(f.invoiceNumber)))&&(!f.search||invoiceNorm([x.raw_item_description,x.accounting_description,x.category,...(x.items||[]).map(i=>i.description||i.name||'')].join(' ')).includes(invoiceNorm(f.search)))&&(!f.category||x.category===f.category)&&(!f.status||x.validation_status===f.status)&&(!f.reviewed||(f.reviewed==='yes'?x.reviewed_by_accountant:!x.reviewed_by_accountant))); }
 function inputInvoiceStatusClass(s){ return s==='Hợp lệ'?'bg-mint/10 text-mint border-mint/20':s==='Lỗi trùng hóa đơn'?'bg-coral/10 text-coral border-coral/20':s==='Thiếu dữ liệu'?'bg-gold/20 text-[#8a5a00] border-gold/30':'bg-black/5 text-black/55 border-black/10'; }
 function updateInputInvoice(id,patch){ const inv=state.inputInvoices.invoices.find(x=>x.id===id); if(!inv||inv.locked)return false; Object.assign(inv,patch,{updated_at:new Date().toISOString()}); applyAccountingRule(inv); validateInputInvoice(inv); saveInputInvoices(); return true; }
 async function deleteInputInvoice(id){ const inv=state.inputInvoices.invoices.find(x=>x.id===id); if(!inv)return; if(!confirm('Xóa dòng hóa đơn này? File gốc trong Storage vẫn giữ nguyên.'))return; state.inputInvoices.invoices=state.inputInvoices.invoices.filter(x=>x.id!==id); saveInputInvoices(); render(); await deleteInputInvoiceRemote(id).catch(e=>{state.inputInvoices.syncStatus='Đã xóa trên máy, chưa xóa được trên Supabase.'; console.warn(e); render();}); }
@@ -10063,7 +10063,6 @@ documentPrintCss = function(){
           </div>
           <div class="grid gap-3">
             ${mmInputInvoiceUploadInline()}
-            <div class="rounded-lg border border-black/10 bg-[#F7F7F2] p-3">${inputInvoiceFilters()}</div>
           </div>
         </div>
       </div>
@@ -10073,6 +10072,7 @@ documentPrintCss = function(){
           <h2 class="text-sm font-black uppercase tracking-wide text-ink">Danh sách hóa đơn</h2>
           <span class="rounded-md border border-black/10 bg-[#F7F7F2] px-2 py-1 text-xs font-extrabold text-black/55">${rows.length} dòng</span>
         </div>
+        <div class="mb-3 rounded-lg border border-black/10 bg-[#F7F7F2] p-3">${inputInvoiceFilters()}</div>
         ${rows.length?mmInputInvoiceYearGroups(rows):'<div class="rounded-md border border-dashed border-black/15 bg-[#F7F7F2] p-6 text-center text-sm font-bold text-black/45">Chưa có hóa đơn phù hợp bộ lọc.</div>'}
       </div>
     </section>`;
@@ -10127,13 +10127,16 @@ documentPrintCss = function(){
     const statuses=['Hợp lệ','Cần kiểm tra','Lỗi trùng hóa đơn','Thiếu dữ liệu','OCR không chắc chắn'];
     const fieldClass='h-10 min-w-0 rounded-md border border-black/15 bg-white px-3 text-xs font-bold';
     const label=(body)=>`<label class="grid min-w-0 gap-1">${body}</label>`;
-    return `<div class="grid gap-2 md:grid-cols-3">
+    return `<div class="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
       ${label(`<span class="text-[10px] font-bold uppercase text-black/40">Kỳ tháng</span><input data-input-invoice-filter="period" type="month" value="${esc(f.period||'')}" class="${fieldClass}"/>`)}
       ${label(`<span class="text-[10px] font-bold uppercase text-black/40">Năm</span><input data-input-invoice-filter="year" type="number" value="${esc(f.year||'')}" class="${fieldClass}"/>`)}
-      ${label(`<span class="text-[10px] font-bold uppercase text-black/40">Nhà cung cấp</span><input data-input-invoice-filter="supplier" value="${esc(f.supplier||'')}" class="${fieldClass}"/>`)}
+      ${label(`<span class="text-[10px] font-bold uppercase text-black/40">Nhà cung cấp / MST</span><input data-input-invoice-filter="supplier" value="${esc(f.supplier||'')}" placeholder="Tên công ty hoặc MST" class="${fieldClass}"/>`)}
+      ${label(`<span class="text-[10px] font-bold uppercase text-black/40">Số hóa đơn</span><input data-input-invoice-filter="invoiceNumber" value="${esc(f.invoiceNumber||'')}" placeholder="Số hoặc ký hiệu HĐ" class="${fieldClass}"/>`)}
+      ${label(`<span class="text-[10px] font-bold uppercase text-black/40">Nội dung hóa đơn</span><input data-input-invoice-filter="search" value="${esc(f.search||'')}" placeholder="Tên hàng, nội dung, nhóm" class="${fieldClass}"/>`)}
       ${label(`<span class="text-[10px] font-bold uppercase text-black/40">Nhóm</span><select data-input-invoice-filter="category" class="${fieldClass}"><option value="">Tất cả</option>${cats.map(c=>`<option ${f.category===c?'selected':''}>${esc(c)}</option>`).join('')}</select>`)}
       ${label(`<span class="text-[10px] font-bold uppercase text-black/40">Trạng thái</span><select data-input-invoice-filter="status" class="${fieldClass}"><option value="">Tất cả</option>${statuses.map(s=>`<option ${f.status===s?'selected':''}>${esc(s)}</option>`).join('')}</select>`)}
       ${label(`<span class="text-[10px] font-bold uppercase text-black/40">Kiểm tra</span><select data-input-invoice-filter="reviewed" class="${fieldClass}"><option value="">Tất cả</option><option value="yes" ${f.reviewed==='yes'?'selected':''}>Đã kiểm tra</option><option value="no" ${f.reviewed==='no'?'selected':''}>Chưa kiểm tra</option></select>`)}
+      <div class="flex items-end"><button data-input-invoice-filter-reset type="button" class="h-10 w-full rounded-md border border-black/15 bg-white px-3 text-xs font-extrabold text-ink hover:border-coral hover:text-coral">Xóa bộ lọc</button></div>
     </div>`;
   };
 })();
@@ -12216,6 +12219,15 @@ documentPrintCss = function(){
     prevBindDebtOverpay17J.apply(this,arguments);
     document.querySelectorAll('[data-debt-payment-pick]').forEach(select=>select.onchange=()=>mmDebtLinkPayment(select.dataset.debtKind,select.dataset.debtPaymentPick,select.value));
     document.querySelectorAll('[data-debt-payment-unlink]').forEach(btn=>btn.onclick=()=>mmDebtUnlinkPayment(btn.dataset.debtPaymentUnlink));
+  };
+  const previousBindInputInvoiceFilterReset=bind;
+  bind=function(){
+    previousBindInputInvoiceFilterReset.apply(this,arguments);
+    document.querySelectorAll('[data-input-invoice-filter-reset]').forEach(button=>button.onclick=()=>{
+      state.inputInvoices.filters={period:'',year:'',supplier:'',invoiceNumber:'',search:'',category:'',status:'',reviewed:''};
+      saveInputInvoices();
+      render({force:true});
+    });
   };
 })();
 
