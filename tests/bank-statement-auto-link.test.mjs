@@ -19,5 +19,8 @@ assert.match(html,/payment\.related_label=originalStatementDescription\(payment\
 assert.match(html,/function restoreSupplierStatementLabels/,'Previously overwritten statement descriptions must be repaired');
 assert.match(html,/filters\.reconcileUnit=supplier\.key/,'Selecting a supplier must make it the active reconciliation unit');
 assert.match(html,/Hóa đơn nhà cung cấp tự cập nhật từ mục Mua vào/,'The reconciliation screen must explain its live invoice source');
+assert.match(html,/data-reconcile-details-toggle/,'The long reconciliation table needs a collapse control');
+assert.match(html,/reconcileDetailsCollapsed=!state\.accounting\.filters\.reconcileDetailsCollapsed/,'The collapse control must persist and toggle its state');
+assert.match(html,/collapsed\?'Mở chi tiết':'Thu gọn'/,'The control must clearly show its current action');
 
 console.log('Bank statement invoice auto-link checks passed.');
