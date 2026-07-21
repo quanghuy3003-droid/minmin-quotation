@@ -24,5 +24,7 @@ assert.match(html,/Đã thanh toán · \$\{payments\.length\} giao dịch/,'Paym
 assert.match(html,/Không ghép từng dòng với nhau/,'Reconciliation must compare totals without row-level matching');
 assert.match(html,/Giao dịch sao kê \(\$\{payments\.length\}\)/,'Statement transactions must remain a separate dated list');
 assert.match(html,/Hóa đơn nhà cung cấp \(\$\{invoices\.length\}\)/,'Supplier invoices must remain a separate dated list');
+assert.doesNotMatch(html,/reconcileDetail\('Tiền thu',thu\)/,'The reconciliation tab must not render the redundant income section');
+assert.doesNotMatch(html,/reconcileDetail\('Tiền chi',chi\)/,'The reconciliation tab must not render the redundant expense section');
 
 console.log('Bank statement supplier-ledger checks passed.');
