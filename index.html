@@ -12218,6 +12218,109 @@ documentPrintCss = function(){
   };
 })();
 
+/* MINMIN PATCH 2026-07-21A
+   Doi soat theo don vi: dong tien Thu/Chi so voi hoa don Ban ra/Mua vao. */
+(function(){
+  function reconcilePartyKey(name,taxCode){
+    const tax=String(taxCode||'').replace(/\D/g,'');
+    return tax?`tax:${tax}`:`name:${invoiceNorm(name||'khong-ro')}`;
+  }
+  function reconcileParties(){
+    const map=new Map(), add=(name,taxCode,role)=>{
+      name=String(name||'').trim(); taxCode=String(taxCode||'').trim();
+      if(!name&&!taxCode)return;
+      const key=reconcilePartyKey(name,taxCode), current=map.get(key)||{key,name:name||taxCode,taxCode,roles:[]};
+      if(name&&!current.name)current.name=name;
+      if(taxCode&&!current.taxCode)current.taxCode=taxCode;
+      if(!current.roles.includes(role))current.roles.push(role);
+      map.set(key,current);
+    };
+    (state.accounting?.outgoingInvoices||[]).filter(isManagedOutgoingInvoice).forEach(x=>add(x.customer_name,x.customer_tax_code,'Khách hàng'));
+    (state.inputInvoices?.invoices||[]).forEach(x=>add(x.seller_name,x.seller_tax_code,'Nhà cung cấp'));
+    return [...map.values()].sort((a,b)=>a.name.localeCompare(b.name,'vi'));
+  }
+  function reconcileInvoiceParty(inv,type){
+    return type==='outgoing'
+      ? reconcilePartyKey(inv.customer_name,inv.customer_tax_code)
+      : reconcilePartyKey(inv.seller_name,inv.seller_tax_code);
+  }
+  function reconcilePaymentMatchesParty(payment,party,invoices){
+    const linked=paymentRelatedIds(payment)[0]||'';
+    if(linked&&invoices.some(inv=>String(inv.id)===String(linked)))return true;
+    if(linked)return false;
+    const hay=invoiceNorm([payment.related_label,payment.payer_payee,payment.note,payment.method].join(' '));
+    const name=invoiceNorm(party.name), tax=String(party.taxCode||'').replace(/\D/g,'');
+    return (!!name&&name.length>=3&&hay.includes(name))||((tax.length>=8)&&hay.includes(tax));
+  }
+  function reconcileStatus(diff,unlinked){
+    if(Math.abs(diff)<1&&!unlinked)return {label:'Khớp',cls:'bg-mint/10 text-mint border-mint/25'};
+    if(diff>0)return {label:`Thiếu hóa đơn ${money(diff)}`,cls:'bg-gold/20 text-[#8a5a00] border-gold/40'};
+    if(diff<0)return {label:`Hóa đơn cao hơn ${money(Math.abs(diff))}`,cls:'bg-coral/10 text-coral border-coral/25'};
+    return {label:`${unlinked} giao dịch chưa gắn hóa đơn`,cls:'bg-gold/20 text-[#8a5a00] border-gold/40'};
+  }
+  function reconcileRows(party,type){
+    const invoiceType=type==='Thu'?'outgoing':'incoming';
+    const invoices=(invoiceType==='outgoing'?(state.accounting?.outgoingInvoices||[]).filter(isManagedOutgoingInvoice):(state.inputInvoices?.invoices||[]))
+      .filter(inv=>reconcileInvoiceParty(inv,invoiceType)===party.key&&accountingInPeriod(inv.invoice_date||inv.request_date||inv.period));
+    const payments=(state.accounting?.payments||[]).filter(p=>p.payment_type===type&&accountingInPeriod(p.payment_date)&&reconcilePaymentMatchesParty(p,party,invoices));
+    const invoiceTotal=invoices.reduce((s,x)=>s+Number(x.total_amount||0),0), paymentTotal=payments.reduce((s,x)=>s+Number(x.amount||0),0);
+    const unlinked=payments.filter(p=>!paymentRelatedIds(p)[0]).length, difference=paymentTotal-invoiceTotal;
+    return {invoiceType,invoices,payments,invoiceTotal,paymentTotal,unlinked,difference,status:reconcileStatus(difference,unlinked)};
+  }
+  function reconcileMetric(label,value,tone='bg-white'){
+    return `<div class="rounded-lg border border-black/10 ${tone} p-3 shadow-sm"><div class="text-[10px] font-bold uppercase text-black/40">${esc(label)}</div><div class="mt-1 text-lg font-black">${esc(value)}</div></div>`;
+  }
+  function reconcileDetail(title,data){
+    const invoiceName=data.invoiceType==='outgoing'?'Hóa đơn bán ra':'Hóa đơn mua vào';
+    const empty='<div class="rounded-md border border-dashed border-black/15 p-4 text-center text-xs font-bold text-black/40">Chưa có dữ liệu.</div>';
+    return `<div class="rounded-lg border border-black/10 bg-white p-3 shadow-sm">
+      <div class="flex flex-wrap items-start justify-between gap-2"><div><h2 class="text-base font-black">${esc(title)}</h2><p class="mt-1 text-xs font-bold text-black/45">${invoiceName} so với dòng tiền cùng đơn vị trong kỳ.</p></div><span class="rounded-md border px-2 py-1 text-xs font-extrabold ${data.status.cls}">${esc(data.status.label)}</span></div>
+      <div class="mt-3 grid gap-2 sm:grid-cols-3">${reconcileMetric('Dòng tiền',money(data.paymentTotal),title==='Tiền thu'?'bg-mint/10':'bg-gold/15')}${reconcileMetric(invoiceName,money(data.invoiceTotal))}${reconcileMetric('Chênh lệch',money(data.difference),Math.abs(data.difference)<1?'bg-mint/10':'bg-coral/10')}</div>
+      <div class="mt-3 grid gap-3 xl:grid-cols-2"><div><h3 class="mb-2 text-xs font-black uppercase text-black/45">Giao dịch (${data.payments.length})</h3>${data.payments.length?`<div class="grid gap-1">${data.payments.map(p=>`<div class="grid grid-cols-[82px_1fr_auto] gap-2 rounded-md border border-black/10 p-2 text-xs"><b>${esc(compactDate(p.payment_date))}</b><span>${esc(paymentShortText(p.related_label||p.note||p.method||'--',70))}${paymentRelatedIds(p)[0]?'':' <b class="text-[#8a5a00]">· Chưa gắn HĐ</b>'}</span><b>${money(p.amount)}</b></div>`).join('')}</div>`:empty}</div><div><h3 class="mb-2 text-xs font-black uppercase text-black/45">${invoiceName} (${data.invoices.length})</h3>${data.invoices.length?`<div class="grid gap-1">${data.invoices.map(inv=>`<div class="grid grid-cols-[82px_1fr_auto] gap-2 rounded-md border border-black/10 p-2 text-xs"><b>${esc(compactDate(inv.invoice_date||inv.request_date||inv.period))}</b><span>HĐ ${esc(inv.invoice_number||inv.order_code||'chưa có số')}</span><b>${money(inv.total_amount)}</b></div>`).join('')}</div>`:empty}</div></div>
+    </div>`;
+  }
+  function renderReconciliation(){
+    const parties=reconcileParties(), filter=state.accounting.filters||{}, selected=filter.reconcileUnit||parties[0]?.key||'', party=parties.find(x=>x.key===selected)||parties[0];
+    if(party&&filter.reconcileUnit!==party.key)filter.reconcileUnit=party.key;
+    const select=`<select data-reconcile-unit class="h-10 w-full rounded-md border border-black/15 bg-white px-3 text-sm font-extrabold"><option value="">Chọn đơn vị cần đối soát</option>${parties.map(x=>`<option value="${esc(x.key)}" ${party?.key===x.key?'selected':''}>${esc(x.name)}${x.taxCode?` · MST ${esc(x.taxCode)}`:''} · ${esc(x.roles.join(' / '))}</option>`).join('')}</select>`;
+    if(!party)return `<div class="rounded-lg border border-black/10 bg-white p-5 shadow-sm"><h2 class="text-base font-black">Đối soát theo đơn vị</h2><p class="mt-2 text-sm text-black/55">Chưa có khách hàng hoặc nhà cung cấp trong hóa đơn để đối soát.</p></div>`;
+    const thu=reconcileRows(party,'Thu'), chi=reconcileRows(party,'Chi'), totalDiff=thu.difference-chi.difference, issues=[thu,chi].filter(x=>Math.abs(x.difference)>=1||x.unlinked).length;
+    return `<div class="grid gap-3">${accountingFilters()}<div class="rounded-lg border border-black/10 bg-white p-3 shadow-sm"><div class="grid gap-3 lg:grid-cols-[1fr_2fr] lg:items-end"><div><h2 class="text-base font-black">Đối soát theo đơn vị</h2><p class="mt-1 text-xs font-bold text-black/45">Kiểm tra dòng tiền chuyển vào/ra với hóa đơn đã nhận hoặc phát hành.</p></div><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">Đơn vị cần đối soát</span>${select}</label></div><div class="mt-3 grid gap-2 md:grid-cols-4">${reconcileMetric('Đơn vị',party.name)}${reconcileMetric('Tổng tiền thu',money(thu.paymentTotal),'bg-mint/10')}${reconcileMetric('Tổng tiền chi',money(chi.paymentTotal),'bg-gold/15')}${reconcileMetric('Số nhóm đang lệch',String(issues),issues?'bg-coral/10':'bg-mint/10')}</div></div>${reconcileDetail('Tiền thu',thu)}${reconcileDetail('Tiền chi',chi)}<div class="rounded-lg border ${issues?'border-coral/25 bg-coral/10':'border-mint/25 bg-mint/10'} p-3 text-sm font-extrabold">Kết luận: ${issues?`Có ${issues} nhóm chưa khớp. Chênh lệch ròng ${money(totalDiff)}; kiểm tra các giao dịch chưa gắn hóa đơn và số tiền hóa đơn.`:'Dòng tiền và hóa đơn của đơn vị đang khớp trong kỳ đã chọn.'}</div></div>`;
+  }
+  accountingNav=function(){
+    const groups=[
+      [['overview','Tổng quan'],['incoming','Mua vào'],['outgoing','Bán ra'],['reconcile','Đối soát']],
+      [['payments','Thu/chi'],['debts','Công nợ'],['vat','Thuế GTGT']],
+      [['vouchers','Chứng từ'],['cashbook','Sổ quỹ'],['reports','Báo cáo']]
+    ];
+    return `<div class="grid gap-2 lg:grid-cols-3">${groups.map(group=>`<div class="flex flex-wrap gap-2 rounded-lg border border-black/10 bg-[#F7F7F2] p-1.5">${group.map(([id,label])=>`<button data-accounting-view="${id}" type="button" class="h-9 flex-1 rounded-md px-3 text-xs font-extrabold ${state.accounting.view===id?'bg-ink text-white shadow-sm':'bg-white text-ink hover:border-mint'}">${label}</button>`).join('')}</div>`).join('')}</div>`;
+  };
+  const previousRenderReconcile=renderAccountingTab;
+  function reconcileReplaceNav(html){
+    const tpl=document.createElement('template'); tpl.innerHTML=String(html||'').trim();
+    const section=tpl.content.querySelector('section'), firstButton=section?.querySelector('[data-accounting-view]');
+    const nav=firstButton?.closest('.grid'); if(nav)nav.outerHTML=accountingNav();
+    return {tpl,section};
+  }
+  renderAccountingTab=function(){
+    if((state.accounting.view||'overview')!=='reconcile'){
+      const current=reconcileReplaceNav(previousRenderReconcile.apply(this,arguments));
+      return current.section?.outerHTML||current.tpl.innerHTML;
+    }
+    const oldView=state.accounting.view; state.accounting.view='overview';
+    const current=reconcileReplaceNav(previousRenderReconcile.apply(this,arguments)); state.accounting.view=oldView;
+    const {section}=current; if(!section)return renderReconciliation();
+    [...section.children].slice(1).forEach(node=>node.remove());
+    section.insertAdjacentHTML('beforeend',renderReconciliation());
+    return section.outerHTML;
+  };
+  const previousBindReconcile=bind;
+  bind=function(){
+    previousBindReconcile.apply(this,arguments);
+    document.querySelectorAll('[data-reconcile-unit]').forEach(select=>select.onchange=()=>{state.accounting.filters.reconcileUnit=select.value; saveAccounting(); render({force:true});});
+  };
+})();
+
 
 initApp();
     </script>
