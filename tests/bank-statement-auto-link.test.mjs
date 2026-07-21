@@ -22,5 +22,8 @@ assert.match(html,/Hóa đơn nhà cung cấp tự cập nhật từ mục Mua v
 assert.match(html,/data-reconcile-details-toggle/,'The long reconciliation table needs a collapse control');
 assert.match(html,/reconcileDetailsCollapsed=!state\.accounting\.filters\.reconcileDetailsCollapsed/,'The collapse control must persist and toggle its state');
 assert.match(html,/collapsed\?'Mở chi tiết':'Thu gọn'/,'The control must clearly show its current action');
+assert.match(html,/App chỉ so sánh hai tổng; không ghép từng giao dịch với từng hóa đơn/,'Reconciliation must compare totals without forcing row-level matching');
+assert.match(html,/Giao dịch sao kê \(\$\{payments\.length\}\)/,'Statement transactions must remain a separate dated list');
+assert.match(html,/Hóa đơn nhà cung cấp \(\$\{invoices\.length\}\)/,'Supplier invoices must remain a separate dated list');
 
 console.log('Bank statement invoice auto-link checks passed.');
