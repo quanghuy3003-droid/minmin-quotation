@@ -19,13 +19,16 @@ assert.match(source,/\.sheet td\{font-size:9\.2px/,'Product content must use a b
 assert.match(source,/\.total-label\{text-align:left!important/,'Quotation total labels must be left-aligned');
 assert.match(source,/class="no-border" colspan="7"><\/td><td class="total-label" colspan="3">/,'Totals must align exactly with the last four product-table columns');
 assert.match(source,/\.ship-row td\{[^}]*vertical-align:middle!important/,'Shipping cells must center content vertically');
-assert.match(source,/\.total-row td\{vertical-align:middle!important/,'First-page total cells must center content vertically');
+assert.match(source,/\.total-row td\{height:20px;vertical-align:middle!important/,'First-page total cells must use a fixed centered height');
 assert.match(source,/summary:'all'/,'The closing product page must contain every quotation total');
 assert.doesNotMatch(source,/<table class="summary-totals">/,'Totals must not be deferred to the notes page');
 assert.match(source,/reservedForClosing=final\?\(32\+20\*7\):0/,'Pagination must reserve space for the centered shipping row and seven totals');
 assert.match(source,/\.sheet th\{[^}]*vertical-align:middle!important/,'Column headings must center vertically within their cells');
 assert.match(source,/\.sheet th,\.sheet td\{border:\.15px solid #777/,'Quotation grid lines must render ultra thin and soft');
 assert.match(source,/\.ship-row td\{height:32px[^}]*vertical-align:middle!important/,'Shipping content must be centered vertically inside a taller row');
+assert.match(source,/class="total-label" colspan="3"><span class="total-cell-content">/,'Total labels need a dedicated vertical-centering wrapper');
+assert.match(source,/class="total-value"><span class="total-cell-content">/,'Total values need a dedicated vertical-centering wrapper');
+assert.match(source,/\.total-cell-content\{[^}]*display:flex;height:20px[^}]*align-items:center/,'Total content must center vertically with flex alignment');
 assert.match(source,/const cover=page\.cover\?/,'Quotation cover content must be conditional');
 assert.match(source,/quotationPageHtml\(\{cover:true,header:true,rows:rows\.slice\(0,firstTake\)/,'Only the first product page must include the quotation cover');
 assert.match(source,/quotationPageHtml\(\{cover:false,header:true,rows:chunk/,'Middle product pages must omit the quotation cover');
