@@ -4382,7 +4382,7 @@ async function exportMobilePdfVector(options={}){
   }
   const t=totals(),moneyCell=v=>moneyPlain(v),shipAmount=Number(parseInputMoney(state.info.shipPriceText||0))*Number(state.info.shipQty||0);
   if(state.info.logoDataUrl){try{pdf.addImage(state.info.logoDataUrl,imageExtension(state.info.logoDataUrl).toUpperCase(),72,28,150,48);}catch{}}
-  pdf.setFont('NotoSans','bold');pdf.setFontSize(14);pdf.text('HOME DÉCOR - ĐÈN TRANG TRÍ',48,98);pdf.setFontSize(8);pdf.text('TEL 038 868 3838',48,111);
+  pdf.setFont('NotoSans','bold');pdf.setFontSize(8);pdf.text('TEL 038 868 3838',72,88);
   pdf.setFontSize(16);pdf.text('PHIẾU BÁO GIÁ (THE QUOTATION)',421,166,{align:'center'});pdf.setFontSize(8);
   const customerInfoRows=[
     {label:'Khách hàng (Client)',value:state.info.client},

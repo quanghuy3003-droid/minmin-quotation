@@ -16,6 +16,9 @@ assert.match(source,/id="mobilePdfOpen"[^>]*target="_blank"/,'The mobile deliver
 assert.match(source,/new File\(\[blob\],name,\{type:'application\/pdf'\}\)[\s\S]*?navigator\.share/,'Mobile PDF delivery must use the native share sheet with a real PDF file');
 assert.match(source,/showMobilePdfProgress\(\)[\s\S]*?Đang tạo PDF báo giá/,'Mobile PDF export must immediately show progress');
 assert.match(source,/async function exportMobilePdfVector\(options=\{\}\)[\s\S]*?pdf\.autoTable/,'Quotation PDF must render its table as vectors');
+const vectorPdfPipeline=source.slice(source.indexOf('async function exportMobilePdfVector(options={})'),source.indexOf('async function exportPdfA4(options={})'));
+assert.doesNotMatch(vectorPdfPipeline,/HOME DÉCOR - ĐÈN TRANG TRÍ/,'The PDF header must not repeat the removed Home Decor line');
+assert.match(vectorPdfPipeline,/pdf\.text\('TEL 038 868 3838',72,88\)/,'The telephone line must sit directly below the logo');
 assert.match(source,/const firstPageCapacity=Math\.max\(1,Math\.floor\(\(pageBottom-firstPageTableY-tableHeaderHeight\)\/productRowHeight\)\)[\s\S]*?productBody\.slice\(0,firstPageCapacity\)[\s\S]*?while\(productBody\.length-start>2\)[\s\S]*?Math\.min\(4,productBody\.length-start-1\)/,'Quotation pagination must derive the cover capacity from the blocks moved above it and reserve a compact closing page');
 assert.match(source,/const finalPage=pageIndex===chunks\.length-1[\s\S]*?shippingRow,\.\.\.closingRows/,'Shipping and totals must stay on the final product page');
 assert.match(source,/const customerInfoRows=\[[\s\S]*?\{label:'Tel',value:state\.info\.tel,secondaryLabel:'Email',secondaryValue:state\.info\.email\}[\s\S]*?customerInfoRows\.forEach/,'Quotation client details must contain the five Excel information rows');
