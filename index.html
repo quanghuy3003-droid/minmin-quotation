@@ -324,6 +324,23 @@
         .minmin-accounting-section h1 { font-size: 1.15rem !important; }
         .minmin-accounting-section h2 { font-size: 0.95rem !important; }
       }
+      /* Keep the quotation total easy to reach on every screen size. */
+      @media (max-width: 1023px) {
+        main > section.mx-auto.grid.max-w-7xl > aside {
+          order: -1;
+        }
+      }
+      @media (min-width: 768px) {
+        main > section.mx-auto.grid.max-w-7xl > aside {
+          position: sticky !important;
+          top: 1rem !important;
+          z-index: 25;
+          align-self: start;
+          max-height: calc(100dvh - 2rem);
+          overflow-y: auto;
+          overscroll-behavior: contain;
+        }
+      }
     </style>
   </head>
   <body class="min-h-screen bg-[#F7F7F2] font-sans text-ink">
