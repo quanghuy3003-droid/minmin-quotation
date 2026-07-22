@@ -32,6 +32,8 @@ assert.match(source,/\.total-row td\{height:20px;vertical-align:middle!important
 assert.match(source,/summary:'all'/,'The closing product page must contain every quotation total');
 assert.doesNotMatch(source,/<table class="summary-totals">/,'Totals must not be deferred to the notes page');
 assert.match(source,/reservedForClosing=final\?\(32\+20\*7\):0/,'Pagination must reserve space for the centered shipping row and seven totals');
+assert.match(source,/const closingProductCapacity=1;[\s\S]*?const totalsPageCapacity=pageCapacity\(\{final:true\}\);[\s\S]*?while\(rows\.length-pos>totalsPageCapacity\)/,'Pagination must pull remaining products upward until the totals page is genuinely full');
+assert.match(source,/if\(closingRows\.length<=closingProductCapacity\)[\s\S]*?notes:true[\s\S]*?else[\s\S]*?summary:'all'/,'Notes must move to their own page instead of forcing a sparse product page');
 assert.match(source,/\.sheet th\{[^}]*vertical-align:middle!important/,'Column headings must center vertically within their cells');
 assert.match(source,/\.sheet th,\.sheet td\{border:\.15px solid #777/,'Quotation grid lines must render ultra thin and soft');
 assert.match(source,/\.ship-row td\{height:32px[^}]*vertical-align:middle!important/,'Shipping content must be centered vertically inside a taller row');
@@ -55,7 +57,7 @@ assert.match(source,/\.date\{[^}]*right:104px[^}]*width:180px;text-align:center/
 assert.match(source,/const cover=page\.cover\?/,'Quotation cover content must be conditional');
 assert.match(source,/quotationPageHtml\(\{cover:true,header:true,rows:rows\.slice\(0,firstTake\)/,'Only the first product page must include the quotation cover');
 assert.match(source,/quotationPageHtml\(\{cover:false,header:true,rows:chunk/,'Middle product pages must omit the quotation cover');
-assert.match(source,/quotationPageHtml\(\{cover:false,header:true,rows:rows\.slice\(pos\)/,'The closing product page must omit the quotation cover');
+assert.match(source,/quotationPageHtml\(\{cover:false,header:true,rows:closingRows/,'The closing product page must omit the quotation cover');
 assert.match(source,/\.qr\{[^}]*top:166px/,'QR must be vertically centered beside the raised notes block');
 assert.ok(source.lastIndexOf('previewPdf.onclick=()=>exportQuotationPdfFromXlsx')>source.lastIndexOf('previewPdf.onclick=()=>exportPdfA4'));
 assert.ok(source.lastIndexOf('pdf.onclick=()=>exportQuotationPdfFromXlsx')>source.lastIndexOf('pdf.onclick=()=>exportPdfA4'));

@@ -4417,14 +4417,21 @@ async function exportPdfA4(options={}){
     const firstTake=Math.min(rows.length,pageCapacity({first:true,final:false}));
     pages.push(quotationPageHtml({cover:true,header:true,rows:rows.slice(0,firstTake),ship:false,summary:false}));
     pos=firstTake;
-    while(rows.length-pos>1){
-      const take=Math.min(pageCapacity({final:false}),rows.length-pos-1);
+    const closingProductCapacity=1;
+    const totalsPageCapacity=pageCapacity({final:true});
+    while(rows.length-pos>totalsPageCapacity){
+      const take=Math.min(pageCapacity({final:false}),rows.length-pos-closingProductCapacity);
       const chunk=rows.slice(pos,pos+take);
       pos+=chunk.length;
       pages.push(quotationPageHtml({cover:false,header:true,rows:chunk,ship:false,summary:false}));
     }
-    pages.push(quotationPageHtml({cover:false,header:true,rows:rows.slice(pos),ship:true,summary:'all',notes:true}));
-    notesOnProductPage=true;
+    const closingRows=rows.slice(pos);
+    if(closingRows.length<=closingProductCapacity){
+      pages.push(quotationPageHtml({cover:false,header:true,rows:closingRows,ship:true,summary:'all',notes:true}));
+      notesOnProductPage=true;
+    }else{
+      pages.push(quotationPageHtml({cover:false,header:true,rows:closingRows,ship:true,summary:'all'}));
+    }
   }
   if(!notesOnProductPage)pages.push(summaryPageHtml());
   const holder=document.createElement('div');
