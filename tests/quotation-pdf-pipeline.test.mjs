@@ -17,7 +17,11 @@ assert.match(source,/\.logo\{[^}]*width:auto;height:64px;max-width:190px;object-
 assert.match(source,/\.table-first\{[^}]*top:304px/,'The product table must clear the complete client and telephone block');
 assert.match(source,/\.sheet td\{font-size:9\.2px/,'Product content must use a balanced readable font size');
 assert.match(source,/\.total-label\{text-align:left!important/,'Quotation total labels must be left-aligned');
-assert.match(source,/class="no-border" colspan="5"/,'Quotation totals must begin nearer the center of the table');
+assert.match(source,/class="no-border" colspan="3"[\s\S]{0,240}class="no-border"><\/td>/,'Quotation totals must be centered with balanced blank columns on both sides');
+assert.match(source,/\.summary-totals\{position:absolute;left:421px/,'Final-page totals must be horizontally centered');
+assert.match(source,/\.ship-row td\{[^}]*vertical-align:middle!important/,'Shipping cells must center content vertically');
+assert.match(source,/\.total-row td\{vertical-align:middle!important/,'First-page total cells must center content vertically');
+assert.match(source,/\.summary-totals td\{[^}]*vertical-align:middle!important/,'Final-page total cells must center content vertically');
 assert.match(source,/\.qr\{[^}]*top:252px/,'QR must be vertically centered beside the notes');
 assert.ok(source.lastIndexOf('previewPdf.onclick=()=>exportQuotationPdfFromXlsx')>source.lastIndexOf('previewPdf.onclick=()=>exportPdfA4'));
 assert.ok(source.lastIndexOf('pdf.onclick=()=>exportQuotationPdfFromXlsx')>source.lastIndexOf('pdf.onclick=()=>exportPdfA4'));
