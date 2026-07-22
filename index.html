@@ -264,6 +264,66 @@
           grid-column: 1 / -1 !important;
         }
       }
+      @media (max-width: 1024px) {
+        .minmin-accounting-section {
+          width: 100% !important;
+          max-width: 100vw !important;
+          padding: 0.75rem !important;
+          overflow-x: hidden !important;
+        }
+        .minmin-accounting-section > * {
+          min-width: 0 !important;
+          max-width: 100% !important;
+        }
+        .minmin-accounting-section input,
+        .minmin-accounting-section select,
+        .minmin-accounting-section textarea {
+          min-width: 0 !important;
+          max-width: 100% !important;
+          width: 100% !important;
+        }
+        .minmin-accounting-section .overflow-x-auto {
+          width: 100% !important;
+          max-width: calc(100vw - 1.5rem) !important;
+          overflow-x: auto !important;
+          overscroll-behavior-x: contain;
+          -webkit-overflow-scrolling: touch;
+        }
+        .minmin-accounting-section [data-accounting-view] {
+          min-width: 0 !important;
+          padding-left: 0.6rem !important;
+          padding-right: 0.6rem !important;
+          white-space: normal !important;
+          line-height: 1.1 !important;
+        }
+      }
+      @media (max-width: 640px) {
+        .minmin-accounting-section {
+          gap: 0.6rem !important;
+          padding: 0.5rem !important;
+        }
+        .minmin-accounting-section > div {
+          border-radius: 0.65rem !important;
+        }
+        .minmin-accounting-section [data-accounting-view] {
+          flex-basis: calc(50% - 0.25rem) !important;
+          height: 2.55rem !important;
+          font-size: 0.72rem !important;
+        }
+        .minmin-accounting-section button:not([data-accounting-view]) {
+          min-height: 2.45rem;
+          white-space: normal;
+          line-height: 1.15;
+        }
+        .minmin-accounting-section .overflow-x-auto {
+          max-width: calc(100vw - 1rem) !important;
+        }
+        .minmin-accounting-section table[class*="min-w-"] {
+          font-size: 0.72rem !important;
+        }
+        .minmin-accounting-section h1 { font-size: 1.15rem !important; }
+        .minmin-accounting-section h2 { font-size: 0.95rem !important; }
+      }
     </style>
   </head>
   <body class="min-h-screen bg-[#F7F7F2] font-sans text-ink">
@@ -12402,6 +12462,7 @@ async function exportQuotationPdfFromXlsx(options={}){
   function reconcileReplaceNav(html){
     const tpl=document.createElement('template'); tpl.innerHTML=String(html||'').trim();
     const section=tpl.content.querySelector('section'), firstButton=section?.querySelector('[data-accounting-view]');
+    if(section)section.classList.add('minmin-accounting-section');
     const nav=firstButton?.closest('.grid'); if(nav)nav.outerHTML=accountingNav();
     return {tpl,section};
   }
