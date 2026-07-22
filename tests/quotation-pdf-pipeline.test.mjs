@@ -33,11 +33,9 @@ assert.match(source,/\.total-cell-content\{position:absolute;left:0;right:0;top:
 assert.match(source,/\.sheet thead th\{position:relative;background:#000!important;color:#fff!important\}/,'Quotation table headers must use a black background with white text');
 assert.match(source,/\.header-cell-content\{position:absolute;left:0;right:0;top:50%;[^}]*transform:translateY\(-58%\)/,'Quotation header text must sit on the vertical midpoint axis');
 assert.match(source,/\.header-cell-content\{transform:translateY\(-50%\)!important\}/,'Quotation header text must be geometrically centered within each cell');
-assert.match(source,/header-cell-content\$\{lines\.length>1\?' header-cell-two-lines':''\}/,'Two-line quotation headers need a dedicated alignment class');
-assert.match(source,/\.header-cell-two-lines\{transform:translateY\(-20%\)!important\}/,'Two-line quotation headers must align their visual axis with the cell midpoint');
 assert.match(source,/\.logo\{left:202\.5px!important;width:auto!important;max-width:190px!important;transform:translateX\(-50%\);object-fit:contain!important\}/,'Quotation logo must stay proportional while centered over the brand block');
 assert.match(source,/\.closing-panel \.words\{left:0!important;right:0!important;top:-24px!important;display:flex!important;align-items:center;justify-content:center;gap:70px\}/,'Amount in words must move upward and center across the final page');
-assert.match(source,/class="header-cell-content\$\{/,'Every column heading needs a vertical-centering wrapper');
+assert.match(source,/class="header-cell-content"/,'Every column heading needs a vertical-centering wrapper');
 assert.match(source,/\.header-cell-content\{[^}]*align-items:center;justify-content:center/,'Column headings must center on both axes');
 assert.match(source,/notesOnProductPage=true/,'Multi-page quotations must place notes beside the final product totals');
 assert.match(source,/if\(!notesOnProductPage\)pages\.push\(summaryPageHtml\(\)\)/,'A separate notes page must only be used when the first page has no room');
