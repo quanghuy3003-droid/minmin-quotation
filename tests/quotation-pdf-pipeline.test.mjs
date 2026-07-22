@@ -12,10 +12,12 @@ assert.match(source,/async function exportQuotationPdfFromXlsx\(options=\{\}\)[\
 assert.match(source,/previewPdf\.onclick=\(\)=>exportQuotationPdfFromXlsx\(\{preview:true\}\)/);
 assert.match(source,/function isMobilePdfDevice\(\)/,'Quotation PDF export must detect phones and tablets');
 assert.match(source,/scale:isMobilePdfDevice\(\)\?1\.45:2\.35/,'Mobile PDF fallback must use a memory-safe canvas scale');
-assert.match(source,/const previewWin=\(preview\|\|mobile\)\?window\.open/,'Mobile PDF export must reserve a viewer window during the user gesture');
+assert.match(source,/function presentMobilePdf\(blob,name\)/,'Mobile PDF export must provide an in-app delivery dialog');
+assert.match(source,/id="mobilePdfOpen"[^>]*target="_blank"[^>]*download=/,'The mobile delivery dialog must expose an explicit open and save link');
+assert.match(source,/else if\(mobile\)\{\s*presentMobilePdf\(pdfBlob,pdfName\)/,'Converted PDFs must use the mobile delivery dialog');
 assert.match(source,/document\.body\.appendChild\(a\); a\.click\(\); setTimeout/,'Blob downloads must keep their URL alive for mobile browsers');
 assert.match(source,/pdf\.onclick=\(\)=>exportQuotationPdfFromXlsx\(\)/);
-assert.match(source,/catch\(error\)\{[\s\S]*?return exportPdfA4\(\{preview:preview\|\|!!\(mobile&&previewWin\),previewWindow:previewWin\}\)/,'PDF export must fall back locally and reuse the mobile viewer when Graph is unavailable');
+assert.match(source,/catch\(error\)\{[\s\S]*?return exportPdfA4\(\{preview,previewWindow:previewWin,mobileDelivery:mobile&&!preview\}\)/,'PDF export must deliver the local fallback through the mobile dialog');
 assert.match(source,/options\.previewWindow\|\|window\.open/,'PDF preview fallback must reuse the already-open preview window');
 assert.match(source,/\.logo\{[^}]*width:auto;height:64px;max-width:190px;object-fit:contain/,'Quotation logo must preserve its natural aspect ratio');
 assert.match(source,/\.table-first\{[^}]*top:304px/,'The product table must clear the complete client and telephone block');
