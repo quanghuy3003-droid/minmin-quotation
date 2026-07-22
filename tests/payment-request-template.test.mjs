@@ -9,6 +9,7 @@ assert.match(source, /PAYMENT_REQUEST_TEMPLATE_URL='assets\/templates\/payment-r
 assert.match(source, /buildPaymentRequestDocxBlob/);
 assert.match(source, /window\.docx\.renderAsync\(blob/);
 assert.match(source, /task==='payment'\?paymentRequestPreviewHtml\(\)/);
+assert.match(source, /payment-request-logo" src="\$\{PIN_LOGO_DATA_URL\|\|UI_LOGO_DATA_URL\}"/, 'Payment request preview must embed the MINMIN logo without a fragile relative URL');
 assert.doesNotMatch(source.match(/function paymentRequestPreviewHtml\(\)[\s\S]*?\n\}/)?.[0] || '', /CỘNG HO[ÀA]/);
 
 console.log('Payment request Word-template checks passed.');
