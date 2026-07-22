@@ -12713,6 +12713,32 @@ const renderLineExpandedForCollapse=renderLine;
 renderLine=function(line,idx){syncLineDefaults(line);state.ui.quoteLineOpen=state.ui.quoteLineOpen||{};if(quoteLineReadyForCollapse(line)&&state.ui.quoteLineOpen[line.uid]!==true)return quoteLineCollapsedSummary(line,idx);const html=renderLineExpandedForCollapse(line,idx);return html.replace(`data-line="${line.uid}">`,`data-line="${line.uid}"><button data-line-collapse="${line.uid}" type="button" class="absolute right-[58px] top-1.5 z-20 h-8 rounded-md border border-black/15 bg-white px-2 text-xs font-extrabold">Thu gọn</button>`);};
 document.addEventListener('click',event=>{const open=event.target.closest?.('[data-line-expand]'),close=event.target.closest?.('[data-line-collapse]');if(!open&&!close)return;const id=(open||close).dataset.lineExpand||(open||close).dataset.lineCollapse,line=state.lines.find(item=>String(item.uid)===String(id));if(!line)return;state.ui.quoteLineOpen=state.ui.quoteLineOpen||{};if(open)state.ui.quoteLineOpen[id]=true;else if(quoteLineReadyForCollapse(line))state.ui.quoteLineOpen[id]=false;else return alert('Nhập đủ mã, tên, số lượng, đơn giá, đơn vị, kích thước và ảnh trước khi thu gọn.');saveDraft();render({force:true});});
 
+function quoteCustomerReadyForCollapse(){return ['client','tel','representative','quoteDate','address','delivery'].every(key=>String(state.info?.[key]||'').trim());}
+function applyQuoteCustomerCollapse(){
+  if(state.activeTab!=='quote')return;
+  const heading=[...document.querySelectorAll('h2')].find(el=>el.textContent.trim()==='Thông tin khách hàng');
+  const card=heading?.parentElement;
+  if(!card)return;
+  state.ui.quoteCustomerOpen=state.ui.quoteCustomerOpen===true;
+  if(quoteCustomerReadyForCollapse()&&!state.ui.quoteCustomerOpen){
+    card.innerHTML=`<div class="flex items-center justify-between gap-3"><div class="min-w-0"><p class="text-xs font-semibold uppercase tracking-wide text-black/45">Khách hàng</p><p class="truncate text-base font-extrabold text-ink">${esc(state.info.client)}</p></div><button data-customer-expand type="button" class="h-9 shrink-0 rounded-md bg-ink px-3 text-xs font-extrabold text-white">Mở chỉnh sửa</button></div>`;
+  }else{
+    heading.classList.add('pr-24');
+    heading.insertAdjacentHTML('afterend','<button data-customer-collapse type="button" class="absolute right-3 top-2 h-9 rounded-md border border-black/15 bg-white px-3 text-xs font-extrabold">Thu gọn</button>');
+    card.classList.add('relative');
+  }
+}
+const renderWithQuoteCustomerCollapse=render;
+render=function(...args){const result=renderWithQuoteCustomerCollapse(...args);applyQuoteCustomerCollapse();return result;};
+document.addEventListener('click',event=>{
+  const open=event.target.closest?.('[data-customer-expand]'),close=event.target.closest?.('[data-customer-collapse]');
+  if(!open&&!close)return;
+  if(close&&!quoteCustomerReadyForCollapse())return alert('Nhập đủ thông tin khách hàng trước khi thu gọn.');
+  state.ui.quoteCustomerOpen=!!open;
+  saveDraft();
+  render({force:true});
+});
+
 initApp();
     </script>
   </body>
