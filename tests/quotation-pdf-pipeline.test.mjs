@@ -10,8 +10,12 @@ const api=await readFile(new URL('../api/excel-to-pdf.js',import.meta.url),'utf8
 assert.match(source,/async function buildQuotationWorkbookForPdf\(\)[\s\S]*?await exportQuotation\(\)/);
 assert.match(source,/async function exportQuotationPdfFromXlsx\(options=\{\}\)[\s\S]*?fetch\('\/api\/excel-to-pdf'/);
 assert.match(source,/previewPdf\.onclick=\(\)=>exportQuotationPdfFromXlsx\(\{preview:true\}\)/);
+assert.match(source,/function isMobilePdfDevice\(\)/,'Quotation PDF export must detect phones and tablets');
+assert.match(source,/scale:isMobilePdfDevice\(\)\?1\.45:2\.35/,'Mobile PDF fallback must use a memory-safe canvas scale');
+assert.match(source,/const previewWin=\(preview\|\|mobile\)\?window\.open/,'Mobile PDF export must reserve a viewer window during the user gesture');
+assert.match(source,/document\.body\.appendChild\(a\); a\.click\(\); setTimeout/,'Blob downloads must keep their URL alive for mobile browsers');
 assert.match(source,/pdf\.onclick=\(\)=>exportQuotationPdfFromXlsx\(\)/);
-assert.match(source,/catch\(error\)\{[\s\S]*?return exportPdfA4\(\{preview,previewWindow:previewWin\}\)/,'PDF export must fall back locally when Graph is unavailable');
+assert.match(source,/catch\(error\)\{[\s\S]*?return exportPdfA4\(\{preview:preview\|\|!!\(mobile&&previewWin\),previewWindow:previewWin\}\)/,'PDF export must fall back locally and reuse the mobile viewer when Graph is unavailable');
 assert.match(source,/options\.previewWindow\|\|window\.open/,'PDF preview fallback must reuse the already-open preview window');
 assert.match(source,/\.logo\{[^}]*width:auto;height:64px;max-width:190px;object-fit:contain/,'Quotation logo must preserve its natural aspect ratio');
 assert.match(source,/\.table-first\{[^}]*top:304px/,'The product table must clear the complete client and telephone block');
