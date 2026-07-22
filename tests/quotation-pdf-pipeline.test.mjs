@@ -22,6 +22,8 @@ assert.match(source,/\.summary-totals\{position:absolute;left:421px/,'Final-page
 assert.match(source,/\.ship-row td\{[^}]*vertical-align:middle!important/,'Shipping cells must center content vertically');
 assert.match(source,/\.total-row td\{vertical-align:middle!important/,'First-page total cells must center content vertically');
 assert.match(source,/\.summary-totals td\{[^}]*vertical-align:middle!important/,'Final-page total cells must center content vertically');
+assert.match(source,/\.sheet th,\.sheet td\{border:\.45px solid #333/,'Quotation grid lines must render thin and soft');
+assert.match(source,/\.summary-totals td\{border:\.45px solid #333/,'Final-page total grid lines must match the thin table grid');
 assert.match(source,/\.qr\{[^}]*top:252px/,'QR must be vertically centered beside the notes');
 assert.ok(source.lastIndexOf('previewPdf.onclick=()=>exportQuotationPdfFromXlsx')>source.lastIndexOf('previewPdf.onclick=()=>exportPdfA4'));
 assert.ok(source.lastIndexOf('pdf.onclick=()=>exportQuotationPdfFromXlsx')>source.lastIndexOf('pdf.onclick=()=>exportPdfA4'));
