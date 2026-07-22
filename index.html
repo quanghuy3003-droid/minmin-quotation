@@ -4379,8 +4379,8 @@ async function exportPdfA4(options={}){
     const source=line.photoDataUrl||line.photo;
     if(!source)return'';
     try{
-      if(String(source).startsWith('data:image/'))return await cropImageToSquare(source);
-      return await imageSourceToDataUrl(source);
+      const data=String(source).startsWith('data:image/')?source:await imageSourceToDataUrl(source);
+      return await cropImageToSquare(data,isMobilePdfDevice()?320:900);
     }catch{return'';}
   }
   let processedImages=0;
@@ -4467,13 +4467,22 @@ async function exportPdfA4(options={}){
   const pdf=new jsPDF({orientation:'landscape',unit:'pt',format:'a4'});
   const pageW=pdf.internal.pageSize.getWidth(), pageH=pdf.internal.pageSize.getHeight();
   const pageEls=[...holder.querySelectorAll('.a4-page')];
-  for(let i=0;i<pageEls.length;i++){
-    const canvas=await html2canvas(pageEls[i],{scale:isMobilePdfDevice()?1.2:2.35,useCORS:true,backgroundColor:'#fff',logging:false});
-    if(i)pdf.addPage('a4','landscape');
-    pdf.addImage(canvas.toDataURL('image/jpeg',0.96),'JPEG',0,0,pageW,pageH);
-    report(45+((i+1)/Math.max(pageEls.length,1))*48,`Đang dựng trang ${i+1}/${pageEls.length}...`);
+  try{
+    for(let i=0;i<pageEls.length;i++){
+      report(46+((i)/Math.max(pageEls.length,1))*47,`Đang dựng trang ${i+1}/${pageEls.length}...`);
+      await new Promise(resolve=>requestAnimationFrame(()=>setTimeout(resolve,30)));
+      const canvas=await Promise.race([
+        html2canvas(pageEls[i],{scale:isMobilePdfDevice()?.75:2.35,useCORS:true,backgroundColor:'#fff',logging:false,imageTimeout:5000,removeContainer:true}),
+        new Promise((_,reject)=>setTimeout(()=>reject(new Error(`Trang ${i+1} xử lý quá lâu. Vui lòng thử lại.`)),30000))
+      ]);
+      if(i)pdf.addPage('a4','landscape');
+      pdf.addImage(canvas,'JPEG',0,0,pageW,pageH,undefined,'FAST');
+      canvas.width=1;canvas.height=1;
+      report(45+((i+1)/Math.max(pageEls.length,1))*48,`Đã dựng trang ${i+1}/${pageEls.length}.`);
+    }
+  }finally{
+    holder.remove();
   }
-  document.body.removeChild(holder);
   if(options.mobileDelivery){report(98,'Đang chuẩn bị tệp để lưu...');presentMobilePdf(pdf.output('blob'),quotationFileName(quoteDateObject(),'pdf'));return;}
   if(preview){
     const blobUrl=URL.createObjectURL(pdf.output('blob'));

@@ -20,6 +20,10 @@ assert.match(source,/if\(mobile&&!preview\)\{\s*showMobilePdfProgress\(\);\s*upd
 assert.match(source,/if\(mobile&&!preview\)\{[\s\S]*?return await exportPdfA4\(\{mobileDelivery:true\}\)/,'Phones must use the proven in-browser PDF path without requiring Microsoft Graph');
 assert.match(source,/id="mobilePdfPercent"[\s\S]*?id="mobilePdfBar"/,'Mobile PDF export must display a numeric percentage and progress bar');
 assert.match(source,/function updateMobilePdfProgress\(percent,label\)[\s\S]*?Math\.round/,'Mobile PDF progress must update with real phase percentages');
+assert.match(source,/cropImageToSquare\(data,isMobilePdfDevice\(\)\?320:900\)/,'Mobile PDF images must be downsampled before page rasterization');
+assert.match(source,/scale:isMobilePdfDevice\(\)\?\.75:2\.35[\s\S]*?imageTimeout:5000/,'iPhone page canvases must stay within an A4-sized memory budget');
+assert.match(source,/pdf\.addImage\(canvas,'JPEG'[\s\S]*?canvas\.width=1;canvas\.height=1/,'Each page canvas must be released immediately after PDF encoding');
+assert.match(source,/Trang \$\{i\+1\} xử lý quá lâu[\s\S]*?30000/,'A stalled page render must time out instead of freezing forever');
 assert.match(source,/if\(mobile&&!preview\)\{[\s\S]*?showMobilePdfError\(error\)/,'Mobile PDF failures must show their actual reason instead of endless loading');
 assert.match(source,/id="mobilePdfOpen"[\s\S]*?>Mở PDF</,'Mobile PDF delivery must retain a browser-open fallback');
 assert.match(source,/document\.body\.appendChild\(a\); a\.click\(\); setTimeout/,'Blob downloads must keep their URL alive for mobile browsers');
