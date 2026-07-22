@@ -4283,8 +4283,9 @@ async function exportPdfA4(options={}){
     return `<table class="sheet"><colgroup>${tableCols}</colgroup>${page.header?`<thead><tr><th>STT</th><th>Tình trạng</th><th>Mã hàng<br>(Code)</th><th>Tên sản phẩm<br>(Items)</th><th>Hình ảnh<br>(Photo)</th><th>Kích thước<br>(Dimension) (LxWxH)</th><th>Đặc điểm<br>(Describe)</th><th>ĐVT<br>(Unit)</th><th>SL (Q'tity)</th><th>Đơn giá<br>(Unit Price)</th><th>Thành Tiền<br>(Amount)</th></tr></thead>`:''}<tbody>${page.rows.map(productRow).join('')}${page.ship?`<tr class="ship-row"><td></td><td></td><td>${esc(state.info.shipCode||'PVC')}</td><td>${esc(shipName)}</td><td></td><td></td><td></td><td>${esc(state.info.shipUnit||'Kiện')}</td><td>${Number(state.info.shipQty||0)}</td><td></td><td>${moneyCell(shipAmount)}</td></tr>`:''}${firstTotals.map(([label,value,hot])=>`<tr class="total-row ${hot?'hot':''}"><td class="no-border" colspan="7"></td><td class="total-label" colspan="3">${esc(label)}</td><td class="total-value">${moneyCell(value)}</td></tr>`).join('')}</tbody></table>`;
   }
   function quotationPageHtml(page){
-    const firstClass=page.header?'table-first':'table-next';
-    return `<section class="a4-page quotation-page"><img class="logo" src="${state.info.logoDataUrl||UI_LOGO_DATA_URL}"/><div class="brand"><b>HOME DÉCOR - ĐÈN TRANG TRÍ</b><span>TEL 038 868 3838</span></div><h1>PHIẾU BÁO GIÁ (THE QUOTATION)</h1><div class="client"><span>Khách hàng (Client)</span><b>${esc(state.info.client)}</b><span>Người đại diện (Name)</span><b>${esc(state.info.representative)}</b><span>Địa chỉ (Address)</span><b>${esc(state.info.address)}</b><span>Nơi giao</span><b>${esc(state.info.delivery||state.info.address)}</b><span>Tel&nbsp;&nbsp;&nbsp; ${esc(state.info.tel)}</span><b>Email&nbsp;&nbsp;&nbsp; ${esc(state.info.email)}</b></div><div class="${firstClass}">${tableHtml(page)}</div></section>`;
+    const firstClass=page.cover?'table-first':'table-next';
+    const cover=page.cover?`<img class="logo" src="${state.info.logoDataUrl||UI_LOGO_DATA_URL}"/><div class="brand"><b>HOME DÉCOR - ĐÈN TRANG TRÍ</b><span>TEL 038 868 3838</span></div><h1>PHIẾU BÁO GIÁ (THE QUOTATION)</h1><div class="client"><span>Khách hàng (Client)</span><b>${esc(state.info.client)}</b><span>Người đại diện (Name)</span><b>${esc(state.info.representative)}</b><span>Địa chỉ (Address)</span><b>${esc(state.info.address)}</b><span>Nơi giao</span><b>${esc(state.info.delivery||state.info.address)}</b><span>Tel&nbsp;&nbsp;&nbsp; ${esc(state.info.tel)}</span><b>Email&nbsp;&nbsp;&nbsp; ${esc(state.info.email)}</b></div>`:'';
+    return `<section class="a4-page quotation-page ${page.cover?'quotation-cover':'quotation-continuation'}">${cover}<div class="${firstClass}">${tableHtml(page)}</div></section>`;
   }
   function summaryPageHtml(rowsForTop=[]){
     return `<section class="a4-page summary-page">${rowsForTop.length?`<div class="summary-top-table">${tableHtml({header:true,rows:rowsForTop,ship:true,summary:'all'})}</div>`:''}<div class="words"><b>Số tiền bằng chữ</b><span>${esc(words)}</span></div><div class="terms">${NOTE_LINES.map(n=>`<p>${esc(n)}</p>`).join('')}</div>${state.info.qrDataUrl?`<img class="qr" src="${state.info.qrDataUrl}"/>`:''}<div class="date">${esc(dateText)}&nbsp;&nbsp; Ho Chi Minh City</div></section>`;
@@ -4297,18 +4298,18 @@ async function exportPdfA4(options={}){
   };
   let pos=0;
   if(rows.length<=pageCapacity({first:true,final:true})){
-    pages.push(quotationPageHtml({header:true,rows,ship:true,summary:'all'}));
+    pages.push(quotationPageHtml({cover:true,header:true,rows,ship:true,summary:'all'}));
   }else{
     const firstTake=Math.min(rows.length,pageCapacity({first:true,final:false}));
-    pages.push(quotationPageHtml({header:true,rows:rows.slice(0,firstTake),ship:false,summary:false}));
+    pages.push(quotationPageHtml({cover:true,header:true,rows:rows.slice(0,firstTake),ship:false,summary:false}));
     pos=firstTake;
     while(rows.length-pos>pageCapacity({final:true})){
       const take=pageCapacity({final:false});
       const chunk=rows.slice(pos,pos+take);
       pos+=chunk.length;
-      pages.push(quotationPageHtml({header:true,rows:chunk,ship:false,summary:false}));
+      pages.push(quotationPageHtml({cover:false,header:true,rows:chunk,ship:false,summary:false}));
     }
-    pages.push(quotationPageHtml({header:true,rows:rows.slice(pos),ship:true,summary:'all'}));
+    pages.push(quotationPageHtml({cover:false,header:true,rows:rows.slice(pos),ship:true,summary:'all'}));
   }
   pages.push(summaryPageHtml());
   const holder=document.createElement('div');
