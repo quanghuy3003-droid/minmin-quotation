@@ -371,6 +371,135 @@
           grid-row: 1;
         }
       }
+      .minmin-stock-card {
+        position: relative;
+      }
+      .minmin-stock-card .minmin-stock-info > div:first-child,
+      .minmin-stock-card .stock-timeline,
+      .minmin-stock-card .minmin-stock-info > .max-w-2xl {
+        display: none !important;
+      }
+      .minmin-stock-card .stock-file-label,
+      .minmin-stock-card .stock-chip-row > :nth-child(n + 3) {
+        display: none !important;
+      }
+      .minmin-stock-card .minmin-stock-actions {
+        position: absolute !important;
+        top: 0.55rem;
+        right: 0.55rem;
+        display: block !important;
+        width: 2rem !important;
+        max-width: 2rem !important;
+      }
+      .minmin-stock-card .minmin-stock-actions > :not(:first-child),
+      .minmin-stock-card .stock-action-row > :not([data-stock-toggle]) {
+        display: none !important;
+      }
+      .minmin-stock-card [data-stock-toggle] {
+        display: inline-flex !important;
+        width: 2rem !important;
+        height: 2rem !important;
+        min-width: 2rem !important;
+        align-items: center;
+        justify-content: center;
+        padding: 0 !important;
+        overflow: hidden;
+        font-size: 0 !important;
+      }
+      .minmin-stock-card [data-stock-toggle]::after {
+        content: "⌄";
+        font-size: 1rem;
+        line-height: 1;
+      }
+      .minmin-stock-card:has(.minmin-stock-detail) [data-stock-toggle]::after {
+        content: "⌃";
+      }
+      @media (min-width: 1024px) {
+        .minmin-stock-group-body {
+          grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        }
+        .minmin-stock-card {
+          min-height: 108px;
+          padding: 0.6rem !important;
+        }
+        .minmin-stock-card .minmin-stock-grid {
+          grid-template-columns: 76px minmax(0, 1fr) !important;
+          gap: 0.65rem !important;
+          align-items: center !important;
+        }
+        .minmin-stock-card .minmin-stock-photo {
+          width: 76px !important;
+          height: 76px !important;
+        }
+        .minmin-stock-card .minmin-stock-info {
+          padding-right: 2rem;
+        }
+        .minmin-stock-card .minmin-stock-info > div:nth-child(2) {
+          margin-top: 0 !important;
+          color: #17202A !important;
+          font-size: 0.78rem !important;
+          font-weight: 800 !important;
+        }
+        .minmin-stock-card .stock-chip-row {
+          margin-top: 0.45rem !important;
+          gap: 0.35rem !important;
+        }
+        .minmin-stock-card .stock-chip-row > span {
+          padding: 0.3rem 0.4rem !important;
+          font-size: 0.75rem !important;
+          line-height: 1 !important;
+        }
+        .minmin-stock-card:has(.minmin-stock-detail) {
+          grid-column: 1 / -1;
+        }
+        .minmin-stock-card:has(.minmin-stock-detail) .minmin-stock-grid {
+          grid-template-columns: 88px minmax(300px, 1fr) minmax(320px, 420px) !important;
+          align-items: start !important;
+        }
+        .minmin-stock-card:has(.minmin-stock-detail) .minmin-stock-photo {
+          width: 88px !important;
+          height: 88px !important;
+        }
+        .minmin-stock-card:has(.minmin-stock-detail) .minmin-stock-info {
+          padding-right: 0;
+        }
+        .minmin-stock-card:has(.minmin-stock-detail) .minmin-stock-info > div:first-child {
+          display: flex !important;
+        }
+        .minmin-stock-card:has(.minmin-stock-detail) .stock-timeline {
+          display: flex !important;
+        }
+        .minmin-stock-card:has(.minmin-stock-detail) .minmin-stock-info > .max-w-2xl {
+          display: block !important;
+        }
+        .minmin-stock-card:has(.minmin-stock-detail) .stock-chip-row > :nth-child(n + 3) {
+          display: inline-flex !important;
+        }
+        .minmin-stock-card:has(.minmin-stock-detail) .minmin-stock-actions {
+          position: static !important;
+          display: grid !important;
+          width: 100% !important;
+          max-width: 420px !important;
+        }
+        .minmin-stock-card:has(.minmin-stock-detail) .minmin-stock-actions > :not(:first-child) {
+          display: grid !important;
+        }
+        .minmin-stock-card:has(.minmin-stock-detail) .stock-action-row {
+          display: grid !important;
+        }
+        .minmin-stock-card:has(.minmin-stock-detail) .stock-action-row > * {
+          display: inline-flex !important;
+        }
+        .minmin-stock-card:has(.minmin-stock-detail) [data-stock-toggle] {
+          width: auto !important;
+          height: 2.5rem !important;
+          padding: 0 0.75rem !important;
+          font-size: 0.875rem !important;
+        }
+        .minmin-stock-card:has(.minmin-stock-detail) [data-stock-toggle]::after {
+          display: none;
+        }
+      }
     </style>
   </head>
   <body class="min-h-screen bg-[#F7F7F2] font-sans text-ink">
