@@ -4370,10 +4370,11 @@ async function exportMobilePdfVector(options={}){
   await loadAnyScript(['vendor/jspdf.plugin.autotable.min.js','https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js'],()=>window.jspdf?.jsPDF?.API?.autoTable);
   updateMobilePdfProgress(12,'Đang tải font tiếng Việt...');
   const toBase64=buffer=>{let out='',bytes=new Uint8Array(buffer);for(let i=0;i<bytes.length;i+=32768)out+=String.fromCharCode(...bytes.subarray(i,i+32768));return btoa(out);};
-  const [regular,bold]=await Promise.all([fetch('assets/fonts/NotoSans-Regular.ttf').then(r=>{if(!r.ok)throw new Error('Không tải được font PDF.');return r.arrayBuffer();}),fetch('assets/fonts/NotoSans-Bold.ttf').then(r=>r.arrayBuffer())]);
+  const [regular,bold,italic]=await Promise.all([fetch('assets/fonts/NotoSans-Regular.ttf').then(r=>{if(!r.ok)throw new Error('Không tải được font PDF.');return r.arrayBuffer();}),fetch('assets/fonts/NotoSans-Bold.ttf').then(r=>r.arrayBuffer()),fetch('assets/fonts/NotoSans-Italic.ttf').then(r=>r.arrayBuffer())]);
   const {jsPDF}=window.jspdf,pdf=new jsPDF({orientation:'landscape',unit:'pt',format:'a4',compress:true});
   pdf.addFileToVFS('NotoSans-Regular.ttf',toBase64(regular));pdf.addFont('NotoSans-Regular.ttf','NotoSans','normal');
-  pdf.addFileToVFS('NotoSans-Bold.ttf',toBase64(bold));pdf.addFont('NotoSans-Bold.ttf','NotoSans','bold');pdf.setFont('NotoSans');
+  pdf.addFileToVFS('NotoSans-Bold.ttf',toBase64(bold));pdf.addFont('NotoSans-Bold.ttf','NotoSans','bold');
+  pdf.addFileToVFS('NotoSans-Italic.ttf',toBase64(italic));pdf.addFont('NotoSans-Italic.ttf','NotoSans','italic');pdf.setFont('NotoSans');
   const lines=state.lines.filter(l=>l.name),images=[];
   updateMobilePdfProgress(22,'Đang chuẩn bị ảnh sản phẩm...');
   for(let i=0;i<lines.length;i++){
@@ -4424,14 +4425,20 @@ async function exportMobilePdfVector(options={}){
       headStyles:{font:'NotoSans',fontStyle:'bold',fillColor:[0,0,0],textColor:[255,255,255],halign:'center',valign:'middle',minCellHeight:24},
       columnStyles:{0:{cellWidth:29,halign:'center'},1:{cellWidth:71,halign:'center'},2:{cellWidth:48,halign:'center'},3:{cellWidth:80,halign:'center'},4:{cellWidth:94,halign:'center'},5:{cellWidth:77,halign:'center'},6:{cellWidth:150},7:{cellWidth:49,halign:'center'},8:{cellWidth:40,halign:'center'},9:{cellWidth:71,halign:'right'},10:{cellWidth:76,halign:'right'}},
       didParseCell:data=>{if(data.section!=='body')return;if(data.row.index<chunk.rows.length)data.cell.styles.minCellHeight=productRowHeight;else if(finalPage)data.cell.styles.minCellHeight=data.row.index===chunk.rows.length?16:14;},
-      didDrawCell:data=>{const imageIndex=chunk.start+data.row.index;if(data.section==='body'&&data.column.index===4&&data.row.index<chunk.rows.length&&images[imageIndex]){try{const size=Math.min(data.cell.width-16,data.cell.height-14);pdf.addImage(images[imageIndex],'PNG',data.cell.x+(data.cell.width-size)/2,data.cell.y+(data.cell.height-size)/2,size,size);}catch{}}}
+      didDrawCell:data=>{
+        const imageIndex=chunk.start+data.row.index;
+        if(data.section==='body'&&data.column.index===4&&data.row.index<chunk.rows.length&&images[imageIndex]){try{const size=Math.min(data.cell.width-16,data.cell.height-14);pdf.addImage(images[imageIndex],'PNG',data.cell.x+(data.cell.width-size)/2,data.cell.y+(data.cell.height-size)/2,size,size);}catch{}}
+        if(finalPage&&data.section==='body'&&data.row.index===chunk.rows.length&&data.column.index===6){const lineY=data.cell.y+data.cell.height;pdf.setDrawColor(105,105,105);pdf.setLineWidth(.25);pdf.line(28,lineY,data.cell.x+data.cell.width,lineY);}
+      }
     });
     updateMobilePdfProgress(Math.min(84,52+(pageIndex+1)*10),`Đã vẽ trang ${pageIndex+1}/${chunks.length}...`);
   });
   let y=pdf.lastAutoTable.finalY+26;
   if(y>340){pdf.addPage('a4','landscape');y=72;}
-  pdf.setFont('NotoSans','bold');pdf.setFontSize(7);pdf.text('Số tiền bằng chữ',60,y);pdf.text(`${numberToVietnamese(t.afterVat)} (${numberToEnglish(t.afterVat)} Vietnamese dong)`,190,y,{maxWidth:430});
-  pdf.setFontSize(6.8);let noteY=y+28;NOTE_LINES.forEach(note=>{const noteLines=pdf.splitTextToSize(String(note),570);pdf.text(noteLines,48,noteY);noteY+=noteLines.length*9+4;});
+  pdf.setFont('NotoSans','bold');pdf.setFontSize(7);pdf.text('Số tiền bằng chữ',60,y);
+  const amountInWords=`${numberToVietnamese(t.afterVat)} (${numberToEnglish(t.afterVat)} Vietnamese dong)`.toLocaleLowerCase('vi-VN');
+  pdf.setFont('NotoSans','italic');pdf.text(amountInWords,190,y,{maxWidth:430});
+  pdf.setFont('NotoSans','bold');pdf.setFontSize(6.8);let noteY=y+28;NOTE_LINES.forEach(note=>{const noteLines=pdf.splitTextToSize(String(note),570);pdf.text(noteLines,48,noteY);noteY+=noteLines.length*9+4;});
   if(state.info.qrDataUrl){try{pdf.addImage(state.info.qrDataUrl,imageExtension(state.info.qrDataUrl).toUpperCase(),650,y+20,120,130);}catch{}}
   pdf.setFont('NotoSans','normal');pdf.text(`${quoteDateObject().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'2-digit'})}   Ho Chi Minh City`,710,560,{align:'center'});
   updateMobilePdfProgress(96,'Đang đóng gói file PDF...');

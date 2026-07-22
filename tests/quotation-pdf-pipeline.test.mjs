@@ -19,6 +19,7 @@ assert.match(source,/async function exportMobilePdfVector\(options=\{\}\)[\s\S]*
 const vectorPdfPipeline=source.slice(source.indexOf('async function exportMobilePdfVector(options={})'),source.indexOf('async function exportPdfA4(options={})'));
 assert.doesNotMatch(vectorPdfPipeline,/HOME DÉCOR - ĐÈN TRANG TRÍ/,'The PDF header must not repeat the removed Home Decor line');
 assert.match(vectorPdfPipeline,/pdf\.text\('TEL 038 868 3838',72,88\)/,'The telephone line must sit directly below the logo');
+assert.match(vectorPdfPipeline,/NotoSans-Italic\.ttf[\s\S]*?addFont\('NotoSans-Italic\.ttf','NotoSans','italic'\)/,'The PDF must embed a Vietnamese-capable italic font');
 assert.match(source,/const firstPageCapacity=Math\.max\(1,Math\.floor\(\(pageBottom-firstPageTableY-tableHeaderHeight\)\/productRowHeight\)\)[\s\S]*?productBody\.slice\(0,firstPageCapacity\)[\s\S]*?while\(productBody\.length-start>2\)[\s\S]*?Math\.min\(4,productBody\.length-start-1\)/,'Quotation pagination must derive the cover capacity from the blocks moved above it and reserve a compact closing page');
 assert.match(source,/const finalPage=pageIndex===chunks\.length-1[\s\S]*?shippingRow,\.\.\.closingRows/,'Shipping and totals must stay on the final product page');
 assert.match(source,/const customerInfoRows=\[[\s\S]*?\{label:'Tel',value:state\.info\.tel,secondaryLabel:'Email',secondaryValue:state\.info\.email\}[\s\S]*?customerInfoRows\.forEach/,'Quotation client details must contain the five Excel information rows');
@@ -28,6 +29,8 @@ assert.match(source,/const firstPageTableY=300,continuationTableY=44,productRowH
 assert.match(source,/startY:pageIndex\?continuationTableY:firstPageTableY[\s\S]*?minCellHeight=productRowHeight/,'Quotation tables must flow below all five customer-information rows and move overflow products to later pages');
 assert.match(source,/halign:'left',fillColor:hot/,'Quotation total labels must be left aligned like the Excel reference');
 assert.match(source,/splitTextToSize\(String\(note\),570\)/,'Quotation notes must reserve real space for wrapped lines');
+assert.match(vectorPdfPipeline,/data\.row\.index===chunk\.rows\.length&&data\.column\.index===6[\s\S]*?pdf\.line\(28,lineY,data\.cell\.x\+data\.cell\.width,lineY\)/,'The missing horizontal rule must be restored below the shipping row');
+assert.match(vectorPdfPipeline,/const amountInWords=[\s\S]*?toLocaleLowerCase\('vi-VN'\)[\s\S]*?setFont\('NotoSans','italic'\)[\s\S]*?pdf\.text\(amountInWords/,'The amount in words must be lowercase, italic, and non-bold');
 assert.match(source,/if\(y>340\)\{pdf\.addPage\('a4','landscape'\);y=72;\}/,'Long closing sections must move to a clean page instead of overflowing');
 assert.match(source,/if\(options\.preview\)[\s\S]*?target\.location\.replace\(url\)/,'Vector PDF preview must open the generated PDF directly');
 const activePdfPipeline=source.slice(source.indexOf('async function exportQuotationPdfFromXlsx(options={})'),source.indexOf("document.addEventListener('click'",source.indexOf('async function exportQuotationPdfFromXlsx(options={})')));
