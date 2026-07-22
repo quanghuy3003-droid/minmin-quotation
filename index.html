@@ -9369,8 +9369,15 @@ async function exportQuotationPdfFromXlsx(options={}){
   const progressStartedAt=mobile&&!preview?Date.now():0;
   if(mobile&&!preview){
     showMobilePdfProgress();
-    updateMobilePdfProgress(3,'Đang chuẩn bị file Excel...');
+    updateMobilePdfProgress(3,'Đang tải bộ tạo PDF...');
     await new Promise(resolve=>requestAnimationFrame(()=>setTimeout(resolve,60)));
+    try{return await exportPdfA4({mobileDelivery:true});}
+    catch(error){
+      const remaining=Math.max(0,1200-(Date.now()-progressStartedAt));
+      if(remaining)await new Promise(resolve=>setTimeout(resolve,remaining));
+      showMobilePdfError(error);
+      throw error;
+    }
   }
   const previewWin=preview?window.open('about:blank','_blank'):null;
   if(preview&&previewWin)previewWin.document.write('<title>Xem trước PDF</title><body style="font-family:Arial,sans-serif;padding:24px">Đang chuyển file Excel sang PDF bằng Excel Online...</body>');

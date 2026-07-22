@@ -17,6 +17,7 @@ assert.match(source,/else if\(mobile\)\{[\s\S]*?presentMobilePdf\(pdfBlob,pdfNam
 assert.match(source,/new File\(\[blob\],name,\{type:'application\/pdf'\}\)[\s\S]*?navigator\.share/,'Mobile PDF delivery must use the native share sheet with a real PDF file');
 assert.match(source,/showMobilePdfProgress\(\)[\s\S]*?Đang tạo PDF báo giá/,'Mobile PDF export must immediately show progress');
 assert.match(source,/if\(mobile&&!preview\)\{\s*showMobilePdfProgress\(\);\s*updateMobilePdfProgress\(3[\s\S]*?requestAnimationFrame/,'Phones must paint progress before workbook generation starts');
+assert.match(source,/if\(mobile&&!preview\)\{[\s\S]*?return await exportPdfA4\(\{mobileDelivery:true\}\)/,'Phones must use the proven in-browser PDF path without requiring Microsoft Graph');
 assert.match(source,/id="mobilePdfPercent"[\s\S]*?id="mobilePdfBar"/,'Mobile PDF export must display a numeric percentage and progress bar');
 assert.match(source,/function updateMobilePdfProgress\(percent,label\)[\s\S]*?Math\.round/,'Mobile PDF progress must update with real phase percentages');
 assert.match(source,/if\(mobile&&!preview\)\{[\s\S]*?showMobilePdfError\(error\)/,'Mobile PDF failures must show their actual reason instead of endless loading');
@@ -24,8 +25,6 @@ assert.match(source,/id="mobilePdfOpen"[\s\S]*?>Mở PDF</,'Mobile PDF delivery 
 assert.match(source,/document\.body\.appendChild\(a\); a\.click\(\); setTimeout/,'Blob downloads must keep their URL alive for mobile browsers');
 assert.match(source,/pdf\.onclick=\(\)=>exportQuotationPdfFromXlsx\(\)/);
 assert.match(source,/document\.addEventListener\('click',[\s\S]*?stopImmediatePropagation\(\)[\s\S]*?exportQuotationPdfFromXlsx\(\)/,'The PDF button must have a direct capture handler that survives rerenders and PIN unlock');
-const activePipeline=source.slice(source.indexOf('async function exportQuotationPdfFromXlsx(options={})'));
-assert.doesNotMatch(activePipeline,/return await exportPdfA4/,'Mobile must not return to the HTML and jsPDF renderer');
 assert.match(source,/\.logo\{[^}]*width:auto;height:64px;max-width:190px;object-fit:contain/,'Quotation logo must preserve its natural aspect ratio');
 assert.match(source,/\.table-first\{[^}]*top:304px/,'The product table must clear the complete client and telephone block');
 assert.match(source,/\.sheet td\{font-size:9\.2px/,'Product content must use a balanced readable font size');
