@@ -4347,7 +4347,7 @@ function updateMobilePdfProgress(percent,label){
 function showMobilePdfError(error){
   const box=document.getElementById('mobilePdfDelivery');if(!box)return;
   const message=String(error?.message||error||'Thiết bị không đủ bộ nhớ để tạo PDF.');
-  box.innerHTML=`<div style="width:min(420px,100%);border-radius:16px;background:#fff;padding:22px;font-family:Arial,sans-serif;box-shadow:0 18px 60px rgba(0,0,0,.3)"><h2 style="margin:0;color:#c0392b;font-size:20px">Chưa tạo được PDF</h2><p style="margin:10px 0;color:#555;line-height:1.45;overflow-wrap:anywhere">${esc(message)}</p><p style="margin:0 0 14px;color:#777;font-size:13px">Hãy đóng bớt ứng dụng hoặc kiểm tra ảnh sản phẩm rồi thử lại.</p><button type="button" style="width:100%;height:44px;border:0;border-radius:10px;background:#17202A;color:#fff;font-weight:800" onclick="this.closest('#mobilePdfDelivery').remove()">Đóng</button></div>`;
+  box.innerHTML=`<div style="width:min(420px,100%);border-radius:16px;background:#fff;padding:22px;font-family:Arial,sans-serif;box-shadow:0 18px 60px rgba(0,0,0,.3)"><h2 style="margin:0;color:#c0392b;font-size:20px">Chưa tạo được PDF</h2><p style="margin:10px 0;color:#555;line-height:1.45;overflow-wrap:anywhere">${esc(message)}</p><p style="margin:0 0 14px;color:#777;font-size:13px">Vui lòng kiểm tra kết nối và cấu hình dịch vụ chuyển đổi PDF trên máy chủ.</p><button type="button" style="width:100%;height:44px;border:0;border-radius:10px;background:#17202A;color:#fff;font-weight:800" onclick="this.closest('#mobilePdfDelivery').remove()">Đóng</button></div>`;
 }
 function presentMobilePdf(blob,name){
   const old=document.getElementById('mobilePdfDelivery'); if(old)old.remove();
@@ -9366,16 +9366,18 @@ async function buildQuotationWorkbookForPdf(){
 async function exportQuotationPdfFromXlsx(options={}){
   const preview=!!options.preview;
   const mobile=isMobilePdfDevice();
+  const progressStartedAt=mobile&&!preview?Date.now():0;
   if(mobile&&!preview){
     showMobilePdfProgress();
-    try{return await exportPdfA4({mobileDelivery:true});}
-    catch(mobileError){showMobilePdfError(mobileError);throw mobileError;}
+    updateMobilePdfProgress(3,'Đang chuẩn bị file Excel...');
+    await new Promise(resolve=>requestAnimationFrame(()=>setTimeout(resolve,60)));
   }
   const previewWin=preview?window.open('about:blank','_blank'):null;
   if(preview&&previewWin)previewWin.document.write('<title>Xem trước PDF</title><body style="font-family:Arial,sans-serif;padding:24px">Đang chuyển file Excel sang PDF bằng Excel Online...</body>');
   if(preview&&!previewWin)throw new Error('Trình duyệt đang chặn cửa sổ xem trước PDF.');
   try{
     const {blob:xlsxBlob,fileName:xlsxName}=await buildQuotationWorkbookForPdf();
+    if(mobile&&!preview)updateMobilePdfProgress(35,'Đang gửi file Excel để chuyển đổi...');
     const response=await fetch('/api/excel-to-pdf',{
       method:'POST',
       headers:{'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','X-File-Name':encodeURIComponent(xlsxName)},
@@ -9385,6 +9387,7 @@ async function exportQuotationPdfFromXlsx(options={}){
       const body=await response.json().catch(()=>({}));
       throw new Error(body.error||`Máy chủ chuyển đổi PDF trả về lỗi ${response.status}.`);
     }
+    if(mobile&&!preview)updateMobilePdfProgress(88,'Đang nhận file PDF...');
     const pdfBlob=await response.blob();
     const pdfName=xlsxName.replace(/\.xlsx$/i,'.pdf');
     if(preview){
@@ -9392,6 +9395,7 @@ async function exportQuotationPdfFromXlsx(options={}){
       previewWin.location.replace(blobUrl);
       setTimeout(()=>URL.revokeObjectURL(blobUrl),120000);
     }else if(mobile){
+      updateMobilePdfProgress(100,'PDF đã sẵn sàng.');
       presentMobilePdf(pdfBlob,pdfName);
       recordExportHistory(pdfName,totals().afterVat);
     }else{
@@ -9399,12 +9403,27 @@ async function exportQuotationPdfFromXlsx(options={}){
       recordExportHistory(pdfName,totals().afterVat);
     }
   }catch(error){
-    console.warn('Excel Online chưa chuyển được PDF, dùng bộ xuất PDF dự phòng:',error);
-    if(previewWin&&!previewWin.closed)previewWin.document.body.innerHTML='<div style="font-family:Arial,sans-serif;padding:24px">Excel Online chưa sẵn sàng. Đang tạo PDF trực tiếp trong ứng dụng...</div>';
-    try{return await exportPdfA4({preview,previewWindow:previewWin,mobileDelivery:mobile&&!preview});}
-    catch(fallbackError){document.getElementById('mobilePdfDelivery')?.remove();throw fallbackError;}
+    if(mobile&&!preview){
+      const remaining=Math.max(0,1200-(Date.now()-progressStartedAt));
+      if(remaining)await new Promise(resolve=>setTimeout(resolve,remaining));
+      showMobilePdfError(error);
+    }
+    if(previewWin&&!previewWin.closed)previewWin.close();
+    throw error;
   }
 }
+
+document.addEventListener('click',event=>{
+  const button=event.target.closest?.('#exportPdf');
+  if(!button)return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  if(button.dataset.pdfBusy==='1')return;
+  button.dataset.pdfBusy='1';
+  exportQuotationPdfFromXlsx()
+    .catch(error=>{if(!isMobilePdfDevice())alert('Chưa xuất được PDF: '+error.message);})
+    .finally(()=>{delete button.dataset.pdfBusy;});
+},true);
 
 /* MINMIN PATCH 2026-07-04A
    Website: không cho working-state remote ghi đè form/sản phẩm đang sửa.
