@@ -16,8 +16,13 @@ assert.match(source,/id="mobilePdfOpen"[^>]*target="_blank"/,'The mobile deliver
 assert.match(source,/new File\(\[blob\],name,\{type:'application\/pdf'\}\)[\s\S]*?navigator\.share/,'Mobile PDF delivery must use the native share sheet with a real PDF file');
 assert.match(source,/showMobilePdfProgress\(\)[\s\S]*?Đang tạo PDF báo giá/,'Mobile PDF export must immediately show progress');
 assert.match(source,/async function exportMobilePdfVector\(options=\{\}\)[\s\S]*?pdf\.autoTable/,'Quotation PDF must render its table as vectors');
-assert.match(source,/productBody\.slice\(0,3\)[\s\S]*?start=3;start<productBody\.length;start\+=4/,'Quotation pages must follow the reference 3 + 4 + remaining product layout');
+assert.match(source,/productBody\.slice\(0,3\)[\s\S]*?while\(productBody\.length-start>2\)[\s\S]*?Math\.min\(4,productBody\.length-start-1\)/,'Quotation pages must use three products on the cover, up to four on middle pages, and reserve a compact closing page');
 assert.match(source,/const finalPage=pageIndex===chunks\.length-1[\s\S]*?shippingRow,\.\.\.closingRows/,'Shipping and totals must stay on the final product page');
+assert.match(source,/infoRows\.forEach\([\s\S]*?pdf\.text\('Tel',48,188\)[\s\S]*?pdf\.text\('Email',190,188\)/,'Quotation client details must follow the Excel row layout');
+assert.match(source,/startY:pageIndex\?44:202[\s\S]*?minCellHeight=92/,'Quotation tables must match the reference top offsets and product-row height');
+assert.match(source,/halign:'left',fillColor:hot/,'Quotation total labels must be left aligned like the Excel reference');
+assert.match(source,/splitTextToSize\(String\(note\),570\)/,'Quotation notes must reserve real space for wrapped lines');
+assert.match(source,/if\(y>340\)\{pdf\.addPage\('a4','landscape'\);y=72;\}/,'Long closing sections must move to a clean page instead of overflowing');
 assert.match(source,/if\(options\.preview\)[\s\S]*?target\.location\.replace\(url\)/,'Vector PDF preview must open the generated PDF directly');
 const activePdfPipeline=source.slice(source.indexOf('async function exportQuotationPdfFromXlsx(options={})'),source.indexOf("document.addEventListener('click'",source.indexOf('async function exportQuotationPdfFromXlsx(options={})')));
 assert.doesNotMatch(activePdfPipeline,/excel-to-pdf|Microsoft Graph|buildQuotationWorkbookForPdf/,'Active quotation PDF actions must not depend on Microsoft Graph');
