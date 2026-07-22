@@ -17,7 +17,8 @@ assert.match(source,/\.logo\{[^}]*width:auto;height:64px;max-width:190px;object-
 assert.match(source,/\.table-first\{[^}]*top:304px/,'The product table must clear the complete client and telephone block');
 assert.match(source,/\.sheet td\{font-size:9\.2px/,'Product content must use a balanced readable font size');
 assert.match(source,/\.total-label\{text-align:left!important/,'Quotation total labels must be left-aligned');
-assert.match(source,/class="no-border" colspan="3"[\s\S]{0,240}class="no-border"><\/td>/,'Quotation totals must be centered with balanced blank columns on both sides');
+assert.match(source,/class="no-border total-center-cell" colspan="11"><div class="inline-total-row">/,'First-page totals must use a centered fixed-size grid');
+assert.match(source,/\.inline-total-row\{[^}]*grid-template-columns:190px 90px;width:280px/,'First-page totals must exactly match the final-page total column sizes');
 assert.match(source,/\.summary-totals\{position:absolute;left:421px/,'Final-page totals must be horizontally centered');
 assert.match(source,/\.ship-row td\{[^}]*vertical-align:middle!important/,'Shipping cells must center content vertically');
 assert.match(source,/\.total-row td\{vertical-align:middle!important/,'First-page total cells must center content vertically');
