@@ -35,7 +35,7 @@ assert.match(source,/\.header-cell-content\{position:absolute;left:0;right:0;top
 assert.match(source,/lines\.map\(line=>`<span class="header-line">/,'Each quotation heading line must have its own layout element');
 assert.match(source,/\.header-cell-content\{position:absolute!important;inset:0!important;display:flex!important[^}]*flex-direction:column;align-items:center;justify-content:center;transform:translateY\(-2px\)!important\}/,'All quotation header content must move two pixels down inside the compact black cell');
 assert.match(source,/\.sheet thead th\{height:26px!important;overflow:hidden!important;box-shadow:0 -7px 0 #000\}/,'Black quotation header cells must extend seven pixels upward without moving their content');
-assert.match(source,/\.logo\{left:147\.5px!important;width:auto!important;max-width:190px!important;transform:translateX\(-50%\);object-fit:contain!important\}/,'Quotation logo must stay proportional at the marked left-side position');
+assert.match(source,/\.logo\{left:159\.5px!important;width:auto!important;max-width:190px!important;transform:translateX\(-50%\);object-fit:contain!important\}/,'Quotation logo center must align with the marked vertical axis');
 assert.match(source,/\.closing-panel \.words\{left:0!important;right:0!important;top:-24px!important;display:flex!important;align-items:center;justify-content:center;gap:70px\}/,'Amount in words must move upward and center across the final page');
 assert.match(source,/class="header-cell-content"/,'Every column heading needs a vertical-centering wrapper');
 assert.match(source,/\.header-cell-content\{[^}]*align-items:center;justify-content:center/,'Column headings must center on both axes');
