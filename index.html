@@ -504,6 +504,64 @@
           display: none;
         }
       }
+      .minmin-stock-card:has(.minmin-stock-detail) .stock-chip-row > :nth-child(3) {
+        display: none !important;
+      }
+      .minmin-stock-card:has(.minmin-stock-detail) .minmin-stock-actions {
+        position: static !important;
+        display: flex !important;
+        width: 100% !important;
+        max-width: none !important;
+        flex-wrap: wrap;
+        align-items: stretch;
+        justify-content: flex-end;
+        gap: 0.4rem !important;
+      }
+      .minmin-stock-card:has(.minmin-stock-detail) .minmin-stock-actions > :not(:first-child) {
+        display: flex !important;
+      }
+      .minmin-stock-card:has(.minmin-stock-detail) .stock-action-row,
+      .minmin-stock-card:has(.minmin-stock-detail) .stock-action-row.three {
+        display: flex !important;
+        flex: 0 0 auto;
+        gap: 0.4rem !important;
+      }
+      .minmin-stock-card:has(.minmin-stock-detail) .stock-action-row > * {
+        display: inline-flex !important;
+        width: auto !important;
+        height: 2.25rem !important;
+        min-width: 0 !important;
+        padding: 0 0.6rem !important;
+        font-size: 0.75rem !important;
+      }
+      .minmin-stock-card:has(.minmin-stock-detail) [data-stock-toggle] {
+        width: auto !important;
+        height: 2.25rem !important;
+        padding: 0 0.65rem !important;
+        font-size: 0.75rem !important;
+      }
+      .minmin-stock-card:has(.minmin-stock-detail) [data-stock-toggle]::after {
+        display: none !important;
+      }
+      .minmin-stock-card:has(.minmin-stock-detail) .minmin-stock-out-row {
+        display: flex !important;
+        min-width: 180px;
+        flex: 1 1 180px;
+        gap: 0.4rem !important;
+      }
+      .minmin-stock-card:has(.minmin-stock-detail) .minmin-stock-out-row input {
+        width: 54px;
+        height: 2.25rem !important;
+        flex: 0 0 54px;
+        padding: 0 0.5rem !important;
+      }
+      .minmin-stock-card:has(.minmin-stock-detail) .minmin-stock-out-row button {
+        height: 2.25rem !important;
+        min-width: 0;
+        flex: 1 1 auto;
+        padding: 0 0.65rem !important;
+        font-size: 0.75rem !important;
+      }
     </style>
   </head>
   <body class="min-h-screen bg-[#F7F7F2] font-sans text-ink">
@@ -3654,13 +3712,23 @@ function inventoryKindMarker(item){
   const customer=inventoryOrderCustomerName(item)||'Chưa có tên KH';
   return `<span data-stock-kind-marker="order" title="Order - ${esc(customer)}" class="minmin-stock-kind-marker ml-auto inline-flex min-w-0 max-w-[150px] shrink items-center gap-1 text-[11px] font-extrabold text-mint"><span class="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-mint text-[10px] leading-none text-white">✓</span><span class="truncate">${esc(customer)}</span></span>`;
 }
+function inventoryCompactDates(item){
+  const key=item.barcodeId||item.code;
+  const row=(label,field)=>`<label class="grid gap-1.5 border-b border-black/5 py-1.5 last:border-b-0 sm:grid-cols-[96px_minmax(0,1fr)] sm:items-center sm:gap-2"><span class="text-[10px] font-bold uppercase text-black/40">${esc(label)}</span><input data-stock-edit="${esc(key)}" data-stock-edit-field="${esc(field)}" type="date" value="${esc(isValidIsoDate(item[field])?item[field]:'')}" class="h-8 min-w-0 w-full rounded-md border border-black/10 bg-white px-2 text-xs font-extrabold text-ink outline-none focus:border-mint"/></label>`;
+  return `<div data-stock-compact-dates class="rounded-md border border-black/10 bg-[#F7F7F2] p-2"><div class="mb-1 text-[10px] font-extrabold uppercase text-black/45">Thời gian</div>${row('Ngày đặt hàng','orderDate')}${row('Ngày nhập hàng','importDate')}${row('Ngày xuất hàng','exportDate')}</div>`;
+}
+function inventoryCompactSpecs(item){
+  const attrs=item?.attributes||{};
+  const entries=[['Kích thước',item.dimension||'--'],['ĐVT',item.unit||'--'],...ATTRIBUTE_FIELDS.map(field=>[field.label,attrs[field.key]||item?.[field.key]||'--'])];
+  return `<div data-stock-compact-specs class="rounded-md border border-black/10 bg-[#F7F7F2] p-2"><div class="mb-1 text-[10px] font-extrabold uppercase text-black/45">Thông tin sản phẩm</div><div class="grid gap-x-4 sm:grid-cols-2">${entries.map(([label,value])=>`<div class="flex min-w-0 items-start justify-between gap-3 border-b border-black/5 py-1.5"><span class="shrink-0 text-[10px] font-bold uppercase text-black/40">${esc(label)}</span><span class="min-w-0 break-words text-right text-xs font-extrabold text-ink">${esc(value)}</span></div>`).join('')}</div></div>`;
+}
 function inventoryItemCard(item){
   const key=item.barcodeId||item.code, open=!!state.ui.openStockItems?.[key], f=inventoryFinance(item), isSample=item.itemKind==='sample', stage=inventoryStage(item), inStock=stage.key==='stock', timeline=inventoryStatusTimeline(item,stage), exportSummary=inventoryExportSummary(item), quoteFile=item.attributes?._quotationFileName||item.quotationFileName||'';
   const checks=isSample
-    ? [inventoryCheckNote('Hóa đơn vào',true,'Sample không cần','',true),inventoryCheckNote('Hóa đơn đầu ra',true,'Sample không cần','',true),inventoryCheckNote('Tình trạng',stage.key!=='sold',stage.detail,stage.detail,stage.key==='sold')].join('')
-    : [inventoryCheckNote('Hóa đơn vào',inventoryHasInboundInvoice(item),inventoryInboundInvoiceSourceText(item),'Cần bổ sung'),inventoryCheckNote('Hóa đơn đầu ra',!!item.saleInvoiceDataUrl,'Đã có','Cần bổ sung'),inventoryCheckNote('Tình trạng',stage.key!=='sold',stage.detail,stage.detail,stage.key==='sold')].join('');
+    ? [inventoryCheckNote('Hóa đơn vào',true,'Sample không cần','',true),inventoryCheckNote('Hóa đơn đầu ra',true,'Sample không cần','',true)].join('')
+    : [inventoryCheckNote('Hóa đơn vào',inventoryHasInboundInvoice(item),inventoryInboundInvoiceSourceText(item),'Cần bổ sung'),inventoryCheckNote('Hóa đơn đầu ra',!!item.saleInvoiceDataUrl,'Đã có','Cần bổ sung')].join('');
   const arriveButton=stage.key==='production'?`<button data-stock-arrive="${esc(key)}" type="button" class="h-10 whitespace-nowrap rounded-md border border-mint/30 bg-mint/10 px-2 text-xs font-extrabold text-mint hover:bg-mint hover:text-white">Nhập kho</button>`:'';
-  const detail=open?`<div class="minmin-stock-detail mt-3 border-t border-black/10 pt-3"><div class="grid gap-2 md:grid-cols-3">${checks}</div><div class="mt-3 grid gap-2 rounded-md border border-black/10 bg-[#F7F7F2] p-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">${inventoryEditableMoney('Giá mua vào','purchasePrice',item)}${inventoryEditableMoney('Giá bán ra','price',item)}${inventoryDetailCell('Lợi nhuận',money(f.profit),f.profit>0)}${inventoryDetailCell('VAT 8% giá bán',money(f.vat))}${inventoryDetailCell('Thuế 20% lợi nhuận',money(f.profitTax))}${inventoryEditableDate('Ngày đặt hàng','orderDate',item)}${inventoryEditableDate('Ngày nhập hàng','importDate',item)}${inventoryEditableDate('Ngày xuất hàng','exportDate',item)}${inventoryDetailCell('Kích thước',esc(item.dimension||''))}${inventoryDetailCell('ĐVT',esc(item.unit||''))}</div>${inventoryAttributeCards(item)}<div class="mt-3 grid gap-2 lg:grid-cols-[minmax(0,1fr)_200px]"><div class="grid min-w-0 gap-2 md:grid-cols-2">${isSample?'':inventoryInvoiceControl('hóa đơn vào',item,'invoiceDataUrl','invoiceName','invoice')}${isSample?'':inventoryInvoiceControl('hóa đơn đầu ra',item,'saleInvoiceDataUrl','saleInvoiceName','sale-invoice')}</div><div class="grid content-start gap-2"><button data-stock-quote="${esc(key)}" type="button" class="inline-flex h-10 items-center justify-center rounded-md bg-ink px-3 text-xs font-extrabold text-white hover:bg-black">Đưa vào báo giá</button><button data-stock-delete="${esc(key)}" type="button" class="inline-flex h-10 items-center justify-center rounded-md border border-coral/30 px-3 text-xs font-extrabold text-coral hover:bg-coral hover:text-white">Xóa</button></div></div></div>`:'';
+  const detail=open?`<div class="minmin-stock-detail mt-3 border-t border-black/10 pt-3"><div class="grid gap-2 md:grid-cols-2">${checks}</div><div class="mt-3 grid gap-2 lg:grid-cols-[minmax(260px,0.72fr)_minmax(0,1.28fr)]">${inventoryCompactDates(item)}${inventoryCompactSpecs(item)}</div></div>`:'';
   return `<div class="minmin-stock-card overflow-hidden rounded-lg border ${stage.key==='stock'?'border-mint/20 bg-mint/[0.08]':stage.key==='production'?'border-gold/40 bg-gold/[0.14]':'border-black/10 bg-black/[0.04]'} p-3 shadow-sm"><div class="minmin-stock-grid grid gap-3 lg:grid-cols-[88px_minmax(360px,1fr)_minmax(340px,420px)] lg:items-start"><div class="minmin-stock-photo flex aspect-square h-[88px] items-center justify-center overflow-hidden rounded-md border border-black/10 bg-[#F7F7F2]">${item.photoDataUrl?`<img src="${esc(driveAssetUrl(item.photoDataUrl))}" class="h-full w-full object-contain ${stage.key==='sold'?'grayscale opacity-70':''}"/>`:'<span class="px-2 text-center text-xs font-semibold text-black/40">Chưa có ảnh</span>'}</div><div class="minmin-stock-info min-w-0"><div class="flex flex-wrap items-center gap-2"><h3 class="text-lg font-extrabold leading-tight text-ink">${esc(item.name||productTypeName(item.productType))}</h3>${inventoryKindBadge(item)}</div><div class="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs font-bold text-black/40"><span>${esc(item.code)}</span>${quoteFile?`<span class="stock-file-label max-w-[360px] truncate opacity-55">File: ${esc(quoteFile)}</span>`:''}${inventoryKindMarker(item)}</div><div class="stock-chip-row mt-2 flex flex-wrap items-center gap-2 text-sm"><span class="rounded-md bg-mint/10 px-2 py-1 font-extrabold text-mint">${money(f.sell)}</span><span class="rounded-md bg-black/5 px-2 py-1 font-bold text-black/55">${stage.key==='stock'?'Trong kho':'Số lượng'}: ${Number(item.quantity||0)}</span><span class="rounded-md ${stage.chip} px-2 py-1 font-bold">${esc(stage.label)}</span>${isSample?'':inventoryQuickInvoiceButton('Xem HĐ vào',item,'invoiceDataUrl')}${isSample?'':inventoryQuickInvoiceButton('Xem HĐ ra',item,'saleInvoiceDataUrl')}</div><div class="stock-timeline mt-2 flex flex-wrap gap-1.5 rounded-md ${stage.key==='sold'?'border border-coral/20 bg-coral/5 p-1.5':'p-0'}">${timeline}</div>${exportSummary?`<div class="mt-2 max-w-2xl">${exportSummary}</div>`:''}</div><div class="minmin-stock-actions grid w-full max-w-[420px] justify-self-end gap-2"><div class="stock-action-row grid gap-2 ${arriveButton?'three grid-cols-3':(stage.key==='sold'?'three grid-cols-3':'grid-cols-2')}"><button data-stock-toggle="${esc(key)}" type="button" class="h-10 min-w-0 whitespace-nowrap rounded-md border border-black/10 px-3 text-sm font-extrabold text-ink hover:border-mint">${open?'▴ Thu gọn':'▾ Xem thêm'}</button>${stage.key==='sold'?`<button data-stock-export-adjust="${esc(key)}" type="button" class="h-10 min-w-0 whitespace-nowrap rounded-md border border-sky-300 bg-sky-50 px-2 text-xs font-extrabold text-sky-700 hover:bg-sky-200">Tùy chỉnh</button>`:''}<button data-stock-delete="${esc(key)}" type="button" class="h-10 min-w-0 whitespace-nowrap rounded-md border border-coral/30 px-2 text-xs font-extrabold text-coral hover:bg-coral hover:text-white">Xóa</button>${arriveButton}</div>${inStock?`<div class="minmin-stock-out-row grid gap-2 sm:grid-cols-[80px_1fr]"><input data-stock-qty="${esc(key)}" type="number" value="1" min="1" class="h-10 rounded-md border border-black/15 px-3 text-sm font-bold"/><button data-stock-out="${esc(key)}" type="button" class="inline-flex h-10 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-sky-300 bg-sky-200 px-3 text-sm font-extrabold text-ink hover:bg-sky-300">${inventoryExportIcon()}Xuất kho</button></div>`:`<div class="flex min-h-10 items-center justify-center rounded-md border ${stage.key==='sold'?'border-coral/25 bg-coral/5 text-coral':stage.tone} px-3 py-2 text-sm font-extrabold leading-tight">${esc(stage.key==='production'?'Đang sản xuất':'Đã bán hết')}</div>`}</div></div>${detail}</div>`;
 }
 
