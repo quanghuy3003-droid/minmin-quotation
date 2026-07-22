@@ -29,6 +29,12 @@ assert.match(source,/\.ship-row td\{height:32px[^}]*vertical-align:middle!import
 assert.match(source,/class="total-label" colspan="3"><span class="total-cell-content">/,'Total labels need a dedicated vertical-centering wrapper');
 assert.match(source,/class="total-value"><span class="total-cell-content">/,'Total values need a dedicated vertical-centering wrapper');
 assert.match(source,/\.total-cell-content\{[^}]*display:flex;height:20px[^}]*align-items:center/,'Total content must center vertically with flex alignment');
+assert.match(source,/class="header-cell-content"/,'Every column heading needs a vertical-centering wrapper');
+assert.match(source,/\.header-cell-content\{[^}]*align-items:center;justify-content:center/,'Column headings must center on both axes');
+assert.match(source,/notesOnProductPage=true/,'Multi-page quotations must place notes beside the final product totals');
+assert.match(source,/if\(!notesOnProductPage\)pages\.push\(summaryPageHtml\(\)\)/,'A separate notes page must only be used when the first page has no room');
+assert.match(source,/\.closing-panel\{position:absolute;left:0;right:0;bottom:28px/,'Notes and QR must occupy the empty area below final-page totals');
+assert.match(source,/\.date\{[^}]*right:104px[^}]*width:180px;text-align:center/,'QR and date must share the same centered axis');
 assert.match(source,/const cover=page\.cover\?/,'Quotation cover content must be conditional');
 assert.match(source,/quotationPageHtml\(\{cover:true,header:true,rows:rows\.slice\(0,firstTake\)/,'Only the first product page must include the quotation cover');
 assert.match(source,/quotationPageHtml\(\{cover:false,header:true,rows:chunk/,'Middle product pages must omit the quotation cover');
