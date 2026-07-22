@@ -2,6 +2,8 @@
 
 App bao gia Minmin dang chay dang static site, chi can file `index.html`.
 
+Ban trien khai chinh: https://test-june-17.vercel.app
+
 Tinh nang chinh:
 
 - Tao bao gia theo template Minmin.
