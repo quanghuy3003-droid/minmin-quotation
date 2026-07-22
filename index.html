@@ -4365,6 +4365,41 @@ function presentMobilePdf(blob,name){
   box.querySelector('#mobilePdfClose').onclick=()=>{box.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);};
   setTimeout(()=>{if(document.body.contains(box))URL.revokeObjectURL(url);},600000);
 }
+async function exportMobilePdfVector(){
+  await loadAnyScript(['vendor/jspdf.umd.min.js','https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js'],()=>window.jspdf);
+  await loadAnyScript(['vendor/jspdf.plugin.autotable.min.js','https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js'],()=>window.jspdf?.jsPDF?.API?.autoTable);
+  updateMobilePdfProgress(12,'Đang tải font tiếng Việt...');
+  const toBase64=buffer=>{let out='',bytes=new Uint8Array(buffer);for(let i=0;i<bytes.length;i+=32768)out+=String.fromCharCode(...bytes.subarray(i,i+32768));return btoa(out);};
+  const [regular,bold]=await Promise.all([fetch('assets/fonts/NotoSans-Regular.ttf').then(r=>{if(!r.ok)throw new Error('Không tải được font PDF.');return r.arrayBuffer();}),fetch('assets/fonts/NotoSans-Bold.ttf').then(r=>r.arrayBuffer())]);
+  const {jsPDF}=window.jspdf,pdf=new jsPDF({orientation:'landscape',unit:'pt',format:'a4',compress:true});
+  pdf.addFileToVFS('NotoSans-Regular.ttf',toBase64(regular));pdf.addFont('NotoSans-Regular.ttf','NotoSans','normal');
+  pdf.addFileToVFS('NotoSans-Bold.ttf',toBase64(bold));pdf.addFont('NotoSans-Bold.ttf','NotoSans','bold');pdf.setFont('NotoSans');
+  const lines=state.lines.filter(l=>l.name),images=[];
+  updateMobilePdfProgress(22,'Đang chuẩn bị ảnh sản phẩm...');
+  for(let i=0;i<lines.length;i++){
+    try{const src=lines[i].photoDataUrl||lines[i].photo,data=src?(String(src).startsWith('data:image/')?src:await imageSourceToDataUrl(src)):'';images[i]=data?await cropImageToSquare(data,240):'';}catch{images[i]='';}
+    updateMobilePdfProgress(22+Math.round((i+1)/Math.max(lines.length,1)*18),`Đang chuẩn bị ảnh ${i+1}/${lines.length}...`);
+  }
+  const t=totals(),moneyCell=v=>moneyPlain(v),shipAmount=Number(parseInputMoney(state.info.shipPriceText||0))*Number(state.info.shipQty||0);
+  if(state.info.logoDataUrl){try{pdf.addImage(state.info.logoDataUrl,imageExtension(state.info.logoDataUrl).toUpperCase(),72,28,150,48);}catch{}}
+  pdf.setFont('NotoSans','bold');pdf.setFontSize(14);pdf.text('HOME DÉCOR - ĐÈN TRANG TRÍ',48,94);pdf.setFontSize(8);pdf.text('TEL 038 868 3838',48,108);
+  pdf.setFontSize(16);pdf.text('PHIẾU BÁO GIÁ (THE QUOTATION)',421,94,{align:'center'});pdf.setFontSize(8);
+  const info=[['Khách hàng (Client)',state.info.client],['Người đại diện (Name)',state.info.representative],['Địa chỉ (Address)',state.info.address],['Nơi giao',state.info.delivery||state.info.address],['Tel',state.info.tel],['Email',state.info.email]];
+  info.forEach(([label,value],i)=>{const col=i%2,row=Math.floor(i/2);pdf.setFont('NotoSans','normal');pdf.text(label,48+col*380,126+row*13);pdf.setFont('NotoSans','bold');pdf.text(String(value||''),145+col*380,126+row*13);});
+  const head=[['STT','Tình trạng','Mã hàng\n(Code)','Tên sản phẩm\n(Items)','Hình ảnh\n(Photo)','Kích thước\n(Dimension)','Đặc điểm\n(Describe)','ĐVT\n(Unit)',"SL\n(Q'tity)",'Đơn giá\n(Unit Price)','Thành tiền\n(Amount)']];
+  const body=lines.map((l,i)=>[String(i+1),l.status||'',l.code||'',l.name||'','',l.dimension||'',describeForExport(l),l.unit||'',String(Number(l.quantity||0)),moneyCell(lineUnitPrice(l)),moneyCell(lineAmount(l))]);
+  body.push(['','',state.info.shipCode||'PVC',state.info.shipName||'Phí vận chuyển','','','',state.info.shipUnit||'Kiện',String(Number(state.info.shipQty||0)),'',moneyCell(shipAmount)]);
+  const vectorTotalRows=[['TỔNG GIÁ TRỊ',t.subtotal,false],[`CHIẾT KHẤU ${state.info.discountRate}%`,t.discount,false],['TỔNG GIÁ TRỊ SAU CHIẾT KHẤU',t.afterDiscount,false],[`VAT ${state.info.vatRate}%`,t.vat,false],['TỔNG TIỀN SAU VAT',t.afterVat,true],['ĐẶT CỌC (Deposit)',t.deposit,false],['CÒN LẠI (Remaining)',t.remaining,false]];
+  vectorTotalRows.forEach(([label,value,hot])=>body.push([{content:'',colSpan:7,styles:{lineWidth:0}},{content:label,colSpan:3,styles:{fontStyle:'bold',halign:'right',fillColor:hot?[217,150,148]:[255,255,255]}},{content:moneyCell(value),styles:{fontStyle:'bold',halign:'right',fillColor:hot?[217,150,148]:[255,255,255]}}]));
+  updateMobilePdfProgress(45,'Đang vẽ bảng PDF...');
+  pdf.autoTable({head,body,startY:166,margin:{top:34,left:28,right:28,bottom:28},theme:'grid',showHead:'everyPage',rowPageBreak:'avoid',styles:{font:'NotoSans',fontSize:6.2,cellPadding:2,lineColor:[70,70,70],lineWidth:.35,valign:'middle',overflow:'linebreak'},headStyles:{font:'NotoSans',fontStyle:'bold',fillColor:[0,0,0],textColor:[255,255,255],halign:'center',minCellHeight:24},columnStyles:{0:{cellWidth:25,halign:'center'},1:{cellWidth:62,halign:'center'},2:{cellWidth:42,halign:'center'},3:{cellWidth:70,halign:'center'},4:{cellWidth:82,halign:'center'},5:{cellWidth:67,halign:'center'},6:{cellWidth:130},7:{cellWidth:43,halign:'center'},8:{cellWidth:35,halign:'center'},9:{cellWidth:62,halign:'right'},10:{cellWidth:65,halign:'right'}},didParseCell:data=>{if(data.section==='body'&&data.row.index<lines.length)data.cell.styles.minCellHeight=78;},didDrawCell:data=>{if(data.section==='body'&&data.column.index===4&&data.row.index<lines.length&&images[data.row.index]){try{pdf.addImage(images[data.row.index],'PNG',data.cell.x+7,data.cell.y+5,data.cell.width-14,data.cell.height-10);}catch{}}},didDrawPage:data=>updateMobilePdfProgress(Math.min(82,50+data.pageNumber*8),`Đã vẽ trang ${data.pageNumber}...`)});
+  let y=pdf.lastAutoTable.finalY+22;if(y>400){pdf.addPage('a4','landscape');y=44;}
+  pdf.setFont('NotoSans','bold');pdf.setFontSize(7);pdf.text('Số tiền bằng chữ',60,y);pdf.text(`${numberToVietnamese(t.afterVat)} (${numberToEnglish(t.afterVat)} Vietnamese dong)`,190,y);
+  pdf.setFontSize(6.8);let noteY=y+25;NOTE_LINES.forEach(note=>{pdf.text(String(note),48,noteY,{maxWidth:570});noteY+=13;});
+  if(state.info.qrDataUrl){try{pdf.addImage(state.info.qrDataUrl,imageExtension(state.info.qrDataUrl).toUpperCase(),650,y+12,120,130);}catch{}}
+  pdf.setFont('NotoSans','normal');pdf.text(`${quoteDateObject().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'2-digit'})}   Ho Chi Minh City`,790,560,{align:'right'});
+  updateMobilePdfProgress(96,'Đang đóng gói file PDF...');presentMobilePdf(pdf.output('blob'),quotationFileName(quoteDateObject(),'pdf'));
+}
 async function exportPdfA4(options={}){
   const preview=!!options.preview, previewWin=preview?(options.previewWindow||window.open('about:blank','_blank')):null;
   const report=(percent,label)=>{if(options.mobileDelivery)updateMobilePdfProgress(percent,label);};
@@ -9380,7 +9415,7 @@ async function exportQuotationPdfFromXlsx(options={}){
     showMobilePdfProgress();
     updateMobilePdfProgress(3,'Đang tải bộ tạo PDF...');
     await new Promise(resolve=>requestAnimationFrame(()=>setTimeout(resolve,60)));
-    try{return await exportPdfA4({mobileDelivery:true});}
+    try{return await exportMobilePdfVector();}
     catch(error){
       const remaining=Math.max(0,1200-(Date.now()-progressStartedAt));
       if(remaining)await new Promise(resolve=>setTimeout(resolve,remaining));

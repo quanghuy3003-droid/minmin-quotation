@@ -4,6 +4,7 @@
 /*
 !/api/
 !/vendor/
+!/assets/
 !/index.html
 !/vercel.json
 
