@@ -4384,7 +4384,7 @@ async function exportMobilePdfVector(options={}){
   const t=totals(),moneyCell=v=>moneyPlain(v),shipAmount=Number(parseInputMoney(state.info.shipPriceText||0))*Number(state.info.shipQty||0);
   if(state.info.logoDataUrl){try{pdf.addImage(state.info.logoDataUrl,imageExtension(state.info.logoDataUrl).toUpperCase(),72,28,150,48);}catch{}}
   pdf.setFont('NotoSans','bold');pdf.setFontSize(8);pdf.text('TEL 038 868 3838',72,88);
-  pdf.setFontSize(16);pdf.text('PHIẾU BÁO GIÁ (THE QUOTATION)',421,166,{align:'center'});pdf.setFontSize(8);
+  pdf.setFontSize(16);pdf.text('PHIẾU BÁO GIÁ (THE QUOTATION)',421,112,{align:'center'});pdf.setFontSize(8);
   const customerInfoRows=[
     {label:'Khách hàng (Client)',value:state.info.client},
     {label:'Người đại diện (Name)',value:state.info.representative},
@@ -4393,7 +4393,7 @@ async function exportMobilePdfVector(options={}){
     {label:'Tel',value:state.info.tel,secondaryLabel:'Email',secondaryValue:state.info.email}
   ];
   customerInfoRows.forEach((row,i)=>{
-    const y=218+i*13;
+    const y=146+i*13;
     pdf.setFont('NotoSans','normal');pdf.text(row.label,48,y);
     pdf.setFont('NotoSans','bold');pdf.text(String(row.value||''),i===4?68:145,y,{maxWidth:i===4?70:260});
     if(row.secondaryLabel){pdf.setFont('NotoSans','normal');pdf.text(row.secondaryLabel,145,y);pdf.setFont('NotoSans','bold');pdf.text(String(row.secondaryValue||''),180,y,{maxWidth:220});}
@@ -4404,7 +4404,7 @@ async function exportMobilePdfVector(options={}){
   const shippingRow=['','',state.info.shipCode||'PVC',`${shippingName}${shippingName.includes('(L')?'':' (L0 x W0 x H0)'}`,'','','',state.info.shipUnit||'Kiện',String(Number(state.info.shipQty||0)),'',moneyCell(shipAmount)];
   const vectorTotalRows=[['TỔNG GIÁ TRỊ',t.subtotal,false],[`CHIẾT KHẤU ${state.info.discountRate}%`,t.discount,false],['TỔNG GIÁ TRỊ SAU CHIẾT KHẤU',t.afterDiscount,false],[`VAT ${state.info.vatRate}%`,t.vat,false],['TỔNG TIỀN SAU VAT',t.afterVat,true],['ĐẶT CỌC (Deposit)',t.deposit,false],['CÒN LẠI (Remaining)',t.remaining,false]];
   const closingRows=vectorTotalRows.map(([label,value,hot])=>[{content:'',colSpan:7,styles:{lineWidth:0}},{content:label,colSpan:3,styles:{fontStyle:'bold',halign:'left',fillColor:hot?[217,150,148]:[255,255,255]}},{content:moneyCell(value),styles:{fontStyle:'bold',halign:'right',fillColor:hot?[217,150,148]:[255,255,255]}}]);
-  const firstPageTableY=300,continuationTableY=44,productRowHeight=92,tableHeaderHeight=24,pageBottom=567;
+  const firstPageTableY=220,continuationTableY=44,productRowHeight=92,tableHeaderHeight=24,pageBottom=567;
   const firstPageCapacity=Math.max(1,Math.floor((pageBottom-firstPageTableY-tableHeaderHeight)/productRowHeight));
   const chunks=[];
   if(productBody.length<=firstPageCapacity)chunks.push({rows:productBody,start:0});
@@ -4436,9 +4436,12 @@ async function exportMobilePdfVector(options={}){
   let y=pdf.lastAutoTable.finalY+26;
   if(y>340){pdf.addPage('a4','landscape');y=72;}
   pdf.setFont('NotoSans','bold');pdf.setFontSize(7);pdf.text('Số tiền bằng chữ',60,y);
-  const amountInWords=`${numberToVietnamese(t.afterVat)} (${numberToEnglish(t.afterVat)} Vietnamese dong)`.toLocaleLowerCase('vi-VN');
+  const amountInWordsLower=`${numberToVietnamese(t.afterVat)} (${numberToEnglish(t.afterVat)} Vietnamese dong)`.toLocaleLowerCase('vi-VN');
+  const amountInWords=amountInWordsLower.charAt(0).toLocaleUpperCase('vi-VN')+amountInWordsLower.slice(1);
   pdf.setFont('NotoSans','italic');pdf.text(amountInWords,190,y,{maxWidth:430});
-  pdf.setFont('NotoSans','bold');pdf.setFontSize(6.8);let noteY=y+28;NOTE_LINES.forEach(note=>{const noteLines=pdf.splitTextToSize(String(note),570);pdf.text(noteLines,48,noteY);noteY+=noteLines.length*9+4;});
+  pdf.setFont('NotoSans','bold');pdf.setFontSize(6.8);let noteY=y+28;
+  NOTE_LINES.forEach(note=>{const noteText=String(note),isRedNote=noteText.includes('Vì lý do khách quan');pdf.setTextColor(isRedNote?220:0,0,0);const noteLines=pdf.splitTextToSize(noteText,570);pdf.text(noteLines,48,noteY);noteY+=noteLines.length*9+4;});
+  pdf.setTextColor(0,0,0);
   if(state.info.qrDataUrl){try{pdf.addImage(state.info.qrDataUrl,imageExtension(state.info.qrDataUrl).toUpperCase(),650,y+20,120,130);}catch{}}
   pdf.setFont('NotoSans','normal');pdf.text(`${quoteDateObject().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'2-digit'})}   Ho Chi Minh City`,710,560,{align:'center'});
   updateMobilePdfProgress(96,'Đang đóng gói file PDF...');

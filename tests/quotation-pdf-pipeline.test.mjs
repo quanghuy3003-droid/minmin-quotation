@@ -24,13 +24,14 @@ assert.match(source,/const firstPageCapacity=Math\.max\(1,Math\.floor\(\(pageBot
 assert.match(source,/const finalPage=pageIndex===chunks\.length-1[\s\S]*?shippingRow,\.\.\.closingRows/,'Shipping and totals must stay on the final product page');
 assert.match(source,/const customerInfoRows=\[[\s\S]*?\{label:'Tel',value:state\.info\.tel,secondaryLabel:'Email',secondaryValue:state\.info\.email\}[\s\S]*?customerInfoRows\.forEach/,'Quotation client details must contain the five Excel information rows');
 assert.match(source,/i===4\?68:145[\s\S]*?pdf\.text\(row\.secondaryLabel,145,y\)[\s\S]*?pdf\.text\(String\(row\.secondaryValue\|\|''\),180,y/,'Telephone and email must share the fifth information row');
-assert.match(source,/pdf\.text\('PHIẾU BÁO GIÁ \(THE QUOTATION\)',421,166[\s\S]*?const y=218\+i\*13/,'Quotation title and customer information must follow the marked lower positions');
-assert.match(source,/const firstPageTableY=300,continuationTableY=44,productRowHeight=92,tableHeaderHeight=24,pageBottom=567/,'Quotation pagination must use explicit A4 content boundaries');
+assert.match(source,/pdf\.text\('PHIẾU BÁO GIÁ \(THE QUOTATION\)',421,112[\s\S]*?const y=146\+i\*13/,'Quotation title and customer information must follow the marked upper positions');
+assert.match(source,/const firstPageTableY=220,continuationTableY=44,productRowHeight=92,tableHeaderHeight=24,pageBottom=567/,'Quotation pagination must move the product table upward with the header blocks');
 assert.match(source,/startY:pageIndex\?continuationTableY:firstPageTableY[\s\S]*?minCellHeight=productRowHeight/,'Quotation tables must flow below all five customer-information rows and move overflow products to later pages');
 assert.match(source,/halign:'left',fillColor:hot/,'Quotation total labels must be left aligned like the Excel reference');
-assert.match(source,/splitTextToSize\(String\(note\),570\)/,'Quotation notes must reserve real space for wrapped lines');
+assert.match(source,/splitTextToSize\(noteText,570\)/,'Quotation notes must reserve real space for wrapped lines');
 assert.match(vectorPdfPipeline,/data\.row\.index===chunk\.rows\.length&&data\.column\.index===6[\s\S]*?pdf\.line\(28,lineY,data\.cell\.x\+data\.cell\.width,lineY\)/,'The missing horizontal rule must be restored below the shipping row');
-assert.match(vectorPdfPipeline,/const amountInWords=[\s\S]*?toLocaleLowerCase\('vi-VN'\)[\s\S]*?setFont\('NotoSans','italic'\)[\s\S]*?pdf\.text\(amountInWords/,'The amount in words must be lowercase, italic, and non-bold');
+assert.match(vectorPdfPipeline,/const amountInWordsLower=[\s\S]*?toLocaleLowerCase\('vi-VN'\)[\s\S]*?charAt\(0\)\.toLocaleUpperCase\('vi-VN'\)[\s\S]*?setFont\('NotoSans','italic'\)[\s\S]*?pdf\.text\(amountInWords/,'The amount in words must be italic, non-bold, and capitalize only its first character');
+assert.match(vectorPdfPipeline,/includes\('Vì lý do khách quan'\)[\s\S]*?setTextColor\(isRedNote\?220:0,0,0\)/,'The installation disclaimer must be rendered in red');
 assert.match(source,/if\(y>340\)\{pdf\.addPage\('a4','landscape'\);y=72;\}/,'Long closing sections must move to a clean page instead of overflowing');
 assert.match(source,/if\(options\.preview\)[\s\S]*?target\.location\.replace\(url\)/,'Vector PDF preview must open the generated PDF directly');
 const activePdfPipeline=source.slice(source.indexOf('async function exportQuotationPdfFromXlsx(options={})'),source.indexOf("document.addEventListener('click'",source.indexOf('async function exportQuotationPdfFromXlsx(options={})')));
