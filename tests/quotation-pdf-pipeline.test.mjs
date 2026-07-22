@@ -11,12 +11,13 @@ assert.match(source,/async function buildQuotationWorkbookForPdf\(\)[\s\S]*?awai
 assert.match(source,/async function exportQuotationPdfFromXlsx\(options=\{\}\)[\s\S]*?fetch\('\/api\/excel-to-pdf'/);
 assert.match(source,/previewPdf\.onclick=\(\)=>exportQuotationPdfFromXlsx\(\{preview:true\}\)/);
 assert.match(source,/function isMobilePdfDevice\(\)/,'Quotation PDF export must detect phones and tablets');
-assert.match(source,/scale:isMobilePdfDevice\(\)\?1\.45:2\.35/,'Mobile PDF fallback must use a memory-safe canvas scale');
+assert.match(source,/scale:isMobilePdfDevice\(\)\?1\.2:2\.35/,'Mobile PDF fallback must use a fast memory-safe canvas scale');
 assert.match(source,/function presentMobilePdf\(blob,name\)/,'Mobile PDF export must provide an in-app delivery dialog');
 assert.match(source,/id="mobilePdfOpen"[^>]*target="_blank"/,'The mobile delivery dialog must expose an explicit browser-open fallback');
 assert.match(source,/else if\(mobile\)\{\s*presentMobilePdf\(pdfBlob,pdfName\)/,'Converted PDFs must use the mobile delivery dialog');
 assert.match(source,/new File\(\[blob\],name,\{type:'application\/pdf'\}\)[\s\S]*?navigator\.share/,'Mobile PDF delivery must use the native share sheet with a real PDF file');
 assert.match(source,/showMobilePdfProgress\(\)[\s\S]*?Đang tạo PDF báo giá/,'Mobile PDF export must immediately show progress');
+assert.match(source,/if\(mobile&&!preview\)\{[\s\S]*?return await exportPdfA4\(\{mobileDelivery:true\}\)/,'Phones must skip the slow Excel and Microsoft Graph conversion round trip');
 assert.match(source,/id="mobilePdfOpen"[\s\S]*?>Mở PDF</,'Mobile PDF delivery must retain a browser-open fallback');
 assert.match(source,/document\.body\.appendChild\(a\); a\.click\(\); setTimeout/,'Blob downloads must keep their URL alive for mobile browsers');
 assert.match(source,/pdf\.onclick=\(\)=>exportQuotationPdfFromXlsx\(\)/);

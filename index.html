@@ -4447,7 +4447,7 @@ async function exportPdfA4(options={}){
   const pageW=pdf.internal.pageSize.getWidth(), pageH=pdf.internal.pageSize.getHeight();
   const pageEls=[...holder.querySelectorAll('.a4-page')];
   for(let i=0;i<pageEls.length;i++){
-    const canvas=await html2canvas(pageEls[i],{scale:isMobilePdfDevice()?1.45:2.35,useCORS:true,backgroundColor:'#fff',logging:false});
+    const canvas=await html2canvas(pageEls[i],{scale:isMobilePdfDevice()?1.2:2.35,useCORS:true,backgroundColor:'#fff',logging:false});
     if(i)pdf.addPage('a4','landscape');
     pdf.addImage(canvas.toDataURL('image/jpeg',0.96),'JPEG',0,0,pageW,pageH);
   }
@@ -9344,7 +9344,11 @@ async function buildQuotationWorkbookForPdf(){
 async function exportQuotationPdfFromXlsx(options={}){
   const preview=!!options.preview;
   const mobile=isMobilePdfDevice();
-  if(mobile&&!preview)showMobilePdfProgress();
+  if(mobile&&!preview){
+    showMobilePdfProgress();
+    try{return await exportPdfA4({mobileDelivery:true});}
+    catch(mobileError){document.getElementById('mobilePdfDelivery')?.remove();throw mobileError;}
+  }
   const previewWin=preview?window.open('about:blank','_blank'):null;
   if(preview&&previewWin)previewWin.document.write('<title>Xem trước PDF</title><body style="font-family:Arial,sans-serif;padding:24px">Đang chuyển file Excel sang PDF bằng Excel Online...</body>');
   if(preview&&!previewWin)throw new Error('Trình duyệt đang chặn cửa sổ xem trước PDF.');
