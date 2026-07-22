@@ -4365,7 +4365,7 @@ function presentMobilePdf(blob,name){
   box.querySelector('#mobilePdfClose').onclick=()=>{box.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);};
   setTimeout(()=>{if(document.body.contains(box))URL.revokeObjectURL(url);},600000);
 }
-async function exportMobilePdfVector(){
+async function exportMobilePdfVector(options={}){
   await loadAnyScript(['vendor/jspdf.umd.min.js','https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js'],()=>window.jspdf);
   await loadAnyScript(['vendor/jspdf.plugin.autotable.min.js','https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js'],()=>window.jspdf?.jsPDF?.API?.autoTable);
   updateMobilePdfProgress(12,'Đang tải font tiếng Việt...');
@@ -4398,7 +4398,14 @@ async function exportMobilePdfVector(){
   pdf.setFontSize(6.8);let noteY=y+25;NOTE_LINES.forEach(note=>{pdf.text(String(note),48,noteY,{maxWidth:570});noteY+=13;});
   if(state.info.qrDataUrl){try{pdf.addImage(state.info.qrDataUrl,imageExtension(state.info.qrDataUrl).toUpperCase(),650,y+12,120,130);}catch{}}
   pdf.setFont('NotoSans','normal');pdf.text(`${quoteDateObject().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'2-digit'})}   Ho Chi Minh City`,790,560,{align:'right'});
-  updateMobilePdfProgress(96,'Đang đóng gói file PDF...');presentMobilePdf(pdf.output('blob'),quotationFileName(quoteDateObject(),'pdf'));
+  updateMobilePdfProgress(96,'Đang đóng gói file PDF...');
+  const blob=pdf.output('blob'),name=quotationFileName(quoteDateObject(),'pdf');
+  if(options.preview){
+    const url=URL.createObjectURL(blob),target=options.previewWindow;
+    if(target&&!target.closed)target.location.replace(url);else window.open(url,'_blank');
+    setTimeout(()=>URL.revokeObjectURL(url),120000);
+  }else presentMobilePdf(blob,name);
+  return blob;
 }
 async function exportPdfA4(options={}){
   const preview=!!options.preview, previewWin=preview?(options.previewWindow||window.open('about:blank','_blank')):null;
@@ -9409,58 +9416,17 @@ async function buildQuotationWorkbookForPdf(){
 
 async function exportQuotationPdfFromXlsx(options={}){
   const preview=!!options.preview;
-  const mobile=isMobilePdfDevice();
-  const progressStartedAt=mobile&&!preview?Date.now():0;
-  if(mobile&&!preview){
-    showMobilePdfProgress();
-    updateMobilePdfProgress(3,'Đang tải bộ tạo PDF...');
-    await new Promise(resolve=>requestAnimationFrame(()=>setTimeout(resolve,60)));
-    try{return await exportMobilePdfVector();}
-    catch(error){
-      const remaining=Math.max(0,1200-(Date.now()-progressStartedAt));
-      if(remaining)await new Promise(resolve=>setTimeout(resolve,remaining));
-      showMobilePdfError(error);
-      throw error;
-    }
-  }
   const previewWin=preview?window.open('about:blank','_blank'):null;
-  if(preview&&previewWin)previewWin.document.write('<title>Xem trước PDF</title><body style="font-family:Arial,sans-serif;padding:24px">Đang chuyển file Excel sang PDF bằng Excel Online...</body>');
+  if(preview&&previewWin)previewWin.document.write('<title>Xem trước PDF</title><body style="font-family:Arial,sans-serif;padding:24px">Đang tạo bản xem trước PDF...</body>');
   if(preview&&!previewWin)throw new Error('Trình duyệt đang chặn cửa sổ xem trước PDF.');
+  const progressStartedAt=!preview?Date.now():0;
+  if(!preview){showMobilePdfProgress();updateMobilePdfProgress(3,'Đang tải bộ tạo PDF...');await new Promise(resolve=>requestAnimationFrame(()=>setTimeout(resolve,60)));}
   try{
-    const {blob:xlsxBlob,fileName:xlsxName}=await buildQuotationWorkbookForPdf();
-    if(mobile&&!preview)updateMobilePdfProgress(35,'Đang gửi file Excel để chuyển đổi...');
-    const response=await fetch('/api/excel-to-pdf',{
-      method:'POST',
-      headers:{'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','X-File-Name':encodeURIComponent(xlsxName)},
-      body:xlsxBlob
-    });
-    if(!response.ok){
-      const body=await response.json().catch(()=>({}));
-      throw new Error(body.error||`Máy chủ chuyển đổi PDF trả về lỗi ${response.status}.`);
-    }
-    if(mobile&&!preview)updateMobilePdfProgress(88,'Đang nhận file PDF...');
-    const pdfBlob=await response.blob();
-    const pdfName=xlsxName.replace(/\.xlsx$/i,'.pdf');
-    if(preview){
-      const blobUrl=URL.createObjectURL(pdfBlob);
-      previewWin.location.replace(blobUrl);
-      setTimeout(()=>URL.revokeObjectURL(blobUrl),120000);
-    }else if(mobile){
-      updateMobilePdfProgress(100,'PDF đã sẵn sàng.');
-      presentMobilePdf(pdfBlob,pdfName);
-      recordExportHistory(pdfName,totals().afterVat);
-    }else{
-      downloadBlob(pdfBlob,pdfName);
-      recordExportHistory(pdfName,totals().afterVat);
-    }
+    const blob=await exportMobilePdfVector({preview,previewWindow:previewWin});
+    if(!preview)recordExportHistory(quotationFileName(quoteDateObject(),'pdf'),totals().afterVat);
+    return blob;
   }catch(error){
-    if(!preview&&!mobile){
-      showMobilePdfProgress();
-      updateMobilePdfProgress(3,'Excel Online chưa sẵn sàng. Đang tạo PDF trực tiếp...');
-      try{return await exportMobilePdfVector();}
-      catch(vectorError){showMobilePdfError(vectorError);throw vectorError;}
-    }
-    if(mobile&&!preview){
+    if(!preview){
       const remaining=Math.max(0,1200-(Date.now()-progressStartedAt));
       if(remaining)await new Promise(resolve=>setTimeout(resolve,remaining));
       showMobilePdfError(error);
