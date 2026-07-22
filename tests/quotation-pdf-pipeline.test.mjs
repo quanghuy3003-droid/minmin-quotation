@@ -16,12 +16,13 @@ assert.match(source,/id="mobilePdfOpen"[^>]*target="_blank"/,'The mobile deliver
 assert.match(source,/new File\(\[blob\],name,\{type:'application\/pdf'\}\)[\s\S]*?navigator\.share/,'Mobile PDF delivery must use the native share sheet with a real PDF file');
 assert.match(source,/showMobilePdfProgress\(\)[\s\S]*?Đang tạo PDF báo giá/,'Mobile PDF export must immediately show progress');
 assert.match(source,/async function exportMobilePdfVector\(options=\{\}\)[\s\S]*?pdf\.autoTable/,'Quotation PDF must render its table as vectors');
-assert.match(source,/productBody\.slice\(0,3\)[\s\S]*?while\(productBody\.length-start>2\)[\s\S]*?Math\.min\(4,productBody\.length-start-1\)/,'Quotation pages must use three products on the cover, up to four on middle pages, and reserve a compact closing page');
+assert.match(source,/const firstPageCapacity=Math\.max\(1,Math\.floor\(\(pageBottom-firstPageTableY-tableHeaderHeight\)\/productRowHeight\)\)[\s\S]*?productBody\.slice\(0,firstPageCapacity\)[\s\S]*?while\(productBody\.length-start>2\)[\s\S]*?Math\.min\(4,productBody\.length-start-1\)/,'Quotation pagination must derive the cover capacity from the blocks moved above it and reserve a compact closing page');
 assert.match(source,/const finalPage=pageIndex===chunks\.length-1[\s\S]*?shippingRow,\.\.\.closingRows/,'Shipping and totals must stay on the final product page');
 assert.match(source,/const customerInfoRows=\[[\s\S]*?\{label:'Tel',value:state\.info\.tel,secondaryLabel:'Email',secondaryValue:state\.info\.email\}[\s\S]*?customerInfoRows\.forEach/,'Quotation client details must contain the five Excel information rows');
 assert.match(source,/i===4\?68:145[\s\S]*?pdf\.text\(row\.secondaryLabel,145,y\)[\s\S]*?pdf\.text\(String\(row\.secondaryValue\|\|''\),180,y/,'Telephone and email must share the fifth information row');
-assert.match(source,/pdf\.text\('PHIẾU BÁO GIÁ \(THE QUOTATION\)',421,126[\s\S]*?const y=154\+i\*13/,'Quotation title and customer information must retain the reference vertical spacing');
-assert.match(source,/startY:pageIndex\?44:220[\s\S]*?minCellHeight=92/,'Quotation tables must clear all five customer-information rows and match the reference product-row height');
+assert.match(source,/pdf\.text\('PHIẾU BÁO GIÁ \(THE QUOTATION\)',421,166[\s\S]*?const y=218\+i\*13/,'Quotation title and customer information must follow the marked lower positions');
+assert.match(source,/const firstPageTableY=300,continuationTableY=44,productRowHeight=92,tableHeaderHeight=24,pageBottom=567/,'Quotation pagination must use explicit A4 content boundaries');
+assert.match(source,/startY:pageIndex\?continuationTableY:firstPageTableY[\s\S]*?minCellHeight=productRowHeight/,'Quotation tables must flow below all five customer-information rows and move overflow products to later pages');
 assert.match(source,/halign:'left',fillColor:hot/,'Quotation total labels must be left aligned like the Excel reference');
 assert.match(source,/splitTextToSize\(String\(note\),570\)/,'Quotation notes must reserve real space for wrapped lines');
 assert.match(source,/if\(y>340\)\{pdf\.addPage\('a4','landscape'\);y=72;\}/,'Long closing sections must move to a clean page instead of overflowing');
