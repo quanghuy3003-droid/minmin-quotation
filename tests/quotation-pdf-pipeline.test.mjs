@@ -29,6 +29,7 @@ assert.match(source,/\.ship-row td\{height:32px[^}]*vertical-align:middle!import
 assert.match(source,/class="total-label" colspan="3"><span class="total-cell-content">/,'Total labels need a dedicated vertical-centering wrapper');
 assert.match(source,/class="total-value"><span class="total-cell-content">/,'Total values need a dedicated vertical-centering wrapper');
 assert.match(source,/\.total-cell-content\{[^}]*display:flex;height:20px[^}]*align-items:center/,'Total content must center vertically with flex alignment');
+assert.match(source,/\.total-cell-content\{font-weight:800;line-height:1\}/,'Total content must be bold and vertically balanced');
 assert.match(source,/class="header-cell-content"/,'Every column heading needs a vertical-centering wrapper');
 assert.match(source,/\.header-cell-content\{[^}]*align-items:center;justify-content:center/,'Column headings must center on both axes');
 assert.match(source,/notesOnProductPage=true/,'Multi-page quotations must place notes beside the final product totals');
