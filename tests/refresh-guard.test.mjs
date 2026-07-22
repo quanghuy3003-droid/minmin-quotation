@@ -21,6 +21,11 @@ function section(start,end){
 
 if(mirror!=null)assert.equal(mirror,html,'The root app and repository app must stay identical');
 assert.doesNotMatch(
+  section('function renderLoadingSplash','function renderPinGate'),
+  /<p|Đang tải dữ liệu làm việc cuối từ Supabase/,
+  'Loading splash must not show the Supabase loading message'
+);
+assert.doesNotMatch(
   html,
   /setInterval\([^\n]*loadWorkingStateFromSupabase\(\)\.then\(\(\)=>render\(\)\)/,
   'Background polling must never force a render on every interval'

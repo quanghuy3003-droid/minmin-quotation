@@ -2150,8 +2150,8 @@ function unlockApp(pin){
   render();
   return false;
 }
-function renderLoadingSplash(text='Đang tải dữ liệu...'){
-  return `<main class="min-h-screen bg-white"><div class="flex min-h-screen flex-col items-center justify-center px-6 text-center"><img src="${PIN_LOGO_DATA_URL||UI_LOGO_DATA_URL}" alt="MINMIN Lifestyle" class="w-64 max-w-[72vw] object-contain"/><div class="mt-8 flex gap-2" aria-hidden="true"><span class="h-2 w-2 animate-pulse rounded-full bg-ink"></span><span class="h-2 w-2 animate-pulse rounded-full bg-ink [animation-delay:120ms]"></span><span class="h-2 w-2 animate-pulse rounded-full bg-ink [animation-delay:240ms]"></span></div><p class="mt-4 text-sm font-bold tracking-wide text-black/45">${esc(text)}</p></div></main>`;
+function renderLoadingSplash(){
+  return `<main class="min-h-screen bg-white"><div class="flex min-h-screen flex-col items-center justify-center px-6 text-center"><img src="${PIN_LOGO_DATA_URL||UI_LOGO_DATA_URL}" alt="MINMIN Lifestyle" class="w-64 max-w-[72vw] object-contain"/><div class="mt-8 flex gap-2" aria-hidden="true"><span class="h-2 w-2 animate-pulse rounded-full bg-ink"></span><span class="h-2 w-2 animate-pulse rounded-full bg-ink [animation-delay:120ms]"></span><span class="h-2 w-2 animate-pulse rounded-full bg-ink [animation-delay:240ms]"></span></div></div></main>`;
 }
 function renderPinGate(){
   return `<main class="min-h-screen bg-white"><section class="flex min-h-screen flex-col items-center justify-center gap-16 px-5 text-center"><img src="${PIN_LOGO_DATA_URL||UI_LOGO_DATA_URL}" alt="MINMIN Lifestyle" class="w-72 max-w-[70vw] object-contain"/><form id="pinForm" class="w-[110px]"><input id="pinInput" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="16" enterkeyhint="go" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" autofocus placeholder="••••••" aria-label="Nhập mã PIN" style="-webkit-text-security:disc;text-security:disc;" class="h-9 w-[110px] rounded-md border ${appPinError?'border-coral bg-coral/5':'border-black/15 bg-[#F7F7F2]'} px-2 text-center text-sm font-extrabold tracking-[0.12em] text-ink outline-none transition focus:border-ink focus:ring-2 focus:ring-black/5"/><button type="submit" class="sr-only" tabindex="-1" aria-hidden="true">Vào app</button></form></section></main>`;
@@ -5675,7 +5675,7 @@ var MINMIN_WEBSITE_NAME_POOL_300 = [
 window.addEventListener('hashchange',()=>{ if(inventoryLookupKey())state.activeTab='stock'; render(); });
 async function initApp(){
   try{
-    setRootHtml(renderLoadingSplash('Đang tải dữ liệu làm việc cuối từ Supabase...'));
+    setRootHtml(renderLoadingSplash());
     await Promise.race([
       loadWorkingStateFromSupabase(),
       new Promise(resolve=>setTimeout(()=>{ state.status='Supabase tải chậm, app mở bằng cache trên máy trước.'; workingStateReady=true; resolve(false); },6000))
