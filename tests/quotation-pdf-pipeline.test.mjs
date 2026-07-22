@@ -19,6 +19,7 @@ assert.match(source,/showMobilePdfProgress\(\)[\s\S]*?Đang tạo PDF báo giá/
 assert.match(source,/if\(mobile&&!preview\)\{\s*showMobilePdfProgress\(\);\s*updateMobilePdfProgress\(3[\s\S]*?requestAnimationFrame/,'Phones must paint progress before workbook generation starts');
 assert.match(source,/if\(mobile&&!preview\)\{[\s\S]*?return await exportMobilePdfVector\(\)/,'Phones must use the vector PDF path without requiring Microsoft Graph or page canvases');
 assert.match(source,/async function exportMobilePdfVector\(\)[\s\S]*?pdf\.autoTable/,'Mobile PDF must render its table as vectors');
+assert.match(source,/if\(!preview&&!mobile\)\{[\s\S]*?return await exportMobilePdfVector\(\)/,'Missing Excel Online configuration must fall back to vector PDF on every device');
 assert.match(source,/id="mobilePdfPercent"[\s\S]*?id="mobilePdfBar"/,'Mobile PDF export must display a numeric percentage and progress bar');
 assert.match(source,/function updateMobilePdfProgress\(percent,label\)[\s\S]*?Math\.round/,'Mobile PDF progress must update with real phase percentages');
 assert.match(source,/cropImageToSquare\(data,isMobilePdfDevice\(\)\?320:900\)/,'Mobile PDF images must be downsampled before page rasterization');

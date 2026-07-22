@@ -9454,6 +9454,12 @@ async function exportQuotationPdfFromXlsx(options={}){
       recordExportHistory(pdfName,totals().afterVat);
     }
   }catch(error){
+    if(!preview&&!mobile){
+      showMobilePdfProgress();
+      updateMobilePdfProgress(3,'Excel Online chưa sẵn sàng. Đang tạo PDF trực tiếp...');
+      try{return await exportMobilePdfVector();}
+      catch(vectorError){showMobilePdfError(vectorError);throw vectorError;}
+    }
     if(mobile&&!preview){
       const remaining=Math.max(0,1200-(Date.now()-progressStartedAt));
       if(remaining)await new Promise(resolve=>setTimeout(resolve,remaining));
@@ -9472,7 +9478,7 @@ document.addEventListener('click',event=>{
   if(button.dataset.pdfBusy==='1')return;
   button.dataset.pdfBusy='1';
   exportQuotationPdfFromXlsx()
-    .catch(error=>{if(!isMobilePdfDevice())alert('Chưa xuất được PDF: '+error.message);})
+    .catch(error=>{if(!document.getElementById('mobilePdfDelivery'))alert('Chưa xuất được PDF: '+error.message);})
     .finally(()=>{delete button.dataset.pdfBusy;});
 },true);
 
