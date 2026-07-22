@@ -13,6 +13,12 @@ assert.match(source,/previewPdf\.onclick=\(\)=>exportQuotationPdfFromXlsx\(\{pre
 assert.match(source,/pdf\.onclick=\(\)=>exportQuotationPdfFromXlsx\(\)/);
 assert.match(source,/catch\(error\)\{[\s\S]*?return exportPdfA4\(\{preview,previewWindow:previewWin\}\)/,'PDF export must fall back locally when Graph is unavailable');
 assert.match(source,/options\.previewWindow\|\|window\.open/,'PDF preview fallback must reuse the already-open preview window');
+assert.match(source,/\.logo\{[^}]*width:auto;height:64px;max-width:190px;object-fit:contain/,'Quotation logo must preserve its natural aspect ratio');
+assert.match(source,/\.table-first\{[^}]*top:304px/,'The product table must clear the complete client and telephone block');
+assert.match(source,/\.sheet td\{font-size:9\.2px/,'Product content must use a balanced readable font size');
+assert.match(source,/\.total-label\{text-align:left!important/,'Quotation total labels must be left-aligned');
+assert.match(source,/class="no-border" colspan="5"/,'Quotation totals must begin nearer the center of the table');
+assert.match(source,/\.qr\{[^}]*top:252px/,'QR must be vertically centered beside the notes');
 assert.ok(source.lastIndexOf('previewPdf.onclick=()=>exportQuotationPdfFromXlsx')>source.lastIndexOf('previewPdf.onclick=()=>exportPdfA4'));
 assert.ok(source.lastIndexOf('pdf.onclick=()=>exportQuotationPdfFromXlsx')>source.lastIndexOf('pdf.onclick=()=>exportPdfA4'));
 assert.match(api,/content\?format=pdf/);
