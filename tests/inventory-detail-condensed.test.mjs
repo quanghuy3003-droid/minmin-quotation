@@ -13,6 +13,6 @@ assert.doesNotMatch(cardSource,/inventoryCheckNote\('Tình trạng'/,'Expanded c
 assert.doesNotMatch(cardSource,/inventoryEditableMoney|inventoryDetailCell\('Lợi nhuận'|inventoryInvoiceControl|data-stock-quote/,'Crossed-out finance and footer controls must be removed from expanded cards');
 assert.match(cardSource,/inventoryCompactDates\(item\)\}\$\{inventoryCompactSpecs\(item\)/,'Expanded cards must render only the two consolidated detail panels after invoice checks');
 assert.match(source,/\.minmin-stock-card:has\(\.minmin-stock-detail\) \.minmin-stock-actions \{[\s\S]*?display: flex !important[\s\S]*?gap: 0\.4rem !important/,'Expanded inventory actions must use a compact flex layout');
-assert.match(source,/\.minmin-stock-card:has\(\.minmin-stock-detail\) \.stock-chip-row > :nth-child\(3\)[\s\S]*?display: none !important/,'Expanded cards must hide the redundant stage chip');
+assert.match(source,/\.minmin-stock-card:has\(\.minmin-stock-detail\) \.stock-chip-row > :nth-child\(4\)[\s\S]*?display: none !important/,'Expanded cards must hide the redundant stage chip after the total-days badge');
 
 console.log('Inventory condensed detail checks passed.');
