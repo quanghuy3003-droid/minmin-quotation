@@ -11,6 +11,8 @@ const driveUploadPath = join(root, "api", "drive-upload.js");
 const driveUploadHandler = existsSync(driveUploadPath) ? require(driveUploadPath) : null;
 const paymentRequestPath = join(root, "api", "payment-request.js");
 const paymentRequestHandler = existsSync(paymentRequestPath) ? require(paymentRequestPath) : null;
+const excelToPdfPath = join(root, "api", "excel-to-pdf.js");
+const excelToPdfHandler = existsSync(excelToPdfPath) ? require(excelToPdfPath) : null;
 
 const types = {
   ".html": "text/html; charset=utf-8",
@@ -52,6 +54,16 @@ createServer((request, response) => {
       return;
     }
     paymentRequestHandler(request, response);
+    return;
+  }
+
+  if (url.pathname === "/api/excel-to-pdf") {
+    if (!excelToPdfHandler) {
+      response.writeHead(503, { "Content-Type": "application/json; charset=utf-8" });
+      response.end(JSON.stringify({ error: "Excel to PDF API is not installed." }));
+      return;
+    }
+    excelToPdfHandler(request, response);
     return;
   }
 

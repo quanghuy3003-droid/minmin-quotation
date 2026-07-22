@@ -9190,14 +9190,62 @@ documentPrintCss = function(){
     const ex=document.getElementById('exportExcel');
     if(ex)ex.onclick=()=>exportQuotation().catch(e=>alert('Chưa xuất được Excel: '+e.message));
     const previewPdf=document.getElementById('previewPdf');
-    if(previewPdf)previewPdf.onclick=()=>exportPdfA4({preview:true}).catch(e=>alert('Chưa xem trước được PDF: '+e.message));
+    if(previewPdf)previewPdf.onclick=()=>exportQuotationPdfFromXlsx({preview:true}).catch(e=>alert('Chưa xem trước được PDF: '+e.message));
     const pdf=document.getElementById('exportPdf');
-    if(pdf)pdf.onclick=()=>exportPdfA4().catch(e=>alert('Chưa xuất được PDF: '+e.message));
+    if(pdf)pdf.onclick=()=>exportQuotationPdfFromXlsx().catch(e=>alert('Chưa xuất được PDF: '+e.message));
     const im=document.getElementById('importExcel');
     if(im)im.onchange=()=>{if(im.files[0]) importQuotationExcel(im.files[0]).catch(e=>alert('Chưa nhập được Excel: '+e.message));};
   };
 })();
 
+
+async function buildQuotationWorkbookForPdf(){
+  let captured=null;
+  const originalDownloadBlob=downloadBlob;
+  const originalRecordExportHistory=recordExportHistory;
+  downloadBlob=(blob,fileName)=>{ captured={blob,fileName}; };
+  recordExportHistory=()=>{};
+  try{
+    await exportQuotation();
+  }finally{
+    downloadBlob=originalDownloadBlob;
+    recordExportHistory=originalRecordExportHistory;
+  }
+  if(!captured?.blob)throw new Error('Không tạo được file Excel nguồn cho PDF.');
+  return captured;
+}
+
+async function exportQuotationPdfFromXlsx(options={}){
+  const preview=!!options.preview;
+  const previewWin=preview?window.open('about:blank','_blank'):null;
+  if(preview&&previewWin)previewWin.document.write('<title>Xem trước PDF</title><body style="font-family:Arial,sans-serif;padding:24px">Đang chuyển file Excel sang PDF bằng Excel Online...</body>');
+  if(preview&&!previewWin)throw new Error('Trình duyệt đang chặn cửa sổ xem trước PDF.');
+  try{
+    const {blob:xlsxBlob,fileName:xlsxName}=await buildQuotationWorkbookForPdf();
+    const response=await fetch('/api/excel-to-pdf',{
+      method:'POST',
+      headers:{'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','X-File-Name':encodeURIComponent(xlsxName)},
+      body:xlsxBlob
+    });
+    if(!response.ok){
+      const body=await response.json().catch(()=>({}));
+      throw new Error(body.error||`Máy chủ chuyển đổi PDF trả về lỗi ${response.status}.`);
+    }
+    const pdfBlob=await response.blob();
+    const pdfName=xlsxName.replace(/\.xlsx$/i,'.pdf');
+    if(preview){
+      const blobUrl=URL.createObjectURL(pdfBlob);
+      previewWin.location.replace(blobUrl);
+      setTimeout(()=>URL.revokeObjectURL(blobUrl),120000);
+    }else{
+      downloadBlob(pdfBlob,pdfName);
+      recordExportHistory(pdfName,totals().afterVat);
+    }
+  }catch(error){
+    if(previewWin&&!previewWin.closed)previewWin.close();
+    throw error;
+  }
+}
 
 /* MINMIN PATCH 2026-07-04A
    Website: không cho working-state remote ghi đè form/sản phẩm đang sửa.

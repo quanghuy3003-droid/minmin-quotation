@@ -9,11 +9,12 @@ const ignore=await readFile(new URL('.vercelignore',root),'utf8');
 const server=await readFile(new URL('server.mjs',root),'utf8');
 
 assert.equal(config.framework,null,'Vercel framework auto-detection must stay disabled');
-assert.deepEqual(Object.keys(config.functions),['api/drive-upload.js']);
+assert.deepEqual(Object.keys(config.functions),['api/drive-upload.js','api/excel-to-pdf.js']);
 assert.ok(config.rewrites.some(rule=>rule.source==='/'&&rule.destination==='/index'));
 assert.match(ignore,/^\/\*$/m,'Deployment must use a root allowlist');
 assert.match(ignore,/^!\/index\.html$/m);
 assert.match(ignore,/^!\/api\/$/m);
+assert.match(ignore,/^!\/api\/excel-to-pdf\.js$/m);
 assert.doesNotMatch(ignore,/^!\/?server\.mjs$/m,'The local HTTP server must never be deployed');
 assert.doesNotMatch(server,/export\s*\{\s*server\s*\}/,'Local server must not look like a Vercel entrypoint');
 

@@ -9,3 +9,4 @@
 
 /api/*
 !/api/drive-upload.js
+!/api/excel-to-pdf.js
