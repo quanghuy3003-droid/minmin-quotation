@@ -32,6 +32,7 @@ assert.match(source,/\.total-cell-content\{[^}]*display:flex;height:20px[^}]*ali
 assert.match(source,/\.total-cell-content\{position:absolute;left:0;right:0;top:50%;[^}]*transform:translateY\(-78%\)/,'Total content visual center must align with each cell midpoint');
 assert.match(source,/\.sheet thead th\{position:relative;background:#000!important;color:#fff!important\}/,'Quotation table headers must use a black background with white text');
 assert.match(source,/\.header-cell-content\{position:absolute;left:0;right:0;top:50%;[^}]*transform:translateY\(-58%\)/,'Quotation header text must sit on the vertical midpoint axis');
+assert.match(source,/\.header-cell-content\{transform:translateY\(-78%\)!important\}/,'Quotation header text must be raised another twenty percent');
 assert.match(source,/\.logo\{left:202\.5px!important;width:auto!important;max-width:190px!important;transform:translateX\(-50%\);object-fit:contain!important\}/,'Quotation logo must stay proportional while centered over the brand block');
 assert.match(source,/\.closing-panel \.words\{left:0!important;right:0!important;top:-24px!important;display:flex!important;align-items:center;justify-content:center;gap:70px\}/,'Amount in words must move upward and center across the final page');
 assert.match(source,/class="header-cell-content"/,'Every column heading needs a vertical-centering wrapper');
