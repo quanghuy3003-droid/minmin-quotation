@@ -4335,8 +4335,19 @@ function isMobilePdfDevice(){return /Android|iPhone|iPad|iPod|Mobile/i.test(navi
 function showMobilePdfProgress(){
   const old=document.getElementById('mobilePdfDelivery');if(old)old.remove();
   const box=document.createElement('div');box.id='mobilePdfDelivery';box.style.cssText='position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.58)';
-  box.innerHTML='<div style="width:min(420px,100%);border-radius:16px;background:#fff;padding:22px;text-align:center;font-family:Arial,sans-serif;box-shadow:0 18px 60px rgba(0,0,0,.3)"><div style="font-size:28px;line-height:1">•••</div><h2 style="margin:10px 0 6px;font-size:19px">Đang tạo PDF báo giá</h2><p style="margin:0;color:#666;line-height:1.4">Vui lòng giữ ứng dụng mở trong giây lát.</p></div>';
+  box.innerHTML='<div style="width:min(420px,100%);border-radius:16px;background:#fff;padding:22px;text-align:center;font-family:Arial,sans-serif;box-shadow:0 18px 60px rgba(0,0,0,.3)"><div id="mobilePdfPercent" style="font-size:30px;font-weight:900;color:#17202A">0%</div><h2 style="margin:8px 0 6px;font-size:19px">Đang tạo PDF báo giá</h2><p id="mobilePdfStep" style="margin:0;color:#666;line-height:1.4">Đang chuẩn bị dữ liệu...</p><div style="height:10px;margin-top:16px;overflow:hidden;border-radius:999px;background:#e8e8e8"><div id="mobilePdfBar" style="height:100%;width:0;background:#1F8A70;transition:width .2s ease"></div></div></div>';
   document.body.appendChild(box);
+}
+function updateMobilePdfProgress(percent,label){
+  const value=Math.max(0,Math.min(100,Math.round(Number(percent)||0))),box=document.getElementById('mobilePdfDelivery');
+  if(!box)return;
+  const number=box.querySelector('#mobilePdfPercent'),bar=box.querySelector('#mobilePdfBar'),step=box.querySelector('#mobilePdfStep');
+  if(number)number.textContent=`${value}%`;if(bar)bar.style.width=`${value}%`;if(step&&label)step.textContent=label;
+}
+function showMobilePdfError(error){
+  const box=document.getElementById('mobilePdfDelivery');if(!box)return;
+  const message=String(error?.message||error||'Thiết bị không đủ bộ nhớ để tạo PDF.');
+  box.innerHTML=`<div style="width:min(420px,100%);border-radius:16px;background:#fff;padding:22px;font-family:Arial,sans-serif;box-shadow:0 18px 60px rgba(0,0,0,.3)"><h2 style="margin:0;color:#c0392b;font-size:20px">Chưa tạo được PDF</h2><p style="margin:10px 0;color:#555;line-height:1.45;overflow-wrap:anywhere">${esc(message)}</p><p style="margin:0 0 14px;color:#777;font-size:13px">Hãy đóng bớt ứng dụng hoặc kiểm tra ảnh sản phẩm rồi thử lại.</p><button type="button" style="width:100%;height:44px;border:0;border-radius:10px;background:#17202A;color:#fff;font-weight:800" onclick="this.closest('#mobilePdfDelivery').remove()">Đóng</button></div>`;
 }
 function presentMobilePdf(blob,name){
   const old=document.getElementById('mobilePdfDelivery'); if(old)old.remove();
@@ -4356,10 +4367,13 @@ function presentMobilePdf(blob,name){
 }
 async function exportPdfA4(options={}){
   const preview=!!options.preview, previewWin=preview?(options.previewWindow||window.open('about:blank','_blank')):null;
+  const report=(percent,label)=>{if(options.mobileDelivery)updateMobilePdfProgress(percent,label);};
+  report(4,'Đang tải bộ tạo PDF...');
   if(preview&&previewWin)previewWin.document.write('<title>Xem trước PDF</title><body style="font-family:Arial,sans-serif;padding:24px">Đang tạo bản xem trước PDF...</body>');
   if(preview&&!previewWin)alert('Trình duyệt đang chặn mở xem trước PDF. Anh cho phép popup rồi bấm lại.');
   await loadAnyScript(['vendor/html2canvas.min.js','https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js','https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js'],()=>window.html2canvas);
   await loadAnyScript(['vendor/jspdf.umd.min.js','https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js','https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js'],()=>window.jspdf);
+  report(15,'Đang xử lý hình ảnh sản phẩm...');
   const {jsPDF}=window.jspdf, t=totals(), productLines=state.lines.filter(l=>l.name), moneyCell=v=>moneyPlain(v);
   async function pdfImage(line){
     const source=line.photoDataUrl||line.photo;
@@ -4369,7 +4383,13 @@ async function exportPdfA4(options={}){
       return await imageSourceToDataUrl(source);
     }catch{return'';}
   }
-  const imgs=await Promise.all(productLines.map(pdfImage));
+  let processedImages=0;
+  const imgs=await Promise.all(productLines.map(async line=>{
+    const image=await Promise.race([pdfImage(line),new Promise(resolve=>setTimeout(()=>resolve(''),7000))]);
+    processedImages++;
+    report(15+(processedImages/Math.max(productLines.length,1))*25,`Đang xử lý ảnh ${processedImages}/${productLines.length}...`);
+    return image;
+  }));
   const rows=(productLines.length?productLines:[syncLineDefaults({name:'',quantity:0})]).map((line,i)=>({line,img:imgs[i]||'',index:i+1,empty:!productLines.length}));
   const dateText=quoteDateObject().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'2-digit'});
   const words=`${numberToVietnamese(t.afterVat)} (${numberToEnglish(t.afterVat)} Vietnamese dong)`;
@@ -4443,6 +4463,7 @@ async function exportPdfA4(options={}){
     .sheet thead th{height:26px!important;overflow:hidden!important;box-shadow:0 -7px 0 #000}.header-cell-content{position:absolute!important;inset:0!important;display:flex!important;width:auto!important;height:auto!important;flex-direction:column;align-items:center;justify-content:center;transform:translateY(-2px)!important}.header-line{display:block;flex:0 0 auto;line-height:1.12}
   </style>${pages.join('')}`;
   document.body.appendChild(holder);
+  report(45,'Đang dựng bố cục các trang...');
   const pdf=new jsPDF({orientation:'landscape',unit:'pt',format:'a4'});
   const pageW=pdf.internal.pageSize.getWidth(), pageH=pdf.internal.pageSize.getHeight();
   const pageEls=[...holder.querySelectorAll('.a4-page')];
@@ -4450,9 +4471,10 @@ async function exportPdfA4(options={}){
     const canvas=await html2canvas(pageEls[i],{scale:isMobilePdfDevice()?1.2:2.35,useCORS:true,backgroundColor:'#fff',logging:false});
     if(i)pdf.addPage('a4','landscape');
     pdf.addImage(canvas.toDataURL('image/jpeg',0.96),'JPEG',0,0,pageW,pageH);
+    report(45+((i+1)/Math.max(pageEls.length,1))*48,`Đang dựng trang ${i+1}/${pageEls.length}...`);
   }
   document.body.removeChild(holder);
-  if(options.mobileDelivery){presentMobilePdf(pdf.output('blob'),quotationFileName(quoteDateObject(),'pdf'));return;}
+  if(options.mobileDelivery){report(98,'Đang chuẩn bị tệp để lưu...');presentMobilePdf(pdf.output('blob'),quotationFileName(quoteDateObject(),'pdf'));return;}
   if(preview){
     const blobUrl=URL.createObjectURL(pdf.output('blob'));
     if(previewWin)previewWin.location.href=blobUrl;
@@ -9347,7 +9369,7 @@ async function exportQuotationPdfFromXlsx(options={}){
   if(mobile&&!preview){
     showMobilePdfProgress();
     try{return await exportPdfA4({mobileDelivery:true});}
-    catch(mobileError){document.getElementById('mobilePdfDelivery')?.remove();throw mobileError;}
+    catch(mobileError){showMobilePdfError(mobileError);throw mobileError;}
   }
   const previewWin=preview?window.open('about:blank','_blank'):null;
   if(preview&&previewWin)previewWin.document.write('<title>Xem trước PDF</title><body style="font-family:Arial,sans-serif;padding:24px">Đang chuyển file Excel sang PDF bằng Excel Online...</body>');
