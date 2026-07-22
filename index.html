@@ -3702,6 +3702,10 @@ function renderInventoryTab(){ state.inventory=normalizeInventoryStorage(state.i
 const renderInventoryTabBase = renderInventoryTab;
 renderInventoryTab = function renderInventoryTabCompact(){
   let html = renderInventoryTabBase();
+  const withoutHistory = markup => {
+    const historyStart = markup.indexOf('<div class="minmin-stock-history');
+    return historyStart < 0 ? markup : `${markup.slice(0,historyStart)}</div></section>`;
+  };
   const actionsMarker = '<div class="flex flex-wrap gap-2"><label class="inline-flex h-10 cursor-pointer';
   const collapseButton = `<button type="button" data-toggle="stockInputCollapsed" aria-expanded="${state.ui.stockInputCollapsed?'false':'true'}" class="h-10 rounded-md border border-black/10 bg-white px-3 text-sm font-extrabold text-ink hover:border-mint">${state.ui.stockInputCollapsed?'▾ Mở rộng':'▴ Thu gọn'}</button>`;
   html = html.replace(actionsMarker, `<div class="flex flex-wrap gap-2">${collapseButton}<label class="inline-flex h-10 cursor-pointer`);
@@ -3710,10 +3714,10 @@ renderInventoryTab = function renderInventoryTabCompact(){
   const listStartMarker = '<div class="minmin-stock-list grid gap-3">';
   const entryStart = html.indexOf(entryStartMarker);
   const listStart = html.indexOf(listStartMarker, entryStart);
-  if(entryStart < 0 || listStart < 0)return html;
+  if(entryStart < 0 || listStart < 0)return withoutHistory(html);
 
   if(state.ui.stockInputCollapsed){
-    return html.slice(0,entryStart)+html.slice(listStart);
+    return withoutHistory(html.slice(0,entryStart)+html.slice(listStart));
   }
 
   const fields = html.slice(entryStart,listStart)
@@ -3721,7 +3725,7 @@ renderInventoryTab = function renderInventoryTabCompact(){
     .replace('grid gap-2 sm:grid-cols-2 lg:grid-cols-4','grid minmin-stock-three-columns gap-2 sm:grid-cols-2 lg:grid-cols-4')
     .replace('grid gap-2 md:grid-cols-2 xl:grid-cols-[120px_repeat(3,minmax(210px,1fr))]','grid minmin-stock-three-columns minmin-stock-files gap-2 md:grid-cols-2 xl:grid-cols-[120px_repeat(3,minmax(210px,1fr))]')
     .replace('mt-2 grid gap-2 md:grid-cols-5','mt-2 grid minmin-stock-three-columns gap-2 md:grid-cols-5');
-  return `${html.slice(0,entryStart)}<div data-stock-entry-fields class="minmin-stock-entry-fields mt-2 grid gap-2">${fields}</div>${html.slice(listStart)}`;
+  return withoutHistory(`${html.slice(0,entryStart)}<div data-stock-entry-fields class="minmin-stock-entry-fields mt-2 grid gap-2">${fields}</div>${html.slice(listStart)}`);
 };
 
 function websiteNewProduct(){ state.website=normalizeWebsiteProducts(state.website||websiteProductsDefaults()); state.website.editingId=''; state.website.current=websiteProductDefaults(); saveWebsiteProducts(); render(); }
