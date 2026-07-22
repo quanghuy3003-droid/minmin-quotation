@@ -18,7 +18,8 @@ assert.match(source,/showMobilePdfProgress\(\)[\s\S]*?Đang tạo PDF báo giá/
 assert.match(source,/async function exportMobilePdfVector\(options=\{\}\)[\s\S]*?pdf\.autoTable/,'Quotation PDF must render its table as vectors');
 assert.match(source,/productBody\.slice\(0,3\)[\s\S]*?while\(productBody\.length-start>2\)[\s\S]*?Math\.min\(4,productBody\.length-start-1\)/,'Quotation pages must use three products on the cover, up to four on middle pages, and reserve a compact closing page');
 assert.match(source,/const finalPage=pageIndex===chunks\.length-1[\s\S]*?shippingRow,\.\.\.closingRows/,'Shipping and totals must stay on the final product page');
-assert.match(source,/infoRows\.forEach\([\s\S]*?pdf\.text\('Tel',48,188\)[\s\S]*?pdf\.text\('Email',190,188\)/,'Quotation client details must follow the Excel row layout');
+assert.match(source,/const customerInfoRows=\[[\s\S]*?\{label:'Tel',value:state\.info\.tel,secondaryLabel:'Email',secondaryValue:state\.info\.email\}[\s\S]*?customerInfoRows\.forEach/,'Quotation client details must contain the five Excel information rows');
+assert.match(source,/i===4\?68:145[\s\S]*?pdf\.text\(row\.secondaryLabel,145,y\)[\s\S]*?pdf\.text\(String\(row\.secondaryValue\|\|''\),180,y/,'Telephone and email must share the fifth information row');
 assert.match(source,/startY:pageIndex\?44:202[\s\S]*?minCellHeight=92/,'Quotation tables must match the reference top offsets and product-row height');
 assert.match(source,/halign:'left',fillColor:hot/,'Quotation total labels must be left aligned like the Excel reference');
 assert.match(source,/splitTextToSize\(String\(note\),570\)/,'Quotation notes must reserve real space for wrapped lines');
