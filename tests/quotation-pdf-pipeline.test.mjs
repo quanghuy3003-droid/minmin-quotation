@@ -18,7 +18,7 @@ assert.match(source,/showMobilePdfProgress\(\)[\s\S]*?Đang tạo PDF báo giá/
 assert.match(source,/async function exportMobilePdfVector\(options=\{\}\)[\s\S]*?pdf\.autoTable/,'Quotation PDF must render its table as vectors');
 const vectorPdfPipeline=source.slice(source.indexOf('async function exportMobilePdfVector(options={})'),source.indexOf('async function exportPdfA4(options={})'));
 assert.doesNotMatch(vectorPdfPipeline,/HOME DÉCOR - ĐÈN TRANG TRÍ/,'The PDF header must not repeat the removed Home Decor line');
-assert.match(vectorPdfPipeline,/pdf\.text\('TEL 038 868 3838',72,88\)/,'The telephone line must sit directly below the logo');
+assert.match(vectorPdfPipeline,/pdf\.text\('TEL 038 868 3838',147,88,\{align:'center'\}\)/,'The telephone line must be centered directly below the logo');
 assert.match(vectorPdfPipeline,/NotoSans-Italic\.ttf[\s\S]*?addFont\('NotoSans-Italic\.ttf','NotoSans','italic'\)/,'The PDF must embed a Vietnamese-capable italic font');
 assert.match(source,/const firstPageCapacity=Math\.max\(1,Math\.floor\(\(pageBottom-firstPageTableY-tableHeaderHeight\)\/productRowHeight\)\)[\s\S]*?productBody\.slice\(0,firstPageCapacity\)[\s\S]*?while\(productBody\.length-start>2\)[\s\S]*?Math\.min\(4,productBody\.length-start-1\)/,'Quotation pagination must derive the cover capacity from the blocks moved above it and reserve a compact closing page');
 assert.match(source,/const finalPage=pageIndex===chunks\.length-1[\s\S]*?shippingRow,\.\.\.closingRows/,'Shipping and totals must stay on the final product page');
@@ -30,7 +30,7 @@ assert.match(source,/startY:pageIndex\?continuationTableY:firstPageTableY[\s\S]*
 assert.match(source,/halign:'left',fillColor:hot/,'Quotation total labels must be left aligned like the Excel reference');
 assert.match(source,/splitTextToSize\(noteText,570\)/,'Quotation notes must reserve real space for wrapped lines');
 assert.match(vectorPdfPipeline,/data\.row\.index===chunk\.rows\.length&&data\.column\.index===6[\s\S]*?pdf\.line\(28,lineY,data\.cell\.x\+data\.cell\.width,lineY\)/,'The missing horizontal rule must be restored below the shipping row');
-assert.match(vectorPdfPipeline,/const amountInWordsLower=[\s\S]*?toLocaleLowerCase\('vi-VN'\)[\s\S]*?charAt\(0\)\.toLocaleUpperCase\('vi-VN'\)[\s\S]*?setFont\('NotoSans','italic'\)[\s\S]*?pdf\.text\(amountInWords/,'The amount in words must be italic, non-bold, and capitalize only its first character');
+assert.match(vectorPdfPipeline,/const amountInWordsLower=[\s\S]*?toLocaleLowerCase\('vi-VN'\)[\s\S]*?englishWordsStart=amountInWordsLower\.indexOf\('\('\)\+1[\s\S]*?charAt\(0\)\.toLocaleUpperCase\('vi-VN'\)[\s\S]*?charAt\(englishWordsStart\)\.toLocaleUpperCase\('en-US'\)[\s\S]*?setFont\('NotoSans','italic'\)[\s\S]*?pdf\.text\(amountInWords/,'The amount in words must be italic, non-bold, and capitalize the Vietnamese and English sentences');
 assert.match(vectorPdfPipeline,/includes\('Vì lý do khách quan'\)[\s\S]*?setTextColor\(isRedNote\?220:0,0,0\)/,'The installation disclaimer must be rendered in red');
 assert.match(vectorPdfPipeline,/closingDateY=noteY[\s\S]*?index===NOTE_LINES\.length-1\)closingDateY=noteY[\s\S]*?710,closingDateY,\{align:'center'\}/,'The quotation date must share the final thank-you line baseline');
 assert.match(source,/if\(y>340\)\{pdf\.addPage\('a4','landscape'\);y=72;\}/,'Long closing sections must move to a clean page instead of overflowing');

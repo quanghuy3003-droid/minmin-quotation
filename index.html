@@ -4383,7 +4383,7 @@ async function exportMobilePdfVector(options={}){
   }
   const t=totals(),moneyCell=v=>moneyPlain(v),shipAmount=Number(parseInputMoney(state.info.shipPriceText||0))*Number(state.info.shipQty||0);
   if(state.info.logoDataUrl){try{pdf.addImage(state.info.logoDataUrl,imageExtension(state.info.logoDataUrl).toUpperCase(),72,28,150,48);}catch{}}
-  pdf.setFont('NotoSans','bold');pdf.setFontSize(8);pdf.text('TEL 038 868 3838',72,88);
+  pdf.setFont('NotoSans','bold');pdf.setFontSize(8);pdf.text('TEL 038 868 3838',147,88,{align:'center'});
   pdf.setFontSize(16);pdf.text('PHIẾU BÁO GIÁ (THE QUOTATION)',421,112,{align:'center'});pdf.setFontSize(8);
   const customerInfoRows=[
     {label:'Khách hàng (Client)',value:state.info.client},
@@ -4437,7 +4437,8 @@ async function exportMobilePdfVector(options={}){
   if(y>340){pdf.addPage('a4','landscape');y=72;}
   pdf.setFont('NotoSans','bold');pdf.setFontSize(7);pdf.text('Số tiền bằng chữ',60,y);
   const amountInWordsLower=`${numberToVietnamese(t.afterVat)} (${numberToEnglish(t.afterVat)} Vietnamese dong)`.toLocaleLowerCase('vi-VN');
-  const amountInWords=amountInWordsLower.charAt(0).toLocaleUpperCase('vi-VN')+amountInWordsLower.slice(1);
+  const englishWordsStart=amountInWordsLower.indexOf('(')+1;
+  const amountInWords=`${amountInWordsLower.charAt(0).toLocaleUpperCase('vi-VN')}${amountInWordsLower.slice(1,englishWordsStart)}${amountInWordsLower.charAt(englishWordsStart).toLocaleUpperCase('en-US')}${amountInWordsLower.slice(englishWordsStart+1)}`;
   pdf.setFont('NotoSans','italic');pdf.text(amountInWords,190,y,{maxWidth:430});
   pdf.setFont('NotoSans','bold');pdf.setFontSize(6.8);let noteY=y+28,closingDateY=noteY;
   NOTE_LINES.forEach((note,index)=>{const noteText=String(note),isRedNote=noteText.includes('Vì lý do khách quan');pdf.setTextColor(isRedNote?220:0,0,0);const noteLines=pdf.splitTextToSize(noteText,570);if(index===NOTE_LINES.length-1)closingDateY=noteY;pdf.text(noteLines,48,noteY);noteY+=noteLines.length*9+4;});
