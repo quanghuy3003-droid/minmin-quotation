@@ -30,6 +30,7 @@ assert.match(source,/class="total-label" colspan="3"><span class="total-cell-con
 assert.match(source,/class="total-value"><span class="total-cell-content">/,'Total values need a dedicated vertical-centering wrapper');
 assert.match(source,/\.total-cell-content\{[^}]*display:flex;height:20px[^}]*align-items:center/,'Total content must center vertically with flex alignment');
 assert.match(source,/\.total-cell-content\{position:absolute;left:0;right:0;top:50%;[^}]*transform:translateY\(-58%\)/,'Total content must be positioned at the vertical midpoint of each cell');
+assert.match(source,/\.sheet thead th\{background:#000!important;color:#fff!important\}/,'Quotation table headers must use a black background with white text');
 assert.match(source,/class="header-cell-content"/,'Every column heading needs a vertical-centering wrapper');
 assert.match(source,/\.header-cell-content\{[^}]*align-items:center;justify-content:center/,'Column headings must center on both axes');
 assert.match(source,/notesOnProductPage=true/,'Multi-page quotations must place notes beside the final product totals');
