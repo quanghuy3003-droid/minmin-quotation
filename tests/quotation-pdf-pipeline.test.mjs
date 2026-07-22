@@ -13,11 +13,14 @@ assert.match(source,/previewPdf\.onclick=\(\)=>exportQuotationPdfFromXlsx\(\{pre
 assert.match(source,/function isMobilePdfDevice\(\)/,'Quotation PDF export must detect phones and tablets');
 assert.match(source,/scale:isMobilePdfDevice\(\)\?1\.45:2\.35/,'Mobile PDF fallback must use a memory-safe canvas scale');
 assert.match(source,/function presentMobilePdf\(blob,name\)/,'Mobile PDF export must provide an in-app delivery dialog');
-assert.match(source,/id="mobilePdfOpen"[^>]*target="_blank"[^>]*download=/,'The mobile delivery dialog must expose an explicit open and save link');
+assert.match(source,/id="mobilePdfOpen"[^>]*target="_blank"/,'The mobile delivery dialog must expose an explicit browser-open fallback');
 assert.match(source,/else if\(mobile\)\{\s*presentMobilePdf\(pdfBlob,pdfName\)/,'Converted PDFs must use the mobile delivery dialog');
+assert.match(source,/new File\(\[blob\],name,\{type:'application\/pdf'\}\)[\s\S]*?navigator\.share/,'Mobile PDF delivery must use the native share sheet with a real PDF file');
+assert.match(source,/showMobilePdfProgress\(\)[\s\S]*?Đang tạo PDF báo giá/,'Mobile PDF export must immediately show progress');
+assert.match(source,/id="mobilePdfOpen"[\s\S]*?>Mở PDF</,'Mobile PDF delivery must retain a browser-open fallback');
 assert.match(source,/document\.body\.appendChild\(a\); a\.click\(\); setTimeout/,'Blob downloads must keep their URL alive for mobile browsers');
 assert.match(source,/pdf\.onclick=\(\)=>exportQuotationPdfFromXlsx\(\)/);
-assert.match(source,/catch\(error\)\{[\s\S]*?return exportPdfA4\(\{preview,previewWindow:previewWin,mobileDelivery:mobile&&!preview\}\)/,'PDF export must deliver the local fallback through the mobile dialog');
+assert.match(source,/catch\(error\)\{[\s\S]*?return await exportPdfA4\(\{preview,previewWindow:previewWin,mobileDelivery:mobile&&!preview\}\)/,'PDF export must deliver the local fallback through the mobile dialog');
 assert.match(source,/options\.previewWindow\|\|window\.open/,'PDF preview fallback must reuse the already-open preview window');
 assert.match(source,/\.logo\{[^}]*width:auto;height:64px;max-width:190px;object-fit:contain/,'Quotation logo must preserve its natural aspect ratio');
 assert.match(source,/\.table-first\{[^}]*top:304px/,'The product table must clear the complete client and telephone block');
