@@ -20,7 +20,8 @@ assert.match(source,/productBody\.slice\(0,3\)[\s\S]*?while\(productBody\.length
 assert.match(source,/const finalPage=pageIndex===chunks\.length-1[\s\S]*?shippingRow,\.\.\.closingRows/,'Shipping and totals must stay on the final product page');
 assert.match(source,/const customerInfoRows=\[[\s\S]*?\{label:'Tel',value:state\.info\.tel,secondaryLabel:'Email',secondaryValue:state\.info\.email\}[\s\S]*?customerInfoRows\.forEach/,'Quotation client details must contain the five Excel information rows');
 assert.match(source,/i===4\?68:145[\s\S]*?pdf\.text\(row\.secondaryLabel,145,y\)[\s\S]*?pdf\.text\(String\(row\.secondaryValue\|\|''\),180,y/,'Telephone and email must share the fifth information row');
-assert.match(source,/startY:pageIndex\?44:202[\s\S]*?minCellHeight=92/,'Quotation tables must match the reference top offsets and product-row height');
+assert.match(source,/pdf\.text\('PHIẾU BÁO GIÁ \(THE QUOTATION\)',421,126[\s\S]*?const y=154\+i\*13/,'Quotation title and customer information must retain the reference vertical spacing');
+assert.match(source,/startY:pageIndex\?44:220[\s\S]*?minCellHeight=92/,'Quotation tables must clear all five customer-information rows and match the reference product-row height');
 assert.match(source,/halign:'left',fillColor:hot/,'Quotation total labels must be left aligned like the Excel reference');
 assert.match(source,/splitTextToSize\(String\(note\),570\)/,'Quotation notes must reserve real space for wrapped lines');
 assert.match(source,/if\(y>340\)\{pdf\.addPage\('a4','landscape'\);y=72;\}/,'Long closing sections must move to a clean page instead of overflowing');
