@@ -4439,11 +4439,11 @@ async function exportMobilePdfVector(options={}){
   const amountInWordsLower=`${numberToVietnamese(t.afterVat)} (${numberToEnglish(t.afterVat)} Vietnamese dong)`.toLocaleLowerCase('vi-VN');
   const amountInWords=amountInWordsLower.charAt(0).toLocaleUpperCase('vi-VN')+amountInWordsLower.slice(1);
   pdf.setFont('NotoSans','italic');pdf.text(amountInWords,190,y,{maxWidth:430});
-  pdf.setFont('NotoSans','bold');pdf.setFontSize(6.8);let noteY=y+28;
-  NOTE_LINES.forEach(note=>{const noteText=String(note),isRedNote=noteText.includes('Vì lý do khách quan');pdf.setTextColor(isRedNote?220:0,0,0);const noteLines=pdf.splitTextToSize(noteText,570);pdf.text(noteLines,48,noteY);noteY+=noteLines.length*9+4;});
+  pdf.setFont('NotoSans','bold');pdf.setFontSize(6.8);let noteY=y+28,closingDateY=noteY;
+  NOTE_LINES.forEach((note,index)=>{const noteText=String(note),isRedNote=noteText.includes('Vì lý do khách quan');pdf.setTextColor(isRedNote?220:0,0,0);const noteLines=pdf.splitTextToSize(noteText,570);if(index===NOTE_LINES.length-1)closingDateY=noteY;pdf.text(noteLines,48,noteY);noteY+=noteLines.length*9+4;});
   pdf.setTextColor(0,0,0);
   if(state.info.qrDataUrl){try{pdf.addImage(state.info.qrDataUrl,imageExtension(state.info.qrDataUrl).toUpperCase(),650,y+20,120,130);}catch{}}
-  pdf.setFont('NotoSans','normal');pdf.text(`${quoteDateObject().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'2-digit'})}   Ho Chi Minh City`,710,560,{align:'center'});
+  pdf.setFont('NotoSans','normal');pdf.text(`${quoteDateObject().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'2-digit'})}   Ho Chi Minh City`,710,closingDateY,{align:'center'});
   updateMobilePdfProgress(96,'Đang đóng gói file PDF...');
   const blob=pdf.output('blob'),name=quotationFileName(quoteDateObject(),'pdf');
   if(options.preview){

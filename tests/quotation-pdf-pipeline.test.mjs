@@ -32,6 +32,7 @@ assert.match(source,/splitTextToSize\(noteText,570\)/,'Quotation notes must rese
 assert.match(vectorPdfPipeline,/data\.row\.index===chunk\.rows\.length&&data\.column\.index===6[\s\S]*?pdf\.line\(28,lineY,data\.cell\.x\+data\.cell\.width,lineY\)/,'The missing horizontal rule must be restored below the shipping row');
 assert.match(vectorPdfPipeline,/const amountInWordsLower=[\s\S]*?toLocaleLowerCase\('vi-VN'\)[\s\S]*?charAt\(0\)\.toLocaleUpperCase\('vi-VN'\)[\s\S]*?setFont\('NotoSans','italic'\)[\s\S]*?pdf\.text\(amountInWords/,'The amount in words must be italic, non-bold, and capitalize only its first character');
 assert.match(vectorPdfPipeline,/includes\('Vì lý do khách quan'\)[\s\S]*?setTextColor\(isRedNote\?220:0,0,0\)/,'The installation disclaimer must be rendered in red');
+assert.match(vectorPdfPipeline,/closingDateY=noteY[\s\S]*?index===NOTE_LINES\.length-1\)closingDateY=noteY[\s\S]*?710,closingDateY,\{align:'center'\}/,'The quotation date must share the final thank-you line baseline');
 assert.match(source,/if\(y>340\)\{pdf\.addPage\('a4','landscape'\);y=72;\}/,'Long closing sections must move to a clean page instead of overflowing');
 assert.match(source,/if\(options\.preview\)[\s\S]*?target\.location\.replace\(url\)/,'Vector PDF preview must open the generated PDF directly');
 const activePdfPipeline=source.slice(source.indexOf('async function exportQuotationPdfFromXlsx(options={})'),source.indexOf("document.addEventListener('click'",source.indexOf('async function exportQuotationPdfFromXlsx(options={})')));
