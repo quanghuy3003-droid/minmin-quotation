@@ -18,6 +18,7 @@ assert.match(source,/data-stock-mobile-quick-quote[\s\S]*addInventoryItemToQuote
 assert.match(source,/minmin-stock-mobile-age[\s\S]*duration\.total/,'Inventory cards must show total age');
 
 assert.match(source,/minmin-website-summary-dark[\s\S]*Lỗi đồng bộ/,'Website mobile must use a dark status summary');
+assert.match(source,/\.minmin-website-sync-check[\s\S]*#239177/,'Website synchronized markers must use the shared green accent');
 assert.match(source,/data-website-mobile-product-menu[\s\S]*Đồng bộ sản phẩm[\s\S]*Đưa vào báo giá[\s\S]*Xóa sản phẩm/,'Website rows must expose real product actions');
 assert.match(source,/Tên tiếng Việt \*[\s\S]*Tên tiếng Anh[\s\S]*Giá bán \(VND\) \*/,'Website wizard must keep the requested bilingual base fields');
 assert.match(source,/data-website-mobile-recrop[\s\S]*recropWebsiteFeatured/,'Website image step must retain crop editing');

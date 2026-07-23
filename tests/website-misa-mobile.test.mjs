@@ -8,6 +8,8 @@ assert.match(source,/Tổng sản phẩm[\s\S]*Đã đăng[\s\S]*Thiếu dữ li
 assert.match(source,/Đồng bộ ngay[\s\S]*Tạo sản phẩm mới[\s\S]*Danh sách sản phẩm[\s\S]*Cài đặt Website/,'Dashboard must expose the four primary website workflows');
 assert.match(source,/function websiteMobileList\(\)/,'Website mobile must have a product list');
 assert.match(source,/data-website-mobile-search[\s\S]*data-website-mobile-status[\s\S]*data-website-mobile-detail/,'Product list must support search, status filters and details');
+assert.match(source,/data-website-mobile-view="dashboard"[\s\S]*minmin-website-home-button[\s\S]*websiteMobileIcon\('home'\)/,'Product list must provide a home control back to the Website dashboard');
+assert.match(source,/const syncBadge=published[\s\S]*minmin-website-sync-check[\s\S]*Đã đồng bộ/,'Published products must show a green synchronized check marker');
 assert.match(source,/function websiteMobileDetail\(\)/,'Website mobile must have a product detail screen');
 assert.match(source,/Thông tin[\s\S]*Ảnh[\s\S]*Thuộc tính[\s\S]*Xem trước/,'Product detail must provide the reference tabs');
 assert.match(source,/function websiteMobileWizard\(\)/,'Website mobile must have a product wizard');

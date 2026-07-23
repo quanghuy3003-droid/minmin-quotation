@@ -1592,6 +1592,35 @@
           color: #239177;
           font-size: 0.82rem;
         }
+        .minmin-website-list-heading {
+          display: grid;
+          grid-template-columns: 44px minmax(0, 1fr);
+          align-items: center;
+          gap: 0.65rem;
+          min-height: 48px;
+        }
+        .minmin-website-home-button {
+          display: inline-flex;
+          width: 44px;
+          height: 44px;
+          align-items: center;
+          justify-content: center;
+          border: 1px solid rgba(17, 19, 21, 0.1);
+          border-radius: 50%;
+          background: #fff;
+          color: #13191f;
+          box-shadow: 0 2px 8px rgba(23, 32, 42, 0.04);
+        }
+        .minmin-website-list-heading h1 {
+          font-size: 1rem;
+          font-weight: 900;
+        }
+        .minmin-website-list-heading p {
+          margin-top: 0.1rem;
+          color: rgba(17, 19, 21, 0.48);
+          font-size: 0.66rem;
+          font-weight: 650;
+        }
         .minmin-website-toolbar {
           display: grid;
           grid-template-columns: minmax(0, 1fr) 44px;
@@ -1680,6 +1709,18 @@
         .minmin-website-product-copy {
           min-width: 0;
         }
+        .minmin-website-product-title {
+          display: flex !important;
+          min-width: 0;
+          align-items: center;
+          gap: 0.35rem;
+        }
+        .minmin-website-product-title strong {
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
         .minmin-website-product-copy strong,
         .minmin-website-product-copy span {
           display: block;
@@ -1701,11 +1742,29 @@
           font-size: 0.76rem;
         }
         .minmin-website-product-status {
-          margin-left: 0.4rem;
-          color: #239177;
+          color: #9a6500;
           font-size: 0.62rem;
           font-weight: 850;
           white-space: nowrap;
+        }
+        .minmin-website-sync-check {
+          display: inline-flex !important;
+          flex: 0 0 auto;
+          align-items: center;
+          gap: 0.2rem;
+          overflow: visible !important;
+          color: #239177 !important;
+          font-size: 0.6rem !important;
+          font-weight: 900;
+          white-space: nowrap;
+        }
+        .minmin-website-sync-check svg {
+          width: 14px;
+          height: 14px;
+          flex: 0 0 auto;
+          fill: #239177 !important;
+          stroke: #fff !important;
+          stroke-width: 2.5 !important;
         }
         .minmin-website-product-menu {
           width: 30px;
@@ -16200,6 +16259,8 @@ function websiteMobileIcon(name){
     list:'<path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h.01M4 12h.01M4 18h.01"/>',
     settings:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"/>',
     search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',
+    home:'<path d="m3 11 9-8 9 8"/><path d="M5 10v10h14V10M9 20v-6h6v6"/>',
+    check:'<circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/>',
     back:'<path d="m15 18-6-6 6-6"/><path d="M9 12h10"/>',
     chevron:'<path d="m9 18 6-6-6-6"/>',
     external:'<path d="M14 4h6v6M20 4l-9 9"/><path d="M18 13v6H5V6h6"/>',
@@ -16283,10 +16344,12 @@ function websiteMobileProductRows(){
     const missing=websiteMissingFields(p).length>0;
     const status=error?'Lỗi':missing?'Thiếu dữ liệu':published?'Đã đăng':'Chưa đăng';
     const productUrl=p.wooProductUrl||p.website_product_url||'';
+    const syncBadge=published?`<span class="minmin-website-sync-check" title="Đã đồng bộ WooCommerce">${websiteMobileIcon('check')}<span>Đã đồng bộ</span></span>`:'';
+    const statusNote=status==='Đã đăng'?'':`<span class="minmin-website-product-status">${esc(status)}</span>`;
     return `<div class="minmin-website-product-row text-left">
       <button data-website-mobile-detail="${esc(p.id)}" type="button" class="contents text-left">
         <span class="minmin-website-product-photo">${image?`<img src="${esc(image)}" alt="${esc(p.product_name_en||p.sku)}" loading="lazy"/>`:'<span class="text-[9px] font-bold text-black/30">Chưa có ảnh</span>'}</span>
-        <span class="minmin-website-product-copy"><strong>${esc(p.sku||'Chưa có SKU')}<span class="minmin-website-product-status">${esc(status)}</span></strong><span>${esc(p.product_name_en||p.product_name_vi||'Chưa đặt tên')}</span><span>${esc(websiteCategoryLabel(p.category)||'Chưa chọn danh mục')}</span><b>${money(websiteMoneyNumber(p.sale_price)||websiteMoneyNumber(p.regular_price))}</b></span>
+        <span class="minmin-website-product-copy"><span class="minmin-website-product-title"><strong>${esc(p.sku||'Chưa có SKU')}</strong>${syncBadge}</span>${statusNote}<span>${esc(p.product_name_en||p.product_name_vi||'Chưa đặt tên')}</span><span>${esc(websiteCategoryLabel(p.category)||'Chưa chọn danh mục')}</span><b>${money(websiteMoneyNumber(p.sale_price)||websiteMoneyNumber(p.regular_price))}</b></span>
       </button>
       <span class="minmin-overflow-wrap self-start">
         <button data-website-mobile-product-menu="${esc(p.id)}" type="button" class="minmin-website-product-menu" aria-label="Thao tác với ${esc(p.sku||'sản phẩm')}">⋮</button>
@@ -16306,6 +16369,7 @@ function websiteMobileList(){
   const statuses=[['all','Tất cả'],['published','Đã đăng'],['draft','Chưa đăng'],['missing','Thiếu dữ liệu'],['error','Lỗi']];
   const categories=websiteCategories();
   return `<section class="minmin-website-mobile-view">${websiteMobileMainHeader()}<div class="minmin-website-mobile-content">
+    <div class="minmin-website-list-heading"><button data-website-mobile-view="dashboard" type="button" class="minmin-website-home-button" aria-label="Về trang tổng quan Website" title="Trang chủ Website">${websiteMobileIcon('home')}</button><div><h1>Danh sách sản phẩm</h1><p>Quản lý và đồng bộ sản phẩm WooCommerce</p></div></div>
     <div class="minmin-website-toolbar"><label class="minmin-website-search">${websiteMobileIcon('search')}<input data-website-mobile-search type="search" value="${esc(state.ui.websiteMobileSearch)}" placeholder="Tìm SKU, tên, danh mục..."/></label><button data-website-mobile-filter-toggle type="button" class="minmin-website-filter-button" aria-label="Lọc danh mục">⌘</button></div>
     <div class="minmin-mobile-filter-chips">${statuses.map(([key,label])=>`<button data-website-mobile-status="${key}" type="button" class="${state.ui.websiteMobileStatus===key?'is-active':''}">${label}</button>`).join('')}</div>
     ${state.ui.websiteMobileFilterOpen?`<label class="minmin-website-card p-2 text-[11px] font-bold text-black/50">Danh mục<select data-website-mobile-category class="mt-1 h-10 w-full rounded-md border border-black/10 bg-white px-2 text-xs font-bold"><option value="">Tất cả danh mục</option>${categories.map(value=>`<option value="${esc(value)}" ${state.ui.websiteMobileCategory===value?'selected':''}>${esc(websiteCategoryLabel(value))}</option>`).join('')}</select></label>`:''}
