@@ -164,57 +164,68 @@
           gap: 0.75rem !important;
         }
         .minmin-stock-group {
-          display: grid !important;
-          grid-template-columns: 82px minmax(0, 1fr) !important;
-          align-items: stretch !important;
+          display: block !important;
           border-radius: 0.9rem !important;
           overflow: hidden !important;
         }
         .minmin-stock-group-head {
           align-items: center !important;
-          align-self: stretch !important;
-          border-bottom: 0 !important;
-          border-right: 1px solid currentColor !important;
-          flex-direction: column !important;
-          justify-content: flex-start !important;
-          min-height: 100% !important;
-          padding: 0.75rem 0.35rem !important;
-          text-align: center !important;
+          border-bottom: 1px solid currentColor !important;
+          border-right: 0 !important;
+          flex-direction: row !important;
+          justify-content: space-between !important;
+          min-height: 0 !important;
+          padding: 0.55rem 0.65rem !important;
+          text-align: left !important;
         }
         .minmin-stock-group-head h3 {
           font-size: 0.76rem !important;
           line-height: 1.15 !important;
         }
         .minmin-stock-group-head span {
-          margin-top: 0.45rem !important;
+          margin-top: 0 !important;
         }
         .minmin-stock-group-body {
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
           gap: 0 !important;
           padding: 0 !important;
         }
         .minmin-stock-card {
-          border-width: 0 0 1px 0 !important;
+          min-height: 122px;
+          border-width: 0 1px 1px 0 !important;
           border-radius: 0 !important;
           box-shadow: none !important;
-          padding: 0.62rem !important;
+          padding: 0.48rem !important;
+        }
+        .minmin-stock-card:nth-child(2n) {
+          border-right-width: 0 !important;
         }
         .minmin-stock-card:last-child {
           border-bottom-width: 0 !important;
         }
         .minmin-stock-grid {
           display: grid !important;
-          grid-template-columns: 58px minmax(0, 1fr) !important;
-          gap: 0.55rem !important;
+          grid-template-columns: 48px minmax(0, 1fr) !important;
+          gap: 0.42rem !important;
           align-items: start !important;
         }
         .minmin-stock-photo {
-          width: 58px !important;
-          height: 58px !important;
+          width: 48px !important;
+          height: 48px !important;
         }
         .minmin-stock-info h3 {
           font-size: 0.95rem !important;
           line-height: 1.12 !important;
           max-width: 100% !important;
+        }
+        .minmin-stock-info > div:nth-child(2) {
+          display: block !important;
+          padding-right: 1.55rem;
+          overflow-wrap: anywhere;
+          color: #17202A !important;
+          font-size: 0.67rem !important;
+          font-weight: 800 !important;
+          line-height: 1.15 !important;
         }
         .minmin-stock-info .stock-file-label,
         .minmin-stock-info .stock-invoice-chip,
@@ -222,13 +233,15 @@
           display: none !important;
         }
         .minmin-stock-info .stock-chip-row {
-          gap: 0.32rem !important;
-          margin-top: 0.45rem !important;
+          gap: 0.22rem !important;
+          margin-top: 0.32rem !important;
         }
         .minmin-stock-info .stock-chip-row > span {
-          font-size: 0.78rem !important;
+          max-width: 100%;
+          font-size: 0.65rem !important;
           line-height: 1.1 !important;
-          padding: 0.35rem 0.45rem !important;
+          padding: 0.27rem 0.34rem !important;
+          white-space: nowrap;
         }
         .minmin-stock-actions {
           grid-column: 1 / -1 !important;
@@ -418,22 +431,30 @@
       .minmin-stock-card:has(.minmin-stock-detail) [data-stock-toggle]::after {
         content: "⌃";
       }
+      .minmin-stock-card:has(.minmin-stock-detail) {
+        grid-column: 1 / -1;
+      }
+      @media (min-width: 641px) and (max-width: 1023px) {
+        .minmin-stock-group-body {
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        }
+      }
       @media (min-width: 1024px) {
         .minmin-stock-group-body {
-          grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+          grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
         }
         .minmin-stock-card {
-          min-height: 108px;
-          padding: 0.6rem !important;
+          min-height: 102px;
+          padding: 0.52rem !important;
         }
         .minmin-stock-card .minmin-stock-grid {
-          grid-template-columns: 76px minmax(0, 1fr) !important;
-          gap: 0.65rem !important;
+          grid-template-columns: 64px minmax(0, 1fr) !important;
+          gap: 0.5rem !important;
           align-items: center !important;
         }
         .minmin-stock-card .minmin-stock-photo {
-          width: 76px !important;
-          height: 76px !important;
+          width: 64px !important;
+          height: 64px !important;
         }
         .minmin-stock-card .minmin-stock-info {
           padding-right: 2rem;
