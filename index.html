@@ -1090,6 +1090,11 @@
           font-size: 0.72rem;
           font-weight: 900;
         }
+        .minmin-quote-payment-more svg {
+          width: 18px;
+          height: 18px;
+          flex: 0 0 auto;
+        }
         .minmin-quote-finance-panel {
           grid-column: 1 / -1;
           display: grid;
@@ -2218,7 +2223,7 @@
           background: var(--minmin-bg);
         }
         .minmin-quote-mobile-view {
-          padding-bottom: calc(78px + env(safe-area-inset-bottom));
+          padding-bottom: calc(112px + env(safe-area-inset-bottom));
         }
         .minmin-quote-mobile-view svg,
         .minmin-stock-mobile-search-row svg,
@@ -15998,16 +16003,16 @@ function quoteMobileFinancePanel(){
     return `<label>${label}<input data-quote-mobile-finance="${key}" type="${type}" inputmode="numeric" value="${esc(value)}"/></label>`;
   };
   return `<div class="minmin-quote-finance-panel">
+    <div class="minmin-quote-finance-actions">
+      <button data-quote-mobile-action="preview-pdf" type="button">Xem trước PDF</button>
+      <button data-quote-mobile-action="export-pdf" type="button">Xuất PDF</button>
+    </div>
     ${input('Phí vận chuyển','shipPriceText','text')}
     ${input('SL phí','shipQty')}
     ${input('Chiết khấu %','discountRate')}
     ${input('VAT %','vatRate')}
     ${input('Đặt cọc %','depositRate')}
     <div></div>
-    <div class="minmin-quote-finance-actions">
-      <button data-quote-mobile-action="preview-pdf" type="button">Xem trước PDF</button>
-      <button data-quote-mobile-action="export-pdf" type="button">Xuất PDF</button>
-    </div>
   </div>`;
 }
 function quoteMobileProductRows(){
