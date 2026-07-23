@@ -1991,6 +1991,548 @@
           transform: translateX(20px);
         }
       }
+      :root {
+        --minmin-bg: #f6f7f5;
+        --minmin-surface: #ffffff;
+        --minmin-ink: #13191f;
+        --minmin-muted: #687078;
+        --minmin-accent: #239177;
+        --minmin-accent-soft: #e9f6f2;
+        --minmin-warning: #9a6500;
+        --minmin-warning-soft: #fff6da;
+        --minmin-danger: #e4544f;
+        --minmin-border: rgba(17, 19, 21, 0.09);
+        --minmin-radius-card: 0.5rem;
+        --minmin-radius-control: 0.45rem;
+        --minmin-shadow-card: 0 2px 9px rgba(23, 32, 42, 0.05);
+      }
+      .minmin-mobile-filter-chips {
+        display: flex;
+        max-width: 100%;
+        gap: 0.45rem;
+        overflow-x: auto;
+        padding: 0.05rem 0 0.15rem;
+        scrollbar-width: none;
+      }
+      .minmin-mobile-filter-chips::-webkit-scrollbar {
+        display: none;
+      }
+      .minmin-mobile-filter-chips button {
+        min-height: 38px;
+        flex: 0 0 auto;
+        border: 1px solid var(--minmin-border);
+        border-radius: var(--minmin-radius-control);
+        background: var(--minmin-surface);
+        padding: 0 0.75rem;
+        color: var(--minmin-muted);
+        font-size: 0.72rem;
+        font-weight: 850;
+        white-space: nowrap;
+      }
+      .minmin-mobile-filter-chips button.is-active {
+        border-color: rgba(35, 145, 119, 0.28);
+        background: var(--minmin-accent-soft);
+        color: var(--minmin-accent);
+      }
+      .minmin-mobile-summary-dark {
+        overflow: hidden;
+        border-radius: var(--minmin-radius-card);
+        background: #111820;
+        color: #fff;
+        box-shadow: var(--minmin-shadow-card);
+      }
+      .minmin-overflow-wrap {
+        position: relative;
+      }
+      .minmin-overflow-popover {
+        position: absolute;
+        top: calc(100% + 0.35rem);
+        right: 0;
+        z-index: 60;
+        display: grid;
+        width: min(210px, calc(100vw - 2rem));
+        overflow: hidden;
+        border: 1px solid var(--minmin-border);
+        border-radius: var(--minmin-radius-control);
+        background: #fff;
+        box-shadow: 0 12px 30px rgba(17, 24, 32, 0.16);
+      }
+      .minmin-overflow-popover button,
+      .minmin-overflow-popover a,
+      .minmin-overflow-popover label {
+        display: flex;
+        min-height: 44px;
+        align-items: center;
+        border-top: 1px solid var(--minmin-border);
+        padding: 0 0.8rem;
+        color: var(--minmin-ink);
+        font-size: 0.78rem;
+        font-weight: 800;
+        text-align: left;
+      }
+      .minmin-overflow-popover > :first-child {
+        border-top: 0;
+      }
+      .minmin-overflow-popover .is-danger {
+        color: var(--minmin-danger);
+      }
+      .minmin-mobile-empty {
+        display: grid;
+        min-height: 150px;
+        place-items: center;
+        padding: 1.5rem;
+        color: var(--minmin-muted);
+        font-size: 0.82rem;
+        font-weight: 750;
+        text-align: center;
+      }
+      @media (max-width: 767px) {
+        body {
+          background: var(--minmin-bg);
+          color: var(--minmin-ink);
+        }
+        body:has(.minmin-quote-mobile-view) .minmin-topbar,
+        body:has(.minmin-stock-mobile-view) .minmin-topbar,
+        body:has(.minmin-website-mobile-view) .minmin-topbar {
+          display: block !important;
+        }
+        body:has(.minmin-quote-mobile-view) .minmin-main-nav,
+        body:has(.minmin-stock-mobile-view) .minmin-main-nav,
+        body:has(.minmin-website-mobile-view) .minmin-main-nav {
+          display: grid !important;
+        }
+        .minmin-topbar .minmin-app-logo {
+          min-height: 58px;
+          padding: 0.4rem 0.75rem !important;
+        }
+        .minmin-topbar .minmin-app-logo img {
+          height: 42px !important;
+        }
+        .minmin-main-nav {
+          position: sticky;
+          top: 0;
+          z-index: 48;
+          grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+          gap: 0 !important;
+          width: 100%;
+          padding: 0 0.15rem !important;
+          background: #111315 !important;
+          box-shadow: 0 4px 14px rgba(17, 19, 21, 0.12);
+        }
+        .minmin-tab-button {
+          display: flex !important;
+          width: 100% !important;
+          min-width: 0 !important;
+          height: 64px !important;
+          flex-direction: column;
+          gap: 0.22rem !important;
+          border-radius: 0 !important;
+          padding: 0.35rem 0.08rem 0.3rem !important;
+          font-size: clamp(0.49rem, 2.25vw, 0.66rem) !important;
+          line-height: 1 !important;
+          white-space: nowrap !important;
+        }
+        .minmin-tab-button > span:first-child {
+          width: 19px !important;
+          height: 19px !important;
+        }
+        .minmin-tab-button > span:last-child {
+          max-width: 100%;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .minmin-quote-mobile-header,
+        .minmin-website-mobile-header,
+        .minmin-stock-mobile-view > .minmin-stock-mobile-toolbar {
+          display: none !important;
+        }
+        .minmin-quote-desktop-view,
+        .minmin-stock-desktop-view,
+        .minmin-website-desktop-view {
+          display: none !important;
+        }
+        .minmin-quote-mobile-view,
+        .minmin-stock-mobile-view,
+        .minmin-website-mobile-view {
+          display: block !important;
+          min-height: calc(100dvh - 122px);
+          background: var(--minmin-bg);
+        }
+        .minmin-quote-mobile-view {
+          padding-bottom: calc(78px + env(safe-area-inset-bottom));
+        }
+        .minmin-quote-mobile-view svg,
+        .minmin-stock-mobile-search-row svg,
+        .minmin-website-mobile-view svg {
+          fill: none;
+          stroke: currentColor;
+          stroke-width: 1.8;
+          stroke-linecap: round;
+          stroke-linejoin: round;
+        }
+        .minmin-quote-mobile-content,
+        .minmin-website-mobile-content {
+          gap: 0.75rem;
+          padding: 0.75rem;
+        }
+        .minmin-quote-mobile-card,
+        .minmin-website-card {
+          border-color: var(--minmin-border);
+          border-radius: var(--minmin-radius-card);
+          box-shadow: var(--minmin-shadow-card);
+        }
+        [data-quote-mobile-product-list],
+        .minmin-website-card:has(.minmin-website-product-row) {
+          overflow: visible;
+        }
+        .minmin-quote-customer {
+          grid-template-columns: 36px minmax(0, 1fr) auto;
+          gap: 0.5rem;
+          min-height: 70px;
+          padding: 0.7rem 0.75rem;
+        }
+        .minmin-quote-customer-icon {
+          width: 34px;
+          height: 34px;
+        }
+        .minmin-quote-customer-icon svg {
+          width: 21px;
+          height: 21px;
+        }
+        .minmin-quote-customer-edit {
+          min-height: 40px;
+          padding: 0 0.55rem;
+          font-size: 0.7rem;
+        }
+        .minmin-quote-total-hero {
+          min-height: 118px;
+          border-radius: var(--minmin-radius-card);
+          padding: 0.9rem;
+        }
+        .minmin-quote-total-hero strong {
+          font-size: clamp(1.55rem, 8vw, 2rem);
+        }
+        .minmin-quote-mobile-tools {
+          grid-template-columns: minmax(0, 1fr) 46px;
+        }
+        .minmin-quote-mobile-add {
+          width: 46px;
+          padding: 0;
+        }
+        .minmin-quote-mobile-add span {
+          display: none;
+        }
+        .minmin-quote-product-head {
+          display: none;
+        }
+        .minmin-quote-product-row {
+          position: relative;
+          display: grid;
+          grid-template-columns: 62px minmax(0, 1fr) 44px;
+          gap: 0.65rem;
+          min-height: 84px;
+          padding: 0.6rem 0.65rem;
+        }
+        .minmin-quote-product-photo {
+          width: 62px;
+          height: 62px;
+          border-radius: 0.4rem;
+        }
+        .minmin-quote-product-name {
+          font-size: 0.72rem;
+        }
+        .minmin-quote-product-name strong {
+          font-size: 0.82rem;
+        }
+        .minmin-quote-product-number {
+          text-align: left;
+          font-size: 0.7rem;
+        }
+        .minmin-quote-product-number.is-total {
+          font-size: 0.78rem;
+        }
+        .minmin-quote-product-menu {
+          width: 44px;
+          height: 44px;
+          border-radius: 50%;
+        }
+        .minmin-quote-payment-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 0.7rem;
+          padding: 0.8rem;
+        }
+        .minmin-quote-payment-more {
+          grid-column: 1 / -1;
+        }
+        .minmin-quote-finance-panel {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        .minmin-quote-mobile-bottom {
+          grid-template-columns: minmax(0, 1fr) 56px 114px;
+          min-height: 72px;
+          padding: 0.5rem 0.7rem max(0.5rem, env(safe-area-inset-bottom));
+        }
+        .minmin-quote-mobile-bottom .minmin-quote-export {
+          min-height: 48px;
+          padding: 0 0.65rem;
+        }
+        .minmin-quote-mobile-more {
+          display: inline-flex;
+          width: 52px;
+          min-height: 48px;
+          align-items: center;
+          justify-content: center;
+          border: 1px solid var(--minmin-border);
+          border-radius: var(--minmin-radius-control);
+          background: #fff;
+          font-size: 1.4rem;
+          font-weight: 900;
+        }
+        .minmin-quote-mobile-more-actions {
+          position: absolute;
+          top: auto;
+          right: 0.7rem;
+          bottom: calc(100% + 0.4rem);
+        }
+        .minmin-stock-mobile-view {
+          padding: 0.75rem;
+        }
+        .minmin-stock-mobile-summary {
+          grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+          margin: 0;
+          min-height: 118px;
+          border-radius: var(--minmin-radius-card);
+          padding: 0.9rem;
+        }
+        .minmin-stock-mobile-controls {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 0.65rem;
+          margin: 0.75rem 0 0;
+          padding: 0;
+          background: transparent;
+        }
+        .minmin-stock-mobile-controls .minmin-stock-mobile-search-row {
+          grid-column: auto;
+          display: grid;
+          grid-template-columns: 24px minmax(0, 1fr);
+          align-items: center;
+          min-height: 48px;
+          border: 1px solid var(--minmin-border);
+          border-radius: var(--minmin-radius-control);
+          background: #fff;
+          padding: 0 0.75rem;
+          box-shadow: var(--minmin-shadow-card);
+        }
+        .minmin-stock-mobile-search-row input {
+          height: 44px;
+          border: 0;
+          background: transparent;
+          padding: 0;
+          font-size: 0.78rem;
+          outline: none;
+        }
+        .minmin-stock-mobile-list {
+          display: grid;
+          gap: 0.65rem;
+          margin-top: 0.75rem;
+          padding: 0;
+        }
+        .minmin-stock-mobile-item {
+          position: relative;
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) 42px;
+          gap: 0.7rem;
+          min-height: 108px;
+          border: 1px solid var(--minmin-border);
+          border-radius: var(--minmin-radius-card);
+          background: #fff;
+          padding: 0.65rem;
+          box-shadow: var(--minmin-shadow-card);
+          text-align: left;
+        }
+        .minmin-stock-mobile-item-main {
+          display: grid;
+          min-width: 0;
+          grid-template-columns: 82px minmax(0, 1fr);
+          gap: 0.7rem;
+        }
+        .minmin-stock-mobile-item-photo {
+          width: 82px;
+          height: 82px;
+          border-radius: 0.45rem;
+        }
+        .minmin-stock-mobile-open {
+          display: inline-flex;
+          width: 40px;
+          height: 40px;
+          align-items: center;
+          justify-content: center;
+          border: 1px solid var(--minmin-border);
+          border-radius: 50%;
+          background: #fff;
+          color: var(--minmin-ink);
+          font-size: 1.25rem;
+        }
+        .minmin-stock-mobile-quick-add {
+          position: absolute;
+          right: 0.7rem;
+          bottom: 0.7rem;
+          display: inline-flex;
+          width: 38px;
+          height: 38px;
+          align-items: center;
+          justify-content: center;
+          border-radius: 50%;
+          background: var(--minmin-accent);
+          color: #fff;
+          font-size: 1.35rem;
+          font-weight: 900;
+          box-shadow: 0 4px 12px rgba(35, 145, 119, 0.2);
+        }
+        .minmin-stock-mobile-detail {
+          margin: -0.75rem;
+        }
+        .minmin-stock-mobile-detail .minmin-stock-mobile-toolbar {
+          top: 64px;
+        }
+        .minmin-stock-mobile-hero {
+          max-height: 48dvh;
+        }
+        .minmin-stock-mobile-age {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.3rem;
+          border-radius: 0.35rem;
+          background: var(--minmin-warning-soft);
+          padding: 0.25rem 0.45rem;
+          color: var(--minmin-warning);
+          font-size: 0.68rem;
+          font-weight: 850;
+        }
+        .minmin-stock-mobile-status {
+          display: inline-flex;
+          align-items: center;
+          border-radius: 0.35rem;
+          padding: 0.25rem 0.45rem;
+          font-size: 0.65rem;
+          font-weight: 850;
+        }
+        .minmin-stock-mobile-owner {
+          display: block;
+          max-width: 100%;
+          margin-top: 0.2rem;
+          overflow: hidden;
+          color: var(--minmin-muted);
+          font-size: 0.65rem;
+          font-weight: 700;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .minmin-website-mobile-title h1 {
+          font-size: 1.55rem;
+        }
+        .minmin-website-summary-dark {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          overflow: hidden;
+        }
+        .minmin-website-summary-dark > .minmin-website-stats {
+          grid-column: 1 / -1;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          padding: 0;
+        }
+        .minmin-website-summary-dark > :last-child {
+          grid-column: 1 / -1;
+        }
+        .minmin-website-summary-dark .minmin-website-stat {
+          min-height: 82px;
+          border-color: rgba(255, 255, 255, 0.12);
+          padding: 0.75rem;
+          text-align: left;
+        }
+        .minmin-website-summary-dark .minmin-website-stat:nth-child(odd) {
+          border-left: 0;
+        }
+        .minmin-website-summary-dark .minmin-website-stat:nth-child(n+3) {
+          border-top: 1px solid rgba(255, 255, 255, 0.12);
+        }
+        .minmin-website-summary-dark .minmin-website-stat strong {
+          color: #fff !important;
+          font-size: 1.45rem;
+        }
+        .minmin-website-summary-dark .minmin-website-stat span {
+          color: rgba(255, 255, 255, 0.58);
+        }
+        .minmin-website-product-row {
+          grid-template-columns: 72px minmax(0, 1fr) 44px;
+          min-height: 98px;
+          padding: 0.65rem;
+        }
+        .minmin-website-product-photo {
+          width: 72px;
+          height: 72px;
+        }
+        .minmin-website-product-menu {
+          display: inline-flex;
+          width: 44px;
+          height: 44px;
+          align-items: center;
+          justify-content: center;
+          border: 1px solid var(--minmin-border);
+          border-radius: 50%;
+          background: #fff;
+          font-size: 1.2rem;
+        }
+        .minmin-website-secret-field {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) 44px;
+          overflow: hidden;
+          border: 1px solid var(--minmin-border);
+          border-radius: var(--minmin-radius-control);
+          background: #fff;
+        }
+        .minmin-website-secret-field input {
+          border: 0 !important;
+          border-radius: 0 !important;
+        }
+        .minmin-website-secret-field button {
+          min-height: 44px;
+          border-left: 1px solid var(--minmin-border);
+          font-size: 0.65rem;
+          font-weight: 850;
+        }
+        .minmin-website-preview-placeholder {
+          display: grid;
+          width: 100%;
+          aspect-ratio: 1;
+          max-height: 48dvh;
+          place-items: center;
+          background: #f3f3ef;
+          color: var(--minmin-muted);
+          font-size: 0.78rem;
+          font-weight: 750;
+        }
+        .minmin-website-subheader {
+          top: 64px;
+        }
+      }
+      @media (min-width: 768px) and (max-width: 900px) {
+        .minmin-main-nav {
+          display: grid !important;
+          grid-template-columns: repeat(6, minmax(0, 1fr));
+          gap: 0.2rem !important;
+          padding: 0.45rem 0.6rem !important;
+        }
+        .minmin-tab-button {
+          min-width: 0 !important;
+          justify-content: center;
+          padding-right: 0.3rem !important;
+          padding-left: 0.3rem !important;
+          font-size: 0.72rem !important;
+          white-space: nowrap;
+        }
+      }
     </style>
   </head>
   <body class="min-h-screen bg-[#F7F7F2] font-sans text-ink">
@@ -5271,19 +5813,38 @@ function inventoryMobileListItem(item){
   const key=item.barcodeId||item.code, stage=inventoryStage(item), finance=inventoryFinance(item);
   const description=[item.name||productTypeName(item.productType),item.dimension,item.unit].filter(Boolean).join(' · ');
   const duration=inventoryTotalDays(item);
-  return `<button data-stock-mobile-open="${esc(key)}" type="button" class="minmin-stock-mobile-item">
-    <span class="minmin-stock-mobile-item-photo">${item.photoDataUrl?`<img src="${esc(driveAssetUrl(item.photoDataUrl))}" alt="${esc(item.name||item.code||'Sản phẩm')}"/>`:'<span class="px-2 text-center text-xs font-bold text-black/35">Chưa có ảnh</span>'}</span>
-    <span class="min-w-0">
-      <span class="flex min-w-0 items-center gap-1.5"><strong class="min-w-0 truncate text-[15px] font-black text-ink">${esc(item.code||'Chưa có mã')}</strong>${inventoryKindMarker(item)}</span>
-      <span class="mt-1 block overflow-hidden text-ellipsis whitespace-nowrap text-xs font-semibold text-black/45">${esc(description||stage.detail)}</span>
-      <span class="mt-2 flex flex-wrap items-center gap-1.5">
-        <span class="rounded-md bg-mint/10 px-2 py-1 text-sm font-black text-mint">${money(finance.sell)}</span>
-        <span class="rounded-md bg-black/5 px-2 py-1 text-xs font-extrabold text-black/55">${esc(stage.key==='stock'?'Trong kho':'Số lượng')}: ${Number(item.quantity||0)}</span>
-        ${duration.total==null?'':`<span class="rounded-md border border-gold/40 bg-gold/15 px-2 py-1 text-xs font-extrabold text-[#8a5a00]">Tổng ${duration.total} ngày</span>`}
+  const owner=item.itemKind==='sample'
+    ?'<span class="minmin-stock-mobile-owner text-coral">● Hàng mẫu</span>'
+    :`<span class="minmin-stock-mobile-owner text-mint">✓ ${esc(inventoryOrderCustomerName(item)||'Hàng order')}</span>`;
+  const menuOpen=state.ui?.stockMobileMenuId===key;
+  return `<div class="minmin-stock-mobile-item">
+    <button data-stock-mobile-open="${esc(key)}" type="button" class="minmin-stock-mobile-item-main text-left" aria-label="Xem chi tiết ${esc(item.code||'sản phẩm')}">
+      <span class="minmin-stock-mobile-item-photo">${item.photoDataUrl?`<img src="${esc(driveAssetUrl(item.photoDataUrl))}" alt="${esc(item.name||item.code||'Sản phẩm')}"/>`:'<span class="px-2 text-center text-xs font-bold text-black/35">Chưa có ảnh</span>'}</span>
+      <span class="min-w-0">
+        <strong class="block min-w-0 truncate text-[14px] font-black text-ink">${esc(item.code||'Chưa có mã')}</strong>
+        ${owner}
+        <span class="mt-1 block overflow-hidden text-ellipsis whitespace-nowrap text-[11px] font-semibold text-black/45">${esc(description||stage.detail)}</span>
+        <span class="mt-1.5 flex flex-wrap items-center gap-1.5">
+          <span class="rounded-md bg-mint/10 px-2 py-1 text-sm font-black text-mint">${money(finance.sell)}</span>
+          <span class="rounded-md bg-black/5 px-2 py-1 text-[11px] font-extrabold text-black/55">SL ${Number(item.quantity||0)}</span>
+        </span>
+        <span class="mt-1.5 flex flex-wrap items-center gap-1.5">
+          <span class="minmin-stock-mobile-status ${stage.chip}">${esc(stage.label)}</span>
+          ${duration.total==null?'':`<span class="minmin-stock-mobile-age"><span aria-hidden="true">◷</span>${duration.total} ngày</span>`}
+        </span>
       </span>
-    </span>
-    <span class="minmin-stock-mobile-open" aria-hidden="true">+</span>
-  </button>`;
+    </button>
+    <div class="minmin-overflow-wrap self-start">
+      <button data-stock-mobile-menu="${esc(key)}" type="button" class="minmin-stock-mobile-open" aria-label="Thao tác với ${esc(item.code||'sản phẩm')}">⋮</button>
+      ${menuOpen?`<div class="minmin-overflow-popover">
+        <button data-stock-mobile-open="${esc(key)}" type="button">Xem chi tiết</button>
+        ${stage.key==='stock'?`<button data-stock-mobile-quick-quote="${esc(key)}" type="button">Đưa vào báo giá</button>`:''}
+        ${stage.key==='production'?`<button data-stock-arrive="${esc(key)}" type="button">Nhập kho VN</button>`:''}
+        <button data-stock-delete="${esc(key)}" type="button" class="is-danger">Xóa sản phẩm</button>
+      </div>`:''}
+    </div>
+    ${stage.key==='stock'?`<button data-stock-mobile-quick-quote="${esc(key)}" type="button" class="minmin-stock-mobile-quick-add" aria-label="Đưa ${esc(item.code||'sản phẩm')} vào báo giá">+</button>`:''}
+  </div>`;
 }
 function inventoryMobileDetailView(item){
   const key=item.barcodeId||item.code, stage=inventoryStage(item), finance=inventoryFinance(item), attrs=item.attributes||{};
@@ -5321,13 +5882,13 @@ function inventoryMobileDetailView(item){
   </div>`;
 }
 function renderInventoryMobileView(){
-  const inv=normalizeInventoryStorage(state.inventory||{}), category=state.ui.stockMobileCategory||'stock', needle=cleanSearch(state.ui.stockSearch||'');
+  const inv=normalizeInventoryStorage(state.inventory||{}), category=state.ui.stockMobileCategory||'all', needle=cleanSearch(state.ui.stockSearch||'');
   const counts={stock:0,production:0,sold:0};
   inv.items.forEach(item=>{const key=inventoryStage(item).key; if(counts[key]!==undefined)counts[key]++;});
   const selectedKey=String(state.ui.stockMobileDetail||'');
   const selected=selectedKey?findInventoryItem(selectedKey):null;
   if(selected)return `<div class="minmin-stock-mobile-view">${inventoryMobileDetailView(selected)}</div>`;
-  const visible=inv.items.filter(item=>inventoryStage(item).key===category).filter(item=>!needle||inventorySearchText(item).includes(needle));
+  const visible=inv.items.filter(item=>category==='all'||inventoryStage(item).key===category).filter(item=>!needle||inventorySearchText(item).includes(needle));
   const stockItems=inv.items.filter(item=>inventoryStage(item).key==='stock');
   const totalQty=stockItems.reduce((sum,item)=>sum+Number(item.quantity||0),0);
   const totalValue=stockItems.reduce((sum,item)=>sum+Number(item.quantity||0)*parseInputMoney(item.price),0);
@@ -5342,15 +5903,12 @@ function renderInventoryMobileView(){
       <div class="border-l border-white/15 pl-3"><div class="text-[10px] font-extrabold uppercase text-white/50">Giá trị tồn kho</div><div class="mt-1 break-words text-lg font-black">${money(totalValue)}</div></div>
     </div>
     <div class="minmin-stock-mobile-controls">
-      <select data-stock-mobile-category aria-label="Chọn nhóm kho">
-        <option value="stock" ${category==='stock'?'selected':''}>Trong kho (${counts.stock})</option>
-        <option value="production" ${category==='production'?'selected':''}>Đang sản xuất (${counts.production})</option>
-        <option value="sold" ${category==='sold'?'selected':''}>Hết hàng (${counts.sold})</option>
-      </select>
-      <button data-stock-mobile-search-focus type="button" class="minmin-stock-mobile-icon rounded-md" aria-label="Mở tìm kiếm">${inventoryMobileSearchIcon()}</button>
       <div class="minmin-stock-mobile-search-row">
+        ${inventoryMobileSearchIcon()}
         <input data-stock-mobile-search value="${esc(state.ui.stockSearch||'')}" placeholder="Tìm mã, tên, kích thước..." autocomplete="off"/>
-        <button data-stock-mobile-search-go type="button" class="minmin-stock-mobile-icon rounded-md" aria-label="Tìm">${inventoryMobileSearchIcon()}</button>
+      </div>
+      <div class="minmin-mobile-filter-chips">
+        ${[['all','Tất cả',inv.items.length],['stock','Trong kho',counts.stock],['production','Đang sản xuất',counts.production],['sold','Hết hàng',counts.sold]].map(([key,label,count])=>`<button data-stock-mobile-category-chip="${key}" type="button" class="${category===key?'is-active':''}">${label} (${count})</button>`).join('')}
       </div>
     </div>
     <div class="minmin-stock-mobile-list">${visible.length?visible.map(inventoryMobileListItem).join(''):`<div class="px-4 py-12 text-center text-sm font-bold text-black/40">${needle?'Không tìm thấy sản phẩm phù hợp.':'Nhóm này chưa có sản phẩm.'}</div>`}</div>
@@ -5361,6 +5919,27 @@ renderInventoryTab = function renderInventoryTabResponsive(){
   return `<div class="minmin-stock-desktop-view">${renderInventoryTabDesktop()}</div>${renderInventoryMobileView()}`;
 };
 document.addEventListener('click',event=>{
+  const chip=event.target.closest?.('[data-stock-mobile-category-chip]');
+  if(chip){
+    state.ui.stockMobileCategory=chip.dataset.stockMobileCategoryChip||'all';
+    state.ui.stockMobileDetail='';
+    state.ui.stockMobileMenuId='';
+    saveDraft();
+    render({force:true});
+    return;
+  }
+  const itemMenu=event.target.closest?.('[data-stock-mobile-menu]');
+  if(itemMenu){
+    const id=itemMenu.dataset.stockMobileMenu||'';
+    state.ui.stockMobileMenuId=state.ui.stockMobileMenuId===id?'':id;
+    render({force:true});
+    return;
+  }
+  const quickQuote=event.target.closest?.('[data-stock-mobile-quick-quote]');
+  if(quickQuote){
+    addInventoryItemToQuote(quickQuote.dataset.stockMobileQuickQuote,1);
+    return;
+  }
   const back=event.target.closest?.('[data-stock-mobile-back]');
   if(back){
     if(back.dataset.stockMobileBack==='detail')state.ui.stockMobileDetail='';
@@ -14968,23 +15547,42 @@ function quoteMobileFinancePanel(){
   </div>`;
 }
 function quoteMobileProductRows(){
-  return (state.lines||[]).map((line,idx)=>{
+  const activeType=state.ui?.quoteMobileProductType||'all';
+  const typeKey=line=>{
+    const label=[line.productType,productTypeName(line.productType),line.name].join(' ').toLowerCase();
+    if(/thả|pendant/.test(label))return'pendant';
+    if(/tường|wall/.test(label))return'wall';
+    if(/bàn|table/.test(label))return'table';
+    return'other';
+  };
+  const rows=(state.lines||[]).map((line,idx)=>({line,idx})).filter(({line})=>activeType==='all'||typeKey(line)===activeType);
+  if(!rows.length)return `<div class="minmin-mobile-empty">Không có sản phẩm phù hợp với bộ lọc.</div>`;
+  return rows.map(({line,idx})=>{
     syncLineDefaults(line);
     const image=previewImage(line),unitPrice=lineUnitPrice(line),amount=lineAmount(line);
     const search=[line.code,line.name,line.productType,line.unit].filter(Boolean).join(' ').toLowerCase();
     return `<div class="minmin-quote-product-row" data-quote-mobile-product data-quote-mobile-search="${esc(search)}">
       <div class="minmin-quote-product-photo">${image?`<img src="${esc(image)}" alt="${esc(line.name||line.code||'Sản phẩm')}" loading="lazy"/>`:'<span class="text-[9px] font-bold text-black/30">Chưa có ảnh</span>'}</div>
-      <div class="minmin-quote-product-name"><strong>${esc(line.code||`Dòng ${idx+1}`)}</strong><span class="block truncate">${esc(line.name||'Sản phẩm')}</span><span class="mt-1 block truncate text-black/50">SL ${Number(line.quantity||0)} ${esc(line.unit||'')}</span></div>
-      <div class="minmin-quote-product-number">${Number(line.quantity||0)}</div>
-      <div class="minmin-quote-product-number">${moneyPlain(unitPrice)}</div>
-      <div class="minmin-quote-product-number is-total">${moneyPlain(amount)} đ</div>
-      <button data-quote-mobile-edit-line="${esc(line.uid)}" type="button" class="minmin-quote-product-menu" aria-label="Chỉnh sửa ${esc(line.code||`dòng ${idx+1}`)}">⋮</button>
+      <div class="minmin-quote-product-name">
+        <strong>${esc(line.code||`Dòng ${idx+1}`)}</strong>
+        <span class="block truncate">${esc(line.name||productTypeName(line.productType)||'Sản phẩm')}</span>
+        <span class="mt-1 block truncate text-black/50">SL ${Number(line.quantity||0)} ${esc(line.unit||'')} × ${moneyPlain(unitPrice)} đ</span>
+        <span class="minmin-quote-product-number is-total mt-1 block">${moneyPlain(amount)} đ</span>
+      </div>
+      <div class="minmin-overflow-wrap">
+        <button data-quote-mobile-menu="${esc(line.uid)}" type="button" class="minmin-quote-product-menu" aria-label="Thao tác với ${esc(line.code||`dòng ${idx+1}`)}">⋮</button>
+        ${state.ui?.quoteMobileMenuId===line.uid?`<div class="minmin-overflow-popover">
+          <button data-quote-mobile-edit-line="${esc(line.uid)}" type="button">Chỉnh sửa</button>
+          <button data-quote-mobile-delete="${esc(line.uid)}" type="button" class="is-danger">Xóa sản phẩm</button>
+        </div>`:''}
+      </div>
     </div>`;
   }).join('');
 }
 function quoteMobileView(){
   const t=totals(),info=state.info||{},notice=state.ui?.quoteMobileNotifications;
   const quoteCode=`#BQ${quoteDateCode()}-001`;
+  const filters=[['all','Tất cả'],['pendant','Đèn thả'],['wall','Đèn tường'],['table','Đèn bàn'],['other','Khác']];
   return `<section class="minmin-quote-mobile-view">
     <header class="minmin-quote-mobile-header">
       <div class="minmin-quote-mobile-brand">
@@ -15009,6 +15607,7 @@ function quoteMobileView(){
         <label class="minmin-quote-search">${quoteMobileIcon('search')}<input data-quote-mobile-filter type="search" placeholder="Tìm mã, tên sản phẩm..." aria-label="Tìm sản phẩm"/></label>
         <button data-quote-mobile-add type="button" class="minmin-quote-mobile-add">${quoteMobileIcon('plus')}<span>Thêm sản phẩm</span></button>
       </div>
+      <div class="minmin-mobile-filter-chips">${filters.map(([key,label])=>`<button data-quote-mobile-type="${key}" type="button" class="${(state.ui?.quoteMobileProductType||'all')===key?'is-active':''}">${label}</button>`).join('')}</div>
       <div class="minmin-quote-product-head"><span>Sản phẩm</span><span>SL</span><span class="text-right">Đơn giá</span><span class="text-right">Thành tiền</span><span></span></div>
       <div class="minmin-quote-mobile-card" data-quote-mobile-product-list>${quoteMobileProductRows()}</div>
       <div id="quoteMobilePaymentSummary" class="minmin-quote-mobile-card">
@@ -15025,8 +15624,15 @@ function quoteMobileView(){
       </div>
     </div>
     <div class="minmin-quote-mobile-bottom">
-      <div class="min-w-0"><strong class="text-xs">${esc(info.client||'Khách hàng')}</strong><span class="mt-1 text-[10px] text-black/45">Báo giá ${quoteCode}</span></div>
-      <div class="min-w-0 text-right"><span class="text-[10px] text-black/45">Tổng sau VAT</span><strong class="mt-1 text-sm text-mint">${money(t.afterVat)}</strong></div>
+      <div class="min-w-0"><span class="text-[10px] text-black/45">Tổng sau VAT</span><strong class="mt-1 truncate text-sm text-mint">${money(t.afterVat)}</strong></div>
+      <div class="minmin-overflow-wrap">
+        <button data-quote-mobile-actions type="button" class="minmin-quote-mobile-more" aria-label="Thêm thao tác">⋮</button>
+        ${state.ui?.quoteMobileActionsOpen?`<div class="minmin-overflow-popover minmin-quote-mobile-more-actions">
+          <button data-quote-mobile-action="preview-pdf" type="button">Xem trước PDF</button>
+          <button data-quote-mobile-action="export-pdf" type="button">Xuất PDF</button>
+          <label>Nhập Excel cũ<input data-quote-mobile-import type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="hidden"/></label>
+        </div>`:''}
+      </div>
       <button data-quote-mobile-action="export-excel" type="button" class="minmin-quote-export">${quoteMobileIcon('excel')}<span>Xuất Excel</span></button>
     </div>
   </section>`;
@@ -15071,6 +15677,11 @@ document.addEventListener('input',event=>{
   });
 });
 document.addEventListener('change',event=>{
+  const imported=event.target.closest?.('[data-quote-mobile-import]');
+  if(imported?.files?.[0]){
+    importQuotationExcel(imported.files[0]).catch(error=>alert('Chưa nhập được Excel: '+error.message));
+    return;
+  }
   const input=event.target.closest?.('[data-quote-mobile-finance]');
   if(!input)return;
   const key=input.dataset.quoteMobileFinance;
@@ -15136,6 +15747,38 @@ document.addEventListener('click',event=>{
     render({force:true});
     return;
   }
+  const type=event.target.closest?.('[data-quote-mobile-type]');
+  if(type){
+    state.ui.quoteMobileProductType=type.dataset.quoteMobileType||'all';
+    state.ui.quoteMobileMenuId='';
+    saveDraft();
+    render({force:true});
+    return;
+  }
+  const menu=event.target.closest?.('[data-quote-mobile-menu]');
+  if(menu){
+    const id=menu.dataset.quoteMobileMenu||'';
+    state.ui.quoteMobileMenuId=state.ui.quoteMobileMenuId===id?'':id;
+    render({force:true});
+    return;
+  }
+  const remove=event.target.closest?.('[data-quote-mobile-delete]');
+  if(remove){
+    const id=remove.dataset.quoteMobileDelete;
+    if(confirm('Xóa sản phẩm này khỏi báo giá?')){
+      state.lines=state.lines.filter(line=>String(line.uid)!==String(id));
+      state.ui.quoteMobileMenuId='';
+      refreshLineCodes();
+      saveDraft();
+      render({force:true});
+    }
+    return;
+  }
+  if(event.target.closest?.('[data-quote-mobile-actions]')){
+    state.ui.quoteMobileActionsOpen=!state.ui.quoteMobileActionsOpen;
+    render({force:true});
+    return;
+  }
   const action=event.target.closest?.('[data-quote-mobile-action]')?.dataset.quoteMobileAction;
   if(!action)return;
   if(action==='export-excel')exportQuotation().catch(error=>alert('Chưa xuất được Excel: '+error.message));
@@ -15175,6 +15818,9 @@ function ensureWebsiteMobileState(){
   if(typeof state.ui.websiteMobileAutoSync!=='boolean')state.ui.websiteMobileAutoSync=true;
   if(typeof state.ui.websiteMobileSyncImages!=='boolean')state.ui.websiteMobileSyncImages=true;
   if(typeof state.ui.websiteMobileSkipEmptyCategory!=='boolean')state.ui.websiteMobileSkipEmptyCategory=true;
+  if(typeof state.ui.websiteMobileAdvanced!=='boolean')state.ui.websiteMobileAdvanced=false;
+  if(typeof state.ui.websiteMobileShowKey!=='boolean')state.ui.websiteMobileShowKey=false;
+  if(typeof state.ui.websiteMobileShowSecret!=='boolean')state.ui.websiteMobileShowSecret=false;
   state.website=normalizeWebsiteProducts(state.website||websiteProductsDefaults());
 }
 function websiteMobileNav(){
@@ -15193,13 +15839,15 @@ function websiteMobileDashboard(){
   const missing=products.filter(p=>websiteMissingFields(p).length).length;
   const errors=products.filter(p=>/lỗi|error/i.test(String(p.wooStatus||''))).length;
   const action=(view,label,caption,icon)=>`<button data-website-mobile-view="${view}" type="button" class="minmin-website-action-row">${websiteMobileIcon(icon)}<span><strong>${label}</strong><small>${caption}</small></span>${websiteMobileIcon('chevron')}</button>`;
+  const lastSync=state.website.lastWooSyncAt?new Date(state.website.lastWooSyncAt).toLocaleString('vi-VN'):'Chưa đồng bộ';
   return `<section class="minmin-website-mobile-view">${websiteMobileMainHeader()}<div class="minmin-website-mobile-content">
     <div class="minmin-website-mobile-title"><h1>Website</h1><p>Quản lý sản phẩm WooCommerce</p></div>
-    <div class="minmin-website-card"><div class="minmin-website-stats">
+    <div class="minmin-mobile-summary-dark minmin-website-summary-dark"><div class="minmin-website-stats">
       <div class="minmin-website-stat"><strong>${products.length}</strong><span>Tổng sản phẩm</span></div>
-      <div class="minmin-website-stat"><strong class="text-mint">${published}</strong><span>Đã đăng</span></div>
-      <div class="minmin-website-stat"><strong class="text-[#a06a00]">${missing}</strong><span>Thiếu dữ liệu</span></div>
-    </div>${errors?`<div class="border-t border-black/5 py-2 text-center text-xs font-black text-coral">${errors} sản phẩm lỗi đồng bộ</div>`:''}</div>
+      <div class="minmin-website-stat"><strong>${published}</strong><span>Đã đăng</span></div>
+      <div class="minmin-website-stat"><strong>${missing}</strong><span>Thiếu dữ liệu</span></div>
+      <div class="minmin-website-stat"><strong>${errors}</strong><span>Lỗi đồng bộ</span></div>
+    </div><div class="border-t border-white/10 px-3 py-2 text-[10px] font-bold text-white/55">Lần cuối: ${esc(lastSync)}</div></div>
     <div class="minmin-website-card">
       <button data-website-mobile-sync type="button" class="minmin-website-action-row">${websiteMobileIcon('sync')}<span><strong>Đồng bộ ngay</strong><small>Cập nhật sản phẩm lên website</small></span>${websiteMobileIcon('chevron')}</button>
       ${action('wizard','Tạo sản phẩm mới','Thêm sản phẩm lên website','plus')}
@@ -15231,16 +15879,35 @@ function websiteMobileProductRows(){
   return rows.map(p=>{
     const image=p.featured_image_url||p.gallery_image_urls?.[0]||'';
     const published=p.website_status==='Đã đăng website'||!!p.wooProductId;
-    const status=published?'Đã đăng':websiteMissingFields(p).length?'Thiếu dữ liệu':'Bản nháp';
-    return `<button data-website-mobile-detail="${esc(p.id)}" type="button" class="minmin-website-product-row text-left"><span class="minmin-website-product-photo">${image?`<img src="${esc(image)}" alt="${esc(p.product_name_en||p.sku)}" loading="lazy"/>`:'<span class="text-[9px] font-bold text-black/30">Chưa có ảnh</span>'}</span><span class="minmin-website-product-copy"><strong>${esc(p.sku||'Chưa có SKU')}<span class="minmin-website-product-status">${esc(status)}</span></strong><span>${esc(p.product_name_en||p.product_name_vi||'Chưa đặt tên')}</span><span>${esc(websiteCategoryLabel(p.category)||'Chưa chọn danh mục')}</span><b>${money(websiteMoneyNumber(p.sale_price)||websiteMoneyNumber(p.regular_price))}</b></span><span class="minmin-website-product-menu">⋮</span></button>`;
+    const error=/lỗi|error/i.test(String(p.wooStatus||''));
+    const missing=websiteMissingFields(p).length>0;
+    const status=error?'Lỗi':missing?'Thiếu dữ liệu':published?'Đã đăng':'Chưa đăng';
+    const productUrl=p.wooProductUrl||p.website_product_url||'';
+    return `<div class="minmin-website-product-row text-left">
+      <button data-website-mobile-detail="${esc(p.id)}" type="button" class="contents text-left">
+        <span class="minmin-website-product-photo">${image?`<img src="${esc(image)}" alt="${esc(p.product_name_en||p.sku)}" loading="lazy"/>`:'<span class="text-[9px] font-bold text-black/30">Chưa có ảnh</span>'}</span>
+        <span class="minmin-website-product-copy"><strong>${esc(p.sku||'Chưa có SKU')}<span class="minmin-website-product-status">${esc(status)}</span></strong><span>${esc(p.product_name_en||p.product_name_vi||'Chưa đặt tên')}</span><span>${esc(websiteCategoryLabel(p.category)||'Chưa chọn danh mục')}</span><b>${money(websiteMoneyNumber(p.sale_price)||websiteMoneyNumber(p.regular_price))}</b></span>
+      </button>
+      <span class="minmin-overflow-wrap self-start">
+        <button data-website-mobile-product-menu="${esc(p.id)}" type="button" class="minmin-website-product-menu" aria-label="Thao tác với ${esc(p.sku||'sản phẩm')}">⋮</button>
+        ${String(state.ui?.websiteMobileProductMenuId||'')===String(p.id)?`<span class="minmin-overflow-popover">
+          <button data-website-mobile-detail="${esc(p.id)}" type="button">Xem chi tiết</button>
+          <button data-website-mobile-edit="${esc(p.id)}" type="button">Chỉnh sửa</button>
+          <button data-website-mobile-sync-one="${esc(p.id)}" type="button">Đồng bộ sản phẩm</button>
+          <button data-website-mobile-to-quote="${esc(p.id)}" type="button">Đưa vào báo giá</button>
+          ${productUrl?`<a href="${esc(productUrl)}" target="_blank" rel="noopener">Xem trên website</a>`:''}
+          <button data-website-mobile-delete="${esc(p.id)}" type="button" class="is-danger">Xóa sản phẩm</button>
+        </span>`:''}
+      </span>
+    </div>`;
   }).join('');
 }
 function websiteMobileList(){
   const statuses=[['all','Tất cả'],['published','Đã đăng'],['draft','Chưa đăng'],['missing','Thiếu dữ liệu'],['error','Lỗi']];
   const categories=websiteCategories();
   return `<section class="minmin-website-mobile-view">${websiteMobileMainHeader()}<div class="minmin-website-mobile-content">
-    <div class="minmin-website-toolbar"><label class="minmin-website-search">${websiteMobileIcon('search')}<input data-website-mobile-search type="search" value="${esc(state.ui.websiteMobileSearch)}" placeholder="Tìm SKU, tên, danh mục..."/></label><button data-website-mobile-filter-toggle type="button" class="minmin-website-filter-button" aria-label="Lọc">⌘</button></div>
-    <div class="minmin-website-chips">${statuses.map(([key,label])=>`<button data-website-mobile-status="${key}" type="button" class="${state.ui.websiteMobileStatus===key?'is-active':''}">${label}</button>`).join('')}</div>
+    <div class="minmin-website-toolbar"><label class="minmin-website-search">${websiteMobileIcon('search')}<input data-website-mobile-search type="search" value="${esc(state.ui.websiteMobileSearch)}" placeholder="Tìm SKU, tên, danh mục..."/></label><button data-website-mobile-filter-toggle type="button" class="minmin-website-filter-button" aria-label="Lọc danh mục">⌘</button></div>
+    <div class="minmin-mobile-filter-chips">${statuses.map(([key,label])=>`<button data-website-mobile-status="${key}" type="button" class="${state.ui.websiteMobileStatus===key?'is-active':''}">${label}</button>`).join('')}</div>
     ${state.ui.websiteMobileFilterOpen?`<label class="minmin-website-card p-2 text-[11px] font-bold text-black/50">Danh mục<select data-website-mobile-category class="mt-1 h-10 w-full rounded-md border border-black/10 bg-white px-2 text-xs font-bold"><option value="">Tất cả danh mục</option>${categories.map(value=>`<option value="${esc(value)}" ${state.ui.websiteMobileCategory===value?'selected':''}>${esc(websiteCategoryLabel(value))}</option>`).join('')}</select></label>`:''}
     <div class="flex items-center justify-between"><span class="text-xs font-black">${websiteMobileFilteredProducts().length} sản phẩm</span><button data-website-mobile-view="wizard" type="button" class="text-xs font-black text-mint">+ Tạo mới</button></div>
     <div class="minmin-website-card">${websiteMobileProductRows()}</div>
@@ -15286,17 +15953,28 @@ function websiteMobileField(label,key,type='text',placeholder=''){
 function websiteMobileWizardBody(){
   const p=normalizeWebsiteProduct(state.website.current||{}),step=state.ui.websiteMobileStep;
   if(step===1){
-    return `<div class="minmin-website-form">${websiteMobileField('Tên sản phẩm *','product_name_en','text','Nhập tên sản phẩm')}${websiteMobileField('SKU *','sku','text','Nhập SKU')}<label>Danh mục *<select data-website-mobile-field="category"><option value="">Chọn danh mục</option>${WEBSITE_CATEGORY_OPTIONS.map(option=>`<option value="${esc(option.value)}" ${websiteCategoryList(p.category).includes(option.value)?'selected':''}>${esc(option.label)}</option>`).join('')}</select></label>${websiteMobileField('Giá (VND) *','regular_price','number','Nhập giá')}<label>Trạng thái<select data-website-mobile-field="website_status">${['Nháp','Sẵn sàng CSV','Đã đăng website','Tạm ẩn'].map(value=>`<option value="${esc(value)}" ${p.website_status===value?'selected':''}>${esc(value)}</option>`).join('')}</select></label>${websiteMobileField('Mã liên kết kho','stock_code','text','STK...')}</div>`;
+    return `<div class="minmin-website-form">
+      ${websiteMobileField('SKU *','sku','text','Nhập SKU')}
+      ${websiteMobileField('Mã liên kết kho','stock_code','text','STK...')}
+      ${websiteMobileField('Tên tiếng Việt *','product_name_vi','text','Tên sản phẩm tiếng Việt')}
+      ${websiteMobileField('Tên tiếng Anh','product_name_en','text','Tên sản phẩm tiếng Anh')}
+      <label>Danh mục *<select data-website-mobile-field="category"><option value="">Chọn danh mục</option>${WEBSITE_CATEGORY_OPTIONS.map(option=>`<option value="${esc(option.value)}" ${websiteCategoryList(p.category).includes(option.value)?'selected':''}>${esc(option.label)}</option>`).join('')}</select></label>
+      ${websiteMobileField('Giá bán (VND) *','regular_price','number','Nhập giá')}
+      <label>Trạng thái<select data-website-mobile-field="website_status">${['Nháp','Sẵn sàng CSV','Đã đăng website','Tạm ẩn'].map(value=>`<option value="${esc(value)}" ${p.website_status===value?'selected':''}>${esc(value)}</option>`).join('')}</select></label>
+      <button data-website-mobile-advanced type="button" class="minmin-website-secondary">Nâng cao ${state.ui.websiteMobileAdvanced?'▴':'▾'}</button>
+      ${state.ui.websiteMobileAdvanced?`${websiteMobileField('Slug','slug','text','duong-dan-san-pham')}${websiteMobileField('Tags','tags','text','Tag 1, Tag 2')}${websiteMobileField('URL sản phẩm','website_product_url','url','https://...')}`:''}
+    </div>`;
   }
   if(step===2){
     const gallery=p.gallery_image_urls||[];
-    return `<div class="minmin-website-form"><strong class="text-base">Ảnh đại diện</strong><div class="minmin-website-upload-grid"><label class="minmin-website-upload">${p.featured_image_url?`<img src="${esc(p.featured_image_url)}" alt="Ảnh đại diện"/>`:`<span>${websiteMobileIcon('upload')}<small class="mt-2 block">Chọn ảnh đại diện</small></span>`}<input data-website-mobile-featured type="file" accept="image/*" class="hidden"/></label><div class="minmin-website-upload">${p.featured_image_url?`<img src="${esc(p.featured_image_url)}" alt="Xem trước"/>`:'<span class="text-xs font-bold text-black/35">Ảnh xem trước</span>'}</div></div><strong class="mt-2 text-base">Gallery sản phẩm</strong><div class="minmin-website-gallery">${gallery.map(url=>`<img src="${esc(url)}" alt="Ảnh gallery"/>`).join('')}<label class="flex aspect-square cursor-pointer items-center justify-center rounded-md border border-dashed border-black/20 bg-white text-2xl">+<input data-website-mobile-gallery type="file" accept="image/*" multiple class="hidden"/></label></div></div>`;
+    return `<div class="minmin-website-form"><strong class="text-base">Ảnh đại diện</strong><div class="minmin-website-upload-grid"><label class="minmin-website-upload">${p.featured_image_url?`<img src="${esc(p.featured_image_url)}" alt="Ảnh đại diện"/>`:`<span>${websiteMobileIcon('upload')}<small class="mt-2 block">Chọn ảnh đại diện</small></span>`}<input data-website-mobile-featured type="file" accept="image/*" class="hidden"/></label><div class="minmin-website-upload">${p.featured_image_url?`<img src="${esc(p.featured_image_url)}" alt="Xem trước"/>`:'<span class="text-xs font-bold text-black/35">Ảnh xem trước</span>'}</div></div>${p.featured_image_url?'<button data-website-mobile-recrop type="button" class="minmin-website-secondary">Cắt lại ảnh đại diện</button>':''}<strong class="mt-2 text-base">Gallery sản phẩm</strong><div class="minmin-website-gallery">${gallery.map(url=>`<img src="${esc(url)}" alt="Ảnh gallery"/>`).join('')}<label class="flex aspect-square cursor-pointer items-center justify-center rounded-md border border-dashed border-black/20 bg-white text-2xl">+<input data-website-mobile-gallery type="file" accept="image/*" multiple class="hidden"/></label></div></div>`;
   }
   if(step===3){
     return `<div class="minmin-website-form">${WEBSITE_SIMPLE_ATTRIBUTES.map(([label,key])=>websiteMobileField(label,key)).join('')}<label>Mô tả ngắn<textarea data-website-mobile-field="short_description" placeholder="Mô tả sản phẩm">${esc(p.short_description||'')}</textarea></label></div>`;
   }
   const image=p.featured_image_url||p.gallery_image_urls?.[0]||'';
-  return `<div class="minmin-website-form"><div class="minmin-website-card overflow-hidden">${image?`<img src="${esc(image)}" alt="${esc(p.product_name_en||p.sku)}" class="h-60 w-full object-cover"/>`:''}<div class="p-3"><h2 class="text-xl font-black">${esc(p.product_name_en||p.product_name_vi||'Tên sản phẩm')}</h2><p class="mt-1 text-xs text-black/50">${esc(p.sku||'Chưa có SKU')} · ${esc(websiteCategoryLabel(p.category)||'Chưa có danh mục')}</p><strong class="mt-3 block text-xl text-mint">${money(websiteMoneyNumber(p.sale_price)||websiteMoneyNumber(p.regular_price))}</strong><p class="mt-3 text-sm leading-6 text-black/60">${esc(p.short_description||'Chưa có mô tả.')}</p></div></div></div>`;
+  const missing=websiteMissingFields(p);
+  return `<div class="minmin-website-form"><div class="minmin-website-card overflow-hidden">${image?`<img src="${esc(image)}" alt="${esc(p.product_name_en||p.sku)}" class="aspect-square w-full object-cover"/>`:'<div class="minmin-website-preview-placeholder">Chưa có ảnh sản phẩm</div>'}<div class="p-3"><h2 class="text-xl font-black">${esc(p.product_name_en||p.product_name_vi||'Tên sản phẩm')}</h2><p class="mt-1 text-xs text-black/50">${esc(p.sku||'Chưa có SKU')} · ${esc(websiteCategoryLabel(p.category)||'Chưa có danh mục')}</p><strong class="mt-3 block text-xl text-mint">${money(websiteMoneyNumber(p.sale_price)||websiteMoneyNumber(p.regular_price))}</strong><p class="mt-3 text-sm leading-6 text-black/60">${esc(p.short_description||'Chưa có mô tả.')}</p>${missing.length?`<div class="mt-3 rounded-md bg-[#fff6da] p-2 text-xs font-bold text-[#9a6500]">Còn thiếu: ${esc(missing.join(', '))}</div>`:'<div class="mt-3 rounded-md bg-mint/10 p-2 text-xs font-bold text-mint">Đủ dữ liệu cơ bản để đồng bộ.</div>'}</div></div></div>`;
 }
 function websiteMobileWizard(){
   const labels=['Thông tin','Ảnh','Thuộc tính','Xem trước'];
@@ -15305,8 +15983,9 @@ function websiteMobileWizard(){
 function websiteMobileSettings(){
   const c=normalizeWebsiteWooConfig(state.websiteWoo||websiteWooDefaults());
   const toggle=(key,label,caption)=>`<button data-website-mobile-toggle="${key}" type="button" class="minmin-website-switch-row text-left"><span><strong>${label}</strong><small>${caption}</small></span><span class="minmin-website-switch ${state.ui[key]?'is-on':''}"></span></button>`;
+  const secretField=(label,key,value,shown)=>`<label>${label}<span class="minmin-website-secret-field"><input data-website-mobile-woo="${key}" type="${shown?'text':'password'}" value="${esc(value||'')}"/><button data-website-mobile-secret="${key}" type="button">${shown?'Ẩn':'Hiện'}</button></span></label>`;
   return `<section class="minmin-website-mobile-view">${websiteMobileSubheader('Cài đặt Website','dashboard')}<div class="minmin-website-mobile-content">
-    <div class="minmin-website-card"><div class="minmin-website-form"><h2 class="text-base font-black">Kết nối WooCommerce</h2><label>Website URL<input data-website-mobile-woo="siteUrl" type="url" value="${esc(c.siteUrl||'https://minmin-lifestyle.com')}"/></label><label>Consumer Key<input data-website-mobile-woo="consumerKey" type="password" value="${esc(c.consumerKey||'')}"/></label><label>Consumer Secret<input data-website-mobile-woo="consumerSecret" type="password" value="${esc(c.consumerSecret||'')}"/></label><span class="text-xs font-black ${websiteWooReady()?'text-mint':'text-coral'}">${websiteWooReady()?'✓ Đã nhập đủ thông tin kết nối':'Chưa cấu hình đủ WooCommerce'}</span><button data-website-mobile-test-woo type="button" class="minmin-website-secondary">Kiểm tra kết nối</button></div></div>
+    <div class="minmin-website-card"><div class="minmin-website-form"><h2 class="text-base font-black">Kết nối WooCommerce</h2><label>Website URL<input data-website-mobile-woo="siteUrl" type="url" value="${esc(c.siteUrl||'https://minmin-lifestyle.com')}"/></label>${secretField('Consumer Key','consumerKey',c.consumerKey,state.ui.websiteMobileShowKey)}${secretField('Consumer Secret','consumerSecret',c.consumerSecret,state.ui.websiteMobileShowSecret)}<span class="text-xs font-black ${websiteWooReady()?'text-mint':'text-coral'}">${websiteWooReady()?'✓ Đã nhập đủ thông tin kết nối':'Chưa cấu hình đủ WooCommerce'}</span><button data-website-mobile-test-woo type="button" class="minmin-website-secondary">Kiểm tra kết nối</button></div></div>
     <div class="minmin-website-card px-3"><h2 class="pt-3 text-base font-black">Tùy chọn đồng bộ</h2>${toggle('websiteMobileAutoSync','Tự động đồng bộ','Tự động đồng bộ sản phẩm theo lịch.')}${toggle('websiteMobileSyncImages','Đồng bộ ảnh','Đồng bộ ảnh sản phẩm lên website.')}${toggle('websiteMobileSkipEmptyCategory','Không gửi danh mục trống','Bỏ qua danh mục không có sản phẩm.')}</div>
     <button data-website-mobile-save-settings type="button" class="minmin-website-primary">Lưu cài đặt</button>
   </div></section>`;
@@ -15392,6 +16071,48 @@ document.addEventListener('click',event=>{
   }
   if(event.target.closest?.('[data-website-mobile-menu]')){
     state.ui.websiteMobileView='settings';
+    render({force:true});
+    return;
+  }
+  const productMenu=event.target.closest?.('[data-website-mobile-product-menu]');
+  if(productMenu){
+    const id=productMenu.dataset.websiteMobileProductMenu||'';
+    state.ui.websiteMobileProductMenuId=String(state.ui.websiteMobileProductMenuId||'')===String(id)?'':id;
+    render({force:true});
+    return;
+  }
+  const syncOne=event.target.closest?.('[data-website-mobile-sync-one]');
+  if(syncOne){
+    const id=syncOne.dataset.websiteMobileSyncOne;
+    state.ui.websiteMobileProductMenuId='';
+    uploadWebsiteProductToWoo(id).then(()=>render({force:true})).catch(error=>{alert('Chưa đồng bộ được sản phẩm: '+(error.message||error));render({force:true});});
+    return;
+  }
+  const toQuote=event.target.closest?.('[data-website-mobile-to-quote]');
+  if(toQuote){
+    websiteProductToQuote(toQuote.dataset.websiteMobileToQuote,1);
+    return;
+  }
+  const removeProduct=event.target.closest?.('[data-website-mobile-delete]');
+  if(removeProduct){
+    state.ui.websiteMobileProductMenuId='';
+    websiteDeleteProduct(removeProduct.dataset.websiteMobileDelete).then(()=>render({force:true}));
+    return;
+  }
+  if(event.target.closest?.('[data-website-mobile-advanced]')){
+    state.ui.websiteMobileAdvanced=!state.ui.websiteMobileAdvanced;
+    render({force:true});
+    return;
+  }
+  if(event.target.closest?.('[data-website-mobile-recrop]')){
+    recropWebsiteFeatured().then(()=>render({force:true})).catch(error=>alert('Chưa cắt lại được ảnh: '+(error.message||error)));
+    return;
+  }
+  const secret=event.target.closest?.('[data-website-mobile-secret]');
+  if(secret){
+    const key=secret.dataset.websiteMobileSecret;
+    if(key==='consumerKey')state.ui.websiteMobileShowKey=!state.ui.websiteMobileShowKey;
+    if(key==='consumerSecret')state.ui.websiteMobileShowSecret=!state.ui.websiteMobileShowSecret;
     render({force:true});
     return;
   }
@@ -15483,6 +16204,11 @@ document.addEventListener('click',event=>{
       :uploadAllWebsiteProductsToWoo();
     Promise.resolve(run).then(()=>render({force:true})).catch(error=>{alert('Chưa đồng bộ được Website: '+(error.message||error));render({force:true});});
   }
+});
+document.addEventListener('click',event=>{
+  if(window.innerWidth>767)return;
+  if(!event.target.closest?.('[data-tab],[data-website-mobile-view],[data-website-mobile-detail],[data-website-mobile-edit],[data-stock-mobile-back],[data-stock-mobile-open],[data-quote-mobile-edit-customer],[data-quote-mobile-edit-line]'))return;
+  requestAnimationFrame(()=>window.scrollTo({top:0,left:0,behavior:'instant'}));
 });
 
 initApp();
