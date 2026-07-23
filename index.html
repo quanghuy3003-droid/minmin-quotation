@@ -777,6 +777,444 @@
           display: block;
         }
       }
+      .minmin-quote-mobile-view,
+      .minmin-quote-mobile-edit-toolbar {
+        display: none;
+      }
+      @media (max-width: 640px) {
+        body:has(.minmin-quote-mobile-view) {
+          background: #f6f7f7;
+        }
+        body:has(.minmin-quote-mobile-view) .minmin-topbar,
+        body:has(.minmin-quote-mobile-view) .minmin-main-nav {
+          display: none !important;
+        }
+        .minmin-quote-desktop-view {
+          display: none !important;
+        }
+        .minmin-quote-mobile-view {
+          display: block;
+          min-height: 100dvh;
+          padding-bottom: calc(84px + env(safe-area-inset-bottom));
+          background: #f6f7f7;
+          color: #13191f;
+        }
+        .minmin-quote-mobile-header {
+          position: sticky;
+          top: 0;
+          z-index: 45;
+          border-bottom: 1px solid rgba(17, 19, 21, 0.08);
+          background: rgba(255, 255, 255, 0.98);
+          backdrop-filter: blur(14px);
+        }
+        .minmin-quote-mobile-brand {
+          display: grid;
+          grid-template-columns: 44px minmax(0, 1fr) 44px;
+          align-items: center;
+          gap: 0.65rem;
+          min-height: 74px;
+          padding: 0.55rem 1rem 0.35rem;
+        }
+        .minmin-quote-mobile-brand img {
+          width: auto;
+          height: 48px;
+          max-width: 190px;
+          justify-self: center;
+          object-fit: contain;
+        }
+        .minmin-quote-icon-button {
+          display: inline-flex;
+          width: 42px;
+          height: 42px;
+          align-items: center;
+          justify-content: center;
+          border-radius: 50%;
+          color: #13191f;
+        }
+        .minmin-quote-icon-button svg,
+        .minmin-quote-mobile-nav svg,
+        .minmin-quote-customer-icon svg,
+        .minmin-quote-search svg,
+        .minmin-quote-export svg {
+          width: 24px;
+          height: 24px;
+          fill: none;
+          stroke: currentColor;
+          stroke-linecap: round;
+          stroke-linejoin: round;
+          stroke-width: 1.8;
+        }
+        .minmin-quote-mobile-nav {
+          display: grid;
+          grid-template-columns: repeat(5, minmax(0, 1fr));
+          min-height: 72px;
+          padding: 0 0.35rem;
+        }
+        .minmin-quote-mobile-nav button {
+          display: flex;
+          min-width: 0;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 0.25rem;
+          border-bottom: 3px solid transparent;
+          color: #20262b;
+          font-size: 0.68rem;
+          font-weight: 750;
+        }
+        .minmin-quote-mobile-nav button.is-active {
+          border-bottom-color: #239177;
+          color: #239177;
+        }
+        .minmin-quote-mobile-content {
+          display: grid;
+          gap: 0.75rem;
+          padding: 0.75rem;
+        }
+        .minmin-quote-mobile-card {
+          overflow: hidden;
+          border: 1px solid rgba(17, 19, 21, 0.08);
+          border-radius: 0.5rem;
+          background: #fff;
+          box-shadow: 0 2px 8px rgba(23, 32, 42, 0.04);
+        }
+        .minmin-quote-customer {
+          display: grid;
+          grid-template-columns: 48px minmax(0, 1fr) auto;
+          align-items: center;
+          gap: 0.65rem;
+          padding: 0.85rem;
+        }
+        .minmin-quote-customer-icon {
+          display: inline-flex;
+          width: 44px;
+          height: 44px;
+          align-items: center;
+          justify-content: center;
+          color: #13191f;
+        }
+        .minmin-quote-customer-edit {
+          display: inline-flex;
+          min-height: 42px;
+          align-items: center;
+          gap: 0.45rem;
+          border: 1px solid rgba(17, 19, 21, 0.12);
+          border-radius: 0.5rem;
+          padding: 0 0.55rem;
+          font-size: 0.78rem;
+          font-weight: 900;
+        }
+        .minmin-quote-customer-edit svg {
+          width: 19px;
+          height: 19px;
+        }
+        .minmin-quote-total-hero {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) auto;
+          align-items: center;
+          gap: 0.7rem;
+          min-height: 126px;
+          border-radius: 0.5rem;
+          background: #111820;
+          padding: 1rem;
+          color: #fff;
+        }
+        .minmin-quote-total-hero strong {
+          display: block;
+          margin-top: 0.25rem;
+          overflow-wrap: anywhere;
+          font-size: clamp(1.65rem, 9vw, 2.15rem);
+          line-height: 1;
+        }
+        .minmin-quote-total-hero button {
+          display: inline-flex;
+          min-height: 44px;
+          align-items: center;
+          gap: 0.35rem;
+          border: 1px solid rgba(255, 255, 255, 0.4);
+          border-radius: 0.5rem;
+          padding: 0 0.55rem;
+          font-size: 0.78rem;
+          font-weight: 900;
+        }
+        .minmin-quote-mobile-tools {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) auto;
+          gap: 0.55rem;
+        }
+        .minmin-quote-search {
+          display: grid;
+          grid-template-columns: 24px minmax(0, 1fr);
+          align-items: center;
+          gap: 0.45rem;
+          min-height: 48px;
+          border: 1px solid rgba(17, 19, 21, 0.1);
+          border-radius: 0.5rem;
+          background: #fff;
+          padding: 0 0.75rem;
+          color: rgba(17, 19, 21, 0.45);
+        }
+        .minmin-quote-search input {
+          min-width: 0;
+          height: 44px;
+          background: transparent;
+          color: #13191f;
+          font-size: 0.82rem;
+          outline: none;
+        }
+        .minmin-quote-mobile-add {
+          display: inline-flex;
+          min-height: 48px;
+          align-items: center;
+          justify-content: center;
+          gap: 0.35rem;
+          border-radius: 0.5rem;
+          background: #111820;
+          padding: 0 0.55rem;
+          color: #fff;
+          font-size: 0.7rem;
+          font-weight: 900;
+          white-space: nowrap;
+        }
+        .minmin-quote-mobile-add svg {
+          width: 19px;
+          height: 19px;
+        }
+        .minmin-quote-product-head,
+        .minmin-quote-product-row {
+          display: grid;
+          grid-template-columns: 48px minmax(66px, 1fr) 18px 48px 70px 18px;
+          align-items: center;
+          gap: 0.25rem;
+        }
+        .minmin-quote-product-head {
+          padding: 0 0.55rem;
+          color: rgba(17, 19, 21, 0.48);
+          font-size: 0.58rem;
+          font-weight: 800;
+          text-transform: uppercase;
+        }
+        .minmin-quote-product-head span:first-child {
+          grid-column: 1 / 3;
+        }
+        .minmin-quote-product-row {
+          min-height: 94px;
+          border-top: 1px solid rgba(17, 19, 21, 0.08);
+          padding: 0.65rem 0.55rem;
+        }
+        .minmin-quote-product-row:first-child {
+          border-top: 0;
+        }
+        .minmin-quote-product-photo {
+          display: flex;
+          width: 48px;
+          height: 58px;
+          align-items: center;
+          justify-content: center;
+          overflow: hidden;
+          border: 1px solid rgba(17, 19, 21, 0.1);
+          border-radius: 0.4rem;
+          background: #f6f7f7;
+        }
+        .minmin-quote-product-photo img {
+          width: 100%;
+          height: 100%;
+          object-fit: contain;
+        }
+        .minmin-quote-product-name {
+          min-width: 0;
+          font-size: 0.66rem;
+          line-height: 1.35;
+        }
+        .minmin-quote-product-name strong {
+          display: block;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          font-size: 0.7rem;
+        }
+        .minmin-quote-product-number {
+          min-width: 0;
+          overflow-wrap: anywhere;
+          text-align: right;
+          font-size: 0.58rem;
+          font-weight: 700;
+          white-space: nowrap;
+        }
+        .minmin-quote-product-number.is-total {
+          color: #239177;
+          font-size: 0.54rem;
+          font-weight: 900;
+        }
+        .minmin-quote-product-menu {
+          display: inline-flex;
+          width: 18px;
+          height: 38px;
+          align-items: center;
+          justify-content: center;
+          font-size: 1.35rem;
+          line-height: 1;
+        }
+        .minmin-quote-payment-grid {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 0.75rem 0.45rem;
+          padding: 0.85rem;
+        }
+        .minmin-quote-payment-item {
+          min-width: 0;
+        }
+        .minmin-quote-payment-item span {
+          display: block;
+          min-height: 30px;
+          color: rgba(17, 19, 21, 0.58);
+          font-size: 0.64rem;
+          line-height: 1.25;
+        }
+        .minmin-quote-payment-item strong {
+          display: block;
+          overflow-wrap: anywhere;
+          font-size: 0.71rem;
+          line-height: 1.25;
+        }
+        .minmin-quote-payment-more {
+          grid-column: 3 / 5;
+          display: inline-flex;
+          min-height: 42px;
+          align-items: center;
+          justify-content: center;
+          gap: 0.35rem;
+          border: 1px solid rgba(17, 19, 21, 0.12);
+          border-radius: 0.5rem;
+          padding: 0 0.6rem;
+          font-size: 0.72rem;
+          font-weight: 900;
+        }
+        .minmin-quote-finance-panel {
+          grid-column: 1 / -1;
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 0.55rem;
+          border-top: 1px dashed rgba(17, 19, 21, 0.12);
+          padding-top: 0.75rem;
+        }
+        .minmin-quote-finance-panel label {
+          display: grid;
+          gap: 0.25rem;
+          min-width: 0;
+          font-size: 0.58rem;
+          font-weight: 800;
+          text-transform: uppercase;
+        }
+        .minmin-quote-finance-panel input {
+          width: 100%;
+          min-width: 0;
+          height: 38px;
+          border: 1px solid rgba(17, 19, 21, 0.12);
+          border-radius: 0.4rem;
+          padding: 0 0.45rem;
+          font-size: 0.72rem;
+          font-weight: 800;
+        }
+        .minmin-quote-finance-actions {
+          grid-column: 1 / -1;
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 0.5rem;
+        }
+        .minmin-quote-finance-actions button {
+          min-height: 40px;
+          border-radius: 0.45rem;
+          background: #111820;
+          color: #fff;
+          font-size: 0.7rem;
+          font-weight: 900;
+        }
+        .minmin-quote-mobile-bottom {
+          position: fixed;
+          inset: auto 0 0;
+          z-index: 55;
+          display: grid;
+          grid-template-columns: minmax(100px, 1fr) minmax(100px, 1fr) auto;
+          align-items: center;
+          gap: 0.45rem;
+          min-height: 76px;
+          border-top: 1px solid rgba(17, 19, 21, 0.09);
+          background: rgba(255, 255, 255, 0.98);
+          padding: 0.55rem 0.75rem max(0.55rem, env(safe-area-inset-bottom));
+          box-shadow: 0 -4px 18px rgba(23, 32, 42, 0.08);
+          backdrop-filter: blur(14px);
+        }
+        .minmin-quote-mobile-bottom strong,
+        .minmin-quote-mobile-bottom span {
+          display: block;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .minmin-quote-export {
+          display: inline-flex;
+          min-height: 48px;
+          align-items: center;
+          justify-content: center;
+          gap: 0.4rem;
+          border-radius: 0.5rem;
+          background: #239177;
+          padding: 0 0.75rem;
+          color: #fff;
+          font-size: 0.75rem;
+          font-weight: 900;
+          white-space: nowrap;
+        }
+        .minmin-quote-mobile-notice {
+          border-top: 1px solid rgba(17, 19, 21, 0.08);
+          background: #eaf7f2;
+          padding: 0.65rem 1rem;
+          color: #176954;
+          font-size: 0.72rem;
+          font-weight: 800;
+        }
+        body.minmin-quote-mobile-edit-mode .minmin-quote-mobile-view {
+          display: none !important;
+        }
+        body.minmin-quote-mobile-edit-mode .minmin-topbar,
+        body.minmin-quote-mobile-edit-mode .minmin-main-nav {
+          display: none !important;
+        }
+        body.minmin-quote-mobile-edit-mode .minmin-quote-desktop-view {
+          display: grid !important;
+          grid-template-columns: minmax(0, 1fr) !important;
+          gap: 0 !important;
+          padding: 78px 0.75rem 1rem !important;
+        }
+        body.minmin-quote-mobile-edit-mode .minmin-quote-desktop-view > aside {
+          display: none !important;
+        }
+        body.minmin-quote-mobile-edit-mode .minmin-quote-desktop-view > div {
+          display: block !important;
+        }
+        body.minmin-quote-mobile-edit-mode .minmin-quote-desktop-view > div > * {
+          display: none !important;
+        }
+        body.minmin-quote-mobile-edit-mode .minmin-quote-desktop-view .minmin-quote-mobile-edit-target {
+          display: block !important;
+        }
+        body.minmin-quote-mobile-edit-mode .minmin-quote-mobile-edit-toolbar {
+          position: fixed;
+          inset: 0 0 auto;
+          z-index: 70;
+          display: flex;
+          min-height: 66px;
+          align-items: center;
+          justify-content: space-between;
+          gap: 0.75rem;
+          border-bottom: 1px solid rgba(17, 19, 21, 0.08);
+          background: rgba(255, 255, 255, 0.98);
+          padding: 0.55rem 0.75rem;
+          box-shadow: 0 3px 14px rgba(23, 32, 42, 0.07);
+          backdrop-filter: blur(14px);
+        }
+      }
       .minmin-accounting-mobile-view,
       .minmin-accounting-mobile-only {
         display: none;
@@ -13908,6 +14346,224 @@ document.addEventListener('click',event=>{
 document.addEventListener('click',event=>{
   const sync=event.target.closest?.('#syncAccountingMobile');
   if(sync&&typeof syncAccountingFromSupabase==='function')syncAccountingFromSupabase();
+});
+
+function quoteMobileIcon(name){
+  const paths={
+    menu:'<path d="M4 7h16M4 12h16M4 17h16"/>',
+    bell:'<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/>',
+    quote:'<path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3Z"/><path d="M9 8h6M9 12h6"/>',
+    stock:'<path d="m12 3 8 4-8 4-8-4 8-4Z"/><path d="m4 7 8 4 8-4v10l-8 4-8-4V7Z"/><path d="M12 11v10"/>',
+    accounting:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 12h2M14 12h2M8 16h2M14 16h2"/>',
+    document:'<path d="M6 3h9l3 3v15H6z"/><path d="M14 3v4h4M9 12h6M9 16h6"/>',
+    more:'<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
+    user:'<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+    edit:'<path d="m4 20 4-1 11-11-3-3L5 16l-1 4Z"/><path d="m14 7 3 3"/>',
+    search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',
+    plus:'<path d="M12 5v14M5 12h14"/>',
+    excel:'<path d="M5 3h10l4 4v14H5z"/><path d="M14 3v5h5M8 11l4 6M12 11l-4 6"/>',
+    back:'<path d="m15 18-6-6 6-6"/><path d="M9 12h10"/>',
+    chevron:'<path d="m8 10 4 4 4-4"/>'
+  };
+  return `<svg viewBox="0 0 24 24" aria-hidden="true">${paths[name]||paths.more}</svg>`;
+}
+function quoteMobileNav(){
+  const items=[['quote','Báo giá','quote'],['stock','Kho hàng','stock'],['accounting','Kế toán','accounting'],['documents','Hồ sơ','document'],['tools','Khác','more']];
+  return `<nav class="minmin-quote-mobile-nav" aria-label="Điều hướng chính">${items.map(([tab,label,icon])=>`<button data-quote-mobile-tab="${tab}" type="button" class="${tab==='quote'?'is-active':''}">${quoteMobileIcon(icon)}<span>${label}</span></button>`).join('')}</nav>`;
+}
+function quoteMobileFinancePanel(){
+  if(!state.ui?.quoteMobilePaymentExpanded)return'';
+  const input=(label,key,type='number')=>{
+    const value=key==='shipPriceText'?moneyPlain(state.info[key]||0):Number(state.info[key]||0);
+    return `<label>${label}<input data-quote-mobile-finance="${key}" type="${type}" inputmode="numeric" value="${esc(value)}"/></label>`;
+  };
+  return `<div class="minmin-quote-finance-panel">
+    ${input('Phí vận chuyển','shipPriceText','text')}
+    ${input('SL phí','shipQty')}
+    ${input('Chiết khấu %','discountRate')}
+    ${input('VAT %','vatRate')}
+    ${input('Đặt cọc %','depositRate')}
+    <div></div>
+    <div class="minmin-quote-finance-actions">
+      <button data-quote-mobile-action="preview-pdf" type="button">Xem trước PDF</button>
+      <button data-quote-mobile-action="export-pdf" type="button">Xuất PDF</button>
+    </div>
+  </div>`;
+}
+function quoteMobileProductRows(){
+  return (state.lines||[]).map((line,idx)=>{
+    syncLineDefaults(line);
+    const image=previewImage(line),unitPrice=lineUnitPrice(line),amount=lineAmount(line);
+    const search=[line.code,line.name,line.productType,line.unit].filter(Boolean).join(' ').toLowerCase();
+    return `<div class="minmin-quote-product-row" data-quote-mobile-product data-quote-mobile-search="${esc(search)}">
+      <div class="minmin-quote-product-photo">${image?`<img src="${esc(image)}" alt="${esc(line.name||line.code||'Sản phẩm')}" loading="lazy"/>`:'<span class="text-[9px] font-bold text-black/30">Chưa có ảnh</span>'}</div>
+      <div class="minmin-quote-product-name"><strong>${esc(line.code||`Dòng ${idx+1}`)}</strong><span class="block truncate">${esc(line.name||'Sản phẩm')}</span><span class="mt-1 block truncate text-black/50">SL ${Number(line.quantity||0)} ${esc(line.unit||'')}</span></div>
+      <div class="minmin-quote-product-number">${Number(line.quantity||0)}</div>
+      <div class="minmin-quote-product-number">${moneyPlain(unitPrice)}</div>
+      <div class="minmin-quote-product-number is-total">${moneyPlain(amount)} đ</div>
+      <button data-quote-mobile-edit-line="${esc(line.uid)}" type="button" class="minmin-quote-product-menu" aria-label="Chỉnh sửa ${esc(line.code||`dòng ${idx+1}`)}">⋮</button>
+    </div>`;
+  }).join('');
+}
+function quoteMobileView(){
+  const t=totals(),info=state.info||{},notice=state.ui?.quoteMobileNotifications;
+  const quoteCode=`#BQ${quoteDateCode()}-001`;
+  return `<section class="minmin-quote-mobile-view">
+    <header class="minmin-quote-mobile-header">
+      <div class="minmin-quote-mobile-brand">
+        <button data-quote-mobile-tab="tools" type="button" class="minmin-quote-icon-button" aria-label="Mở menu">${quoteMobileIcon('menu')}</button>
+        <img src="${UI_LOGO_DATA_URL}" alt="Minmin"/>
+        <button data-quote-mobile-notifications type="button" class="minmin-quote-icon-button" aria-label="Thông báo">${quoteMobileIcon('bell')}</button>
+      </div>
+      ${quoteMobileNav()}
+      ${notice?`<div class="minmin-quote-mobile-notice">Báo giá hiện có ${state.lines.length} sản phẩm · Tổng sau VAT ${money(t.afterVat)}</div>`:''}
+    </header>
+    <div class="minmin-quote-mobile-content">
+      <div class="minmin-quote-mobile-card minmin-quote-customer">
+        <div class="minmin-quote-customer-icon">${quoteMobileIcon('user')}</div>
+        <div class="min-w-0"><span class="block text-xs font-semibold text-black/55">Khách hàng</span><strong class="mt-0.5 block truncate text-lg">${esc(info.client||'Chưa nhập')}</strong></div>
+        <button data-quote-mobile-edit-customer type="button" class="minmin-quote-customer-edit">${quoteMobileIcon('edit')}<span>Chỉnh sửa</span></button>
+      </div>
+      <div class="minmin-quote-total-hero">
+        <div class="min-w-0"><span class="text-xs font-bold uppercase text-white/50">Tổng sau VAT</span><strong>${money(t.afterVat)}</strong><p class="mt-3 text-xs leading-5 text-white/70">${esc(numberToVietnamese(t.afterVat))}</p></div>
+        <button data-quote-mobile-scroll-payment type="button">Chi tiết ${quoteMobileIcon('chevron')}</button>
+      </div>
+      <div class="minmin-quote-mobile-tools">
+        <label class="minmin-quote-search">${quoteMobileIcon('search')}<input data-quote-mobile-filter type="search" placeholder="Tìm mã, tên sản phẩm..." aria-label="Tìm sản phẩm"/></label>
+        <button data-quote-mobile-add type="button" class="minmin-quote-mobile-add">${quoteMobileIcon('plus')}<span>Thêm sản phẩm</span></button>
+      </div>
+      <div class="minmin-quote-product-head"><span>Sản phẩm</span><span>SL</span><span class="text-right">Đơn giá</span><span class="text-right">Thành tiền</span><span></span></div>
+      <div class="minmin-quote-mobile-card" data-quote-mobile-product-list>${quoteMobileProductRows()}</div>
+      <div id="quoteMobilePaymentSummary" class="minmin-quote-mobile-card">
+        <div class="minmin-quote-payment-grid">
+          <div class="minmin-quote-payment-item"><span>Tổng giá trị</span><strong>${money(t.subtotal)}</strong></div>
+          <div class="minmin-quote-payment-item"><span>Chiết khấu</span><strong>${money(t.discount)}</strong><small class="text-[10px] text-black/45">(${Number(info.discountRate||0)}%)</small></div>
+          <div class="minmin-quote-payment-item"><span>Sau chiết khấu</span><strong>${money(t.afterDiscount)}</strong></div>
+          <div class="minmin-quote-payment-item"><span>VAT (${Number(info.vatRate||0)}%)</span><strong>${money(t.vat)}</strong></div>
+          <div class="minmin-quote-payment-item"><span>Đặt cọc (${Number(info.depositRate||0)}%)</span><strong>${money(t.deposit)}</strong></div>
+          <div class="minmin-quote-payment-item"><span>Còn lại</span><strong>${money(t.remaining)}</strong></div>
+          <button data-quote-mobile-toggle-payment type="button" class="minmin-quote-payment-more">Chi tiết thanh toán ${quoteMobileIcon('chevron')}</button>
+          ${quoteMobileFinancePanel()}
+        </div>
+      </div>
+    </div>
+    <div class="minmin-quote-mobile-bottom">
+      <div class="min-w-0"><strong class="text-xs">${esc(info.client||'Khách hàng')}</strong><span class="mt-1 text-[10px] text-black/45">Báo giá ${quoteCode}</span></div>
+      <div class="min-w-0 text-right"><span class="text-[10px] text-black/45">Tổng sau VAT</span><strong class="mt-1 text-sm text-mint">${money(t.afterVat)}</strong></div>
+      <button data-quote-mobile-action="export-excel" type="button" class="minmin-quote-export">${quoteMobileIcon('excel')}<span>Xuất Excel</span></button>
+    </div>
+  </section>`;
+}
+function mountQuoteMobile(){
+  document.body.classList.remove('minmin-quote-mobile-edit-mode');
+  if(!appUnlocked||state.activeTab!=='quote')return;
+  const main=document.querySelector('main');
+  const quoteSection=document.getElementById('minminQuoteFinanceBox')?.closest('section');
+  if(!main||!quoteSection)return;
+  quoteSection.classList.add('minmin-quote-desktop-view');
+  main.insertAdjacentHTML('beforeend',quoteMobileView());
+  const editing=state.ui?.quoteMobileEditMode;
+  if(!editing)return;
+  let target=null,title='Chỉnh sửa báo giá';
+  if(editing==='customer'){
+    const heading=[...quoteSection.querySelectorAll('h2')].find(node=>node.textContent.trim()==='Thông tin khách hàng');
+    target=heading?.parentElement||null;
+    title='Chỉnh sửa khách hàng';
+  }else{
+    target=quoteSection.querySelector(`[data-line="${CSS.escape(String(editing))}"]`);
+    const line=state.lines.find(item=>String(item.uid)===String(editing));
+    title=line?`Chỉnh sửa ${line.code||line.name||'sản phẩm'}`:'Chỉnh sửa sản phẩm';
+  }
+  if(!target){state.ui.quoteMobileEditMode='';return;}
+  target.classList.add('minmin-quote-mobile-edit-target');
+  document.body.classList.add('minmin-quote-mobile-edit-mode');
+  main.insertAdjacentHTML('beforeend',`<div class="minmin-quote-mobile-edit-toolbar"><button data-quote-mobile-close-editor type="button" class="inline-flex h-11 items-center gap-2 rounded-md border border-black/10 px-3 text-sm font-black">${quoteMobileIcon('back')} Báo giá</button><strong class="min-w-0 truncate text-sm">${esc(title)}</strong></div>`);
+}
+const renderWithQuoteMobileDashboard=render;
+render=function(...args){
+  const result=renderWithQuoteMobileDashboard(...args);
+  mountQuoteMobile();
+  return result;
+};
+document.addEventListener('input',event=>{
+  const search=event.target.closest?.('[data-quote-mobile-filter]');
+  if(!search)return;
+  const query=String(search.value||'').trim().toLowerCase();
+  document.querySelectorAll('[data-quote-mobile-product]').forEach(row=>{
+    row.hidden=!!query&&!String(row.dataset.quoteMobileSearch||'').includes(query);
+  });
+});
+document.addEventListener('change',event=>{
+  const input=event.target.closest?.('[data-quote-mobile-finance]');
+  if(!input)return;
+  const key=input.dataset.quoteMobileFinance;
+  state.info[key]=key==='shipPriceText'?parseInputMoney(input.value):Number(input.value||0);
+  saveDraft();
+  render({force:true});
+});
+document.addEventListener('click',event=>{
+  const tab=event.target.closest?.('[data-quote-mobile-tab]');
+  if(tab){
+    const target=tab.dataset.quoteMobileTab||'quote';
+    state.ui.quoteMobileEditMode='';
+    state.activeTab=target;
+    if(target==='accounting')state.accounting.view='overview';
+    render({force:true});
+    return;
+  }
+  if(event.target.closest?.('[data-quote-mobile-notifications]')){
+    state.ui.quoteMobileNotifications=!state.ui.quoteMobileNotifications;
+    render({force:true});
+    return;
+  }
+  if(event.target.closest?.('[data-quote-mobile-edit-customer]')){
+    state.ui.quoteCustomerOpen=true;
+    state.ui.quoteMobileEditMode='customer';
+    saveDraft();
+    render({force:true});
+    return;
+  }
+  const editLine=event.target.closest?.('[data-quote-mobile-edit-line]');
+  if(editLine){
+    const id=editLine.dataset.quoteMobileEditLine;
+    state.ui.quoteLineOpen=state.ui.quoteLineOpen||{};
+    state.ui.quoteLineOpen[id]=true;
+    state.ui.quoteMobileEditMode=id;
+    saveDraft();
+    render({force:true});
+    return;
+  }
+  if(event.target.closest?.('[data-quote-mobile-close-editor]')){
+    state.ui.quoteMobileEditMode='';
+    saveDraft();
+    render({force:true});
+    return;
+  }
+  if(event.target.closest?.('[data-quote-mobile-add]')){
+    const line=applyProduct(state.products[0]);
+    state.lines.push(line);
+    refreshLineCodes();
+    state.ui.quoteLineOpen=state.ui.quoteLineOpen||{};
+    state.ui.quoteLineOpen[line.uid]=true;
+    state.ui.quoteMobileEditMode=line.uid;
+    saveDraft();
+    render({force:true});
+    return;
+  }
+  if(event.target.closest?.('[data-quote-mobile-scroll-payment]')){
+    document.getElementById('quoteMobilePaymentSummary')?.scrollIntoView({behavior:'smooth',block:'center'});
+    return;
+  }
+  if(event.target.closest?.('[data-quote-mobile-toggle-payment]')){
+    state.ui.quoteMobilePaymentExpanded=!state.ui.quoteMobilePaymentExpanded;
+    render({force:true});
+    return;
+  }
+  const action=event.target.closest?.('[data-quote-mobile-action]')?.dataset.quoteMobileAction;
+  if(!action)return;
+  if(action==='export-excel')exportQuotation().catch(error=>alert('Chưa xuất được Excel: '+error.message));
+  if(action==='preview-pdf')exportQuotationPdfFromXlsx({preview:true}).catch(error=>alert('Chưa xem trước được PDF: '+error.message));
+  if(action==='export-pdf')exportQuotationPdfFromXlsx().catch(error=>alert('Chưa xuất được PDF: '+error.message));
 });
 
 initApp();
