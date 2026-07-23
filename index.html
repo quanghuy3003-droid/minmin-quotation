@@ -583,6 +583,200 @@
         padding: 0 0.65rem !important;
         font-size: 0.75rem !important;
       }
+      .minmin-stock-mobile-view {
+        display: none;
+      }
+      @media (max-width: 640px) {
+        body:has(.minmin-stock-mobile-view) .minmin-app-logo,
+        body:has(.minmin-stock-mobile-view) .minmin-main-nav {
+          display: none !important;
+        }
+        .minmin-stock-desktop-view {
+          display: none !important;
+        }
+        .minmin-stock-mobile-view {
+          display: block;
+          min-height: calc(100dvh - 7rem);
+          background: #fff;
+          color: #17212b;
+        }
+        .minmin-stock-mobile-toolbar {
+          position: sticky;
+          top: 0;
+          z-index: 30;
+          display: grid;
+          grid-template-columns: 44px minmax(0, 1fr) 44px;
+          align-items: center;
+          gap: 0.5rem;
+          border-bottom: 1px solid rgba(17, 19, 21, 0.1);
+          background: rgba(255, 255, 255, 0.97);
+          padding: 0.65rem 0.75rem;
+          backdrop-filter: blur(12px);
+        }
+        .minmin-stock-mobile-icon {
+          display: inline-flex;
+          width: 44px;
+          height: 44px;
+          align-items: center;
+          justify-content: center;
+          border: 1px solid rgba(17, 19, 21, 0.12);
+          border-radius: 50%;
+          background: #fff;
+          color: #17212b;
+        }
+        .minmin-stock-mobile-icon svg {
+          width: 21px;
+          height: 21px;
+          fill: none;
+          stroke: currentColor;
+          stroke-linecap: round;
+          stroke-linejoin: round;
+          stroke-width: 2;
+        }
+        .minmin-stock-mobile-controls {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) 48px;
+          gap: 0.5rem;
+          padding: 0.75rem;
+          border-bottom: 1px solid rgba(17, 19, 21, 0.08);
+          background: #fff;
+        }
+        .minmin-stock-mobile-controls select,
+        .minmin-stock-mobile-search-row input {
+          width: 100%;
+          height: 44px;
+          min-width: 0;
+          border: 1px solid rgba(17, 19, 21, 0.15);
+          border-radius: 0.5rem;
+          background: #fff;
+          padding: 0 0.75rem;
+          font-size: 0.875rem;
+          font-weight: 800;
+          outline: none;
+        }
+        .minmin-stock-mobile-search-row {
+          grid-column: 1 / -1;
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) 44px;
+          gap: 0.5rem;
+        }
+        .minmin-stock-mobile-list {
+          padding: 0 0.75rem 6rem;
+        }
+        .minmin-stock-mobile-item {
+          display: grid;
+          width: 100%;
+          grid-template-columns: 104px minmax(0, 1fr) 44px;
+          align-items: center;
+          gap: 0.75rem;
+          border-bottom: 1px solid rgba(17, 19, 21, 0.1);
+          padding: 0.9rem 0;
+          text-align: left;
+        }
+        .minmin-stock-mobile-item-photo {
+          display: flex;
+          width: 104px;
+          height: 104px;
+          align-items: center;
+          justify-content: center;
+          overflow: hidden;
+          border: 1px solid rgba(17, 19, 21, 0.1);
+          border-radius: 0.5rem;
+          background: #f7f7f2;
+        }
+        .minmin-stock-mobile-item-photo img {
+          width: 100%;
+          height: 100%;
+          object-fit: contain;
+        }
+        .minmin-stock-mobile-open {
+          display: inline-flex;
+          width: 44px;
+          height: 44px;
+          align-items: center;
+          justify-content: center;
+          border: 1px solid rgba(31, 141, 115, 0.35);
+          border-radius: 50%;
+          background: #1f8d73;
+          color: #fff;
+          font-size: 1.6rem;
+          font-weight: 500;
+          line-height: 1;
+        }
+        .minmin-stock-mobile-summary {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 0.5rem;
+          margin: 0.75rem;
+          padding: 0.75rem;
+          border-radius: 0.5rem;
+          background: #17212b;
+          color: #fff;
+        }
+        .minmin-stock-mobile-detail {
+          min-height: calc(100dvh - 7rem);
+          padding-bottom: 6.5rem;
+          background: #fff;
+        }
+        .minmin-stock-mobile-hero {
+          display: flex;
+          width: 100%;
+          height: min(52dvh, 430px);
+          align-items: center;
+          justify-content: center;
+          overflow: hidden;
+          border-bottom: 1px solid rgba(17, 19, 21, 0.08);
+          background: #f7f7f2;
+        }
+        .minmin-stock-mobile-hero img {
+          width: 100%;
+          height: 100%;
+          object-fit: contain;
+        }
+        .minmin-stock-mobile-detail-body {
+          display: grid;
+          gap: 1rem;
+          padding: 1rem 0.9rem;
+        }
+        .minmin-stock-mobile-detail-actions {
+          position: sticky;
+          bottom: 0;
+          z-index: 25;
+          display: grid;
+          grid-template-columns: 68px minmax(0, 1fr);
+          gap: 0.6rem;
+          border-top: 1px solid rgba(17, 19, 21, 0.1);
+          background: rgba(255, 255, 255, 0.97);
+          padding: 0.75rem;
+          backdrop-filter: blur(12px);
+        }
+        .minmin-stock-mobile-detail-actions input {
+          width: 68px;
+          height: 48px;
+          border: 1px solid rgba(17, 19, 21, 0.16);
+          border-radius: 0.5rem;
+          padding: 0 0.5rem;
+          text-align: center;
+          font-weight: 900;
+        }
+        .minmin-stock-mobile-primary {
+          display: inline-flex;
+          min-height: 48px;
+          align-items: center;
+          justify-content: center;
+          border-radius: 0.5rem;
+          background: #1f8d73;
+          padding: 0.75rem 1rem;
+          color: #fff;
+          font-size: 0.95rem;
+          font-weight: 900;
+        }
+      }
+      @media (min-width: 641px) {
+        .minmin-stock-desktop-view {
+          display: block;
+        }
+      }
     </style>
   </head>
   <body class="min-h-screen bg-[#F7F7F2] font-sans text-ink">
@@ -659,7 +853,7 @@ const DEFAULT_ACCOUNTING_RULES = [
 let pendingInputInvoiceFiles = [];
 const state = {
   activeTab:'quote',
-  ui: { showAssets:false, showPricingOptions:false, showFormulaDetails:false, showStockQr:true, stockInputCollapsed:false, activeImageLine:'', stockSearch:'', openStockItems:{}, showStockHistory:false, selectedStockMoves:{} },
+  ui: { showAssets:false, showPricingOptions:false, showFormulaDetails:false, showStockQr:true, stockInputCollapsed:false, activeImageLine:'', stockSearch:'', stockMobileCategory:'stock', stockMobileDetail:'', openStockItems:{}, showStockHistory:false, selectedStockMoves:{} },
   sheetInput: new URLSearchParams(location.search).get('sheet') || localStorage.getItem(STORAGE_KEY) || '', products: SAMPLE_PRODUCTS.slice(), status: 'Đang dùng dữ liệu mẫu lấy từ file báo giá của bạn.', loading: false,
   info: { client:'Mr.Thang', representative:'Mr.Thang', address:'Xác nhận sau', delivery:'Xác nhận sau', tel:'Xác nhận sau', email:'', quoteDate:new Date().toISOString().slice(0,10), discountRate:10, vatRate:8, depositRate:50, shipCode:'PVC', shipName:'Phí vận chuyển (Fee ship) (L0 x W0 x H0)', shipUnit:'Kiện', shipQty:1, shipPriceText:0, logoDataUrl: DEFAULT_LOGO_DATA_URL, qrDataUrl: DEFAULT_QR_DATA_URL },
   pricing: { chinaPrice:300, weight:10, profitPercent:120, exchangeRate:4000, chinaVnRate:33000, bubbleBaseCny:20, bubbleExtraCny:1.5, bubbleRate:3700, buyFeePercent:5, inlandShip:150000, vnShip:150000, listMarkupPercent:10, vatBufferPercent:20, vatInvoicePercent:8, corporateTaxPercent:20, targetUid:'' },
@@ -1708,7 +1902,10 @@ function inventorySearchText(item){ return cleanSearch([item.code,item.barcodeId
 function inventoryLookupUrl(item){ const base=location.href.split('#')[0]; return `${base}#stock=${encodeURIComponent(item.code||item.barcodeId)}`; }
 function inventoryQrPayload(item){ return inventoryLookupUrl(item); }
 function inventoryQrUrl(item){ return `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(inventoryQrPayload(item))}`; }
-function stockQtyInputValue(code){ return [...document.querySelectorAll('[data-stock-qty]')].find(el=>el.dataset.stockQty===code)?.value||1; }
+function stockQtyInputValue(code){
+  const matches=[...document.querySelectorAll('[data-stock-qty]')].filter(el=>el.dataset.stockQty===code);
+  return (matches.find(el=>el.offsetParent!==null)||matches[0])?.value||1;
+}
 function inventoryMovement(type,item,qty){ state.inventory=state.inventory||{items:[],movements:[]}; if(!Array.isArray(state.inventory.movements))state.inventory.movements=[]; const movement={id:uid(),type,code:item.code,barcodeId:item.barcodeId,name:item.name,qty:Number(qty||0),time:new Date().toISOString(),quotationFileName:item.attributes?._quotationFileName||item.quotationFileName||''}; state.inventory.movements=[movement,...state.inventory.movements].slice(0,200); return movement; }
 function inventoryTransitionDetails(type,item,qty,nextQtyOverride){
   const currentQty=Number(item?.quantity||0), changeQty=Number(qty||0), overrideQty=Number(nextQtyOverride);
@@ -3847,6 +4044,156 @@ renderInventoryTab = function renderInventoryTabCompact(){
     .replace('mt-2 grid gap-2 md:grid-cols-5','mt-2 grid minmin-stock-three-columns gap-2 md:grid-cols-5');
   return withoutHistory(`${html.slice(0,entryStart)}<div data-stock-entry-fields class="minmin-stock-entry-fields mt-2 grid gap-2">${fields}</div>${html.slice(listStart)}`);
 };
+
+function inventoryMobileArrowIcon(direction='left'){
+  return direction==='left'
+    ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/><path d="M9 12h10"/></svg>'
+    : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>';
+}
+function inventoryMobileSearchIcon(){
+  return '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>';
+}
+function inventoryMobileListItem(item){
+  const key=item.barcodeId||item.code, stage=inventoryStage(item), finance=inventoryFinance(item);
+  const description=[item.name||productTypeName(item.productType),item.dimension,item.unit].filter(Boolean).join(' · ');
+  const duration=inventoryTotalDays(item);
+  return `<button data-stock-mobile-open="${esc(key)}" type="button" class="minmin-stock-mobile-item">
+    <span class="minmin-stock-mobile-item-photo">${item.photoDataUrl?`<img src="${esc(driveAssetUrl(item.photoDataUrl))}" alt="${esc(item.name||item.code||'Sản phẩm')}"/>`:'<span class="px-2 text-center text-xs font-bold text-black/35">Chưa có ảnh</span>'}</span>
+    <span class="min-w-0">
+      <span class="flex min-w-0 items-center gap-1.5"><strong class="min-w-0 truncate text-[15px] font-black text-ink">${esc(item.code||'Chưa có mã')}</strong>${inventoryKindMarker(item)}</span>
+      <span class="mt-1 block overflow-hidden text-ellipsis whitespace-nowrap text-xs font-semibold text-black/45">${esc(description||stage.detail)}</span>
+      <span class="mt-2 flex flex-wrap items-center gap-1.5">
+        <span class="rounded-md bg-mint/10 px-2 py-1 text-sm font-black text-mint">${money(finance.sell)}</span>
+        <span class="rounded-md bg-black/5 px-2 py-1 text-xs font-extrabold text-black/55">${esc(stage.key==='stock'?'Trong kho':'Số lượng')}: ${Number(item.quantity||0)}</span>
+        ${duration.total==null?'':`<span class="rounded-md border border-gold/40 bg-gold/15 px-2 py-1 text-xs font-extrabold text-[#8a5a00]">Tổng ${duration.total} ngày</span>`}
+      </span>
+    </span>
+    <span class="minmin-stock-mobile-open" aria-hidden="true">+</span>
+  </button>`;
+}
+function inventoryMobileDetailView(item){
+  const key=item.barcodeId||item.code, stage=inventoryStage(item), finance=inventoryFinance(item), attrs=item.attributes||{};
+  const specs=[['Kích thước',item.dimension],['ĐVT',item.unit],...ATTRIBUTE_FIELDS.map(field=>[field.label,attrs[field.key]||item?.[field.key]])].filter(([,value])=>String(value||'').trim());
+  const action=stage.key==='stock'
+    ? `<div class="minmin-stock-mobile-detail-actions"><input data-stock-qty="${esc(key)}" type="number" value="1" min="1" aria-label="Số lượng xuất"/><button data-stock-out="${esc(key)}" type="button" class="minmin-stock-mobile-primary">Xuất kho</button><button data-stock-quote="${esc(key)}" type="button" class="minmin-stock-mobile-primary col-span-2 bg-ink">Đưa vào báo giá</button></div>`
+    : stage.key==='production'
+      ? `<div class="minmin-stock-mobile-detail-actions grid-cols-1"><button data-stock-arrive="${esc(key)}" type="button" class="minmin-stock-mobile-primary">Nhập kho VN</button></div>`
+      : `<div class="minmin-stock-mobile-detail-actions grid-cols-1"><button data-stock-export-adjust="${esc(key)}" type="button" class="minmin-stock-mobile-primary bg-ink">Tùy chỉnh hàng đã xuất</button></div>`;
+  return `<div data-stock-mobile-detail="${esc(key)}" class="minmin-stock-mobile-detail">
+    <div class="minmin-stock-mobile-toolbar">
+      <button data-stock-mobile-back="detail" type="button" class="minmin-stock-mobile-icon" aria-label="Quay lại danh sách">${inventoryMobileArrowIcon()}</button>
+      <div class="min-w-0 text-center"><div class="truncate text-base font-black">Chi tiết sản phẩm</div><div class="truncate text-[11px] font-bold text-black/45">${esc(stage.label)}</div></div>
+      <button data-stock-delete="${esc(key)}" type="button" class="minmin-stock-mobile-icon text-coral" aria-label="Xóa sản phẩm"><span class="text-xl leading-none">×</span></button>
+    </div>
+    <div class="minmin-stock-mobile-hero">${item.photoDataUrl?`<img src="${esc(driveAssetUrl(item.photoDataUrl))}" alt="${esc(item.name||item.code||'Sản phẩm')}"/>`:'<span class="text-sm font-bold text-black/35">Chưa có ảnh sản phẩm</span>'}</div>
+    <div class="minmin-stock-mobile-detail-body">
+      <div class="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+        <div class="min-w-0"><h2 class="break-words text-2xl font-black leading-tight">${esc(item.name||productTypeName(item.productType))}</h2><p class="mt-1 break-all text-sm font-extrabold text-black/45">${esc(item.code||'Chưa có mã')}</p></div>
+        <div class="text-right"><div class="text-xl font-black text-mint">${money(finance.sell)}</div><div class="mt-1 text-xs font-bold text-black/45">Giá bán</div></div>
+      </div>
+      <div class="flex flex-wrap gap-2"><span class="rounded-md ${stage.chip} px-2 py-1 text-xs font-extrabold">${esc(stage.detail)}</span>${inventoryTotalDaysBadge(item)}${inventoryKindBadge(item)}</div>
+      <div class="rounded-md border border-black/10 bg-white p-3">
+        <h3 class="text-sm font-black">Thông tin sản phẩm</h3>
+        <div class="mt-2 grid gap-0">${specs.length?specs.map(([label,value])=>`<div class="grid grid-cols-[112px_minmax(0,1fr)] gap-3 border-b border-black/5 py-2 last:border-b-0"><span class="text-xs font-bold text-black/45">${esc(label)}</span><span class="break-words text-right text-sm font-extrabold">${esc(value)}</span></div>`).join(''):'<p class="py-2 text-sm font-semibold text-black/40">Chưa có thông số sản phẩm.</p>'}</div>
+      </div>
+      ${inventoryCompactDates(item)}
+      <div class="grid gap-2 rounded-md border border-black/10 bg-[#F7F7F2] p-3">
+        <h3 class="text-sm font-black">Hóa đơn và thao tác</h3>
+        <div class="grid gap-2">${item.itemKind==='sample'?'<span class="text-xs font-bold text-orange-600">Hàng mẫu không yêu cầu hóa đơn.</span>':`${inventoryInvoiceButton('Hóa đơn vào',item,'invoiceDataUrl')}${inventoryInvoiceButton('Hóa đơn đầu ra',item,'saleInvoiceDataUrl')}`}</div>
+        <button data-stock-delete="${esc(key)}" type="button" class="mt-1 h-10 rounded-md border border-coral/30 bg-white px-3 text-sm font-extrabold text-coral">Xóa sản phẩm</button>
+      </div>
+    </div>
+    ${action}
+  </div>`;
+}
+function renderInventoryMobileView(){
+  const inv=normalizeInventoryStorage(state.inventory||{}), category=state.ui.stockMobileCategory||'stock', needle=cleanSearch(state.ui.stockSearch||'');
+  const counts={stock:0,production:0,sold:0};
+  inv.items.forEach(item=>{const key=inventoryStage(item).key; if(counts[key]!==undefined)counts[key]++;});
+  const selectedKey=String(state.ui.stockMobileDetail||'');
+  const selected=selectedKey?findInventoryItem(selectedKey):null;
+  if(selected)return `<div class="minmin-stock-mobile-view">${inventoryMobileDetailView(selected)}</div>`;
+  const visible=inv.items.filter(item=>inventoryStage(item).key===category).filter(item=>!needle||inventorySearchText(item).includes(needle));
+  const stockItems=inv.items.filter(item=>inventoryStage(item).key==='stock');
+  const totalQty=stockItems.reduce((sum,item)=>sum+Number(item.quantity||0),0);
+  const totalValue=stockItems.reduce((sum,item)=>sum+Number(item.quantity||0)*parseInputMoney(item.price),0);
+  return `<div class="minmin-stock-mobile-view">
+    <div class="minmin-stock-mobile-toolbar">
+      <button data-stock-mobile-back="tab" type="button" class="minmin-stock-mobile-icon" aria-label="Quay lại Báo giá">${inventoryMobileArrowIcon()}</button>
+      <div class="min-w-0 text-center"><div class="truncate text-base font-black">Kho hàng</div><div class="truncate text-[11px] font-bold text-black/45">${inv.items.length} sản phẩm</div></div>
+      <button data-stock-mobile-search-focus type="button" class="minmin-stock-mobile-icon" aria-label="Tìm kiếm">${inventoryMobileSearchIcon()}</button>
+    </div>
+    <div class="minmin-stock-mobile-summary">
+      <div><div class="text-[10px] font-extrabold uppercase text-white/50">Tổng kho</div><div class="mt-1 text-xl font-black">${totalQty}</div><div class="text-[11px] font-bold text-white/55">sản phẩm tồn</div></div>
+      <div class="border-l border-white/15 pl-3"><div class="text-[10px] font-extrabold uppercase text-white/50">Giá trị tồn kho</div><div class="mt-1 break-words text-lg font-black">${money(totalValue)}</div></div>
+    </div>
+    <div class="minmin-stock-mobile-controls">
+      <select data-stock-mobile-category aria-label="Chọn nhóm kho">
+        <option value="stock" ${category==='stock'?'selected':''}>Trong kho (${counts.stock})</option>
+        <option value="production" ${category==='production'?'selected':''}>Đang sản xuất (${counts.production})</option>
+        <option value="sold" ${category==='sold'?'selected':''}>Hết hàng (${counts.sold})</option>
+      </select>
+      <button data-stock-mobile-search-focus type="button" class="minmin-stock-mobile-icon rounded-md" aria-label="Mở tìm kiếm">${inventoryMobileSearchIcon()}</button>
+      <div class="minmin-stock-mobile-search-row">
+        <input data-stock-mobile-search value="${esc(state.ui.stockSearch||'')}" placeholder="Tìm mã, tên, kích thước..." autocomplete="off"/>
+        <button data-stock-mobile-search-go type="button" class="minmin-stock-mobile-icon rounded-md" aria-label="Tìm">${inventoryMobileSearchIcon()}</button>
+      </div>
+    </div>
+    <div class="minmin-stock-mobile-list">${visible.length?visible.map(inventoryMobileListItem).join(''):`<div class="px-4 py-12 text-center text-sm font-bold text-black/40">${needle?'Không tìm thấy sản phẩm phù hợp.':'Nhóm này chưa có sản phẩm.'}</div>`}</div>
+  </div>`;
+}
+const renderInventoryTabDesktop = renderInventoryTab;
+renderInventoryTab = function renderInventoryTabResponsive(){
+  return `<div class="minmin-stock-desktop-view">${renderInventoryTabDesktop()}</div>${renderInventoryMobileView()}`;
+};
+document.addEventListener('click',event=>{
+  const back=event.target.closest?.('[data-stock-mobile-back]');
+  if(back){
+    if(back.dataset.stockMobileBack==='detail')state.ui.stockMobileDetail='';
+    else state.activeTab='quote';
+    saveDraft();
+    render({force:true});
+    return;
+  }
+  const open=event.target.closest?.('[data-stock-mobile-open]');
+  if(open){
+    state.ui.stockMobileDetail=open.dataset.stockMobileOpen||'';
+    saveDraft();
+    render({force:true});
+    window.scrollTo({top:0,behavior:'instant'});
+    return;
+  }
+  const focus=event.target.closest?.('[data-stock-mobile-search-focus]');
+  if(focus){
+    document.querySelector('[data-stock-mobile-search]')?.focus();
+    return;
+  }
+  const go=event.target.closest?.('[data-stock-mobile-search-go]');
+  if(go){
+    state.ui.stockSearch=document.querySelector('[data-stock-mobile-search]')?.value||'';
+    render({force:true});
+  }
+});
+document.addEventListener('change',event=>{
+  const category=event.target.closest?.('[data-stock-mobile-category]');
+  if(!category)return;
+  state.ui.stockMobileCategory=category.value||'stock';
+  state.ui.stockMobileDetail='';
+  saveDraft();
+  render({force:true});
+});
+document.addEventListener('input',event=>{
+  const search=event.target.closest?.('[data-stock-mobile-search]');
+  if(search)state.ui.stockSearch=search.value||'';
+});
+document.addEventListener('keydown',event=>{
+  const search=event.target.closest?.('[data-stock-mobile-search]');
+  if(search&&event.key==='Enter'){
+    event.preventDefault();
+    state.ui.stockSearch=search.value||'';
+    render({force:true});
+  }
+});
 
 function websiteNewProduct(){ state.website=normalizeWebsiteProducts(state.website||websiteProductsDefaults()); state.website.editingId=''; state.website.current=websiteProductDefaults(); saveWebsiteProducts(); render(); }
 function websiteSaveProduct(){
@@ -8590,6 +8937,8 @@ html,body{
     showStockQr:true,
     activeImageLine:'',
     stockSearch:'',
+    stockMobileCategory:'stock',
+    stockMobileDetail:'',
     openStockItems:{},
     showStockHistory:false,
     selectedStockMoves:{},
