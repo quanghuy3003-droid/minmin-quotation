@@ -777,6 +777,205 @@
           display: block;
         }
       }
+      .minmin-accounting-mobile-view,
+      .minmin-accounting-mobile-only {
+        display: none;
+      }
+      @media (max-width: 640px) {
+        body:has(.minmin-accounting-mobile-view) .minmin-app-logo,
+        body:has(.minmin-accounting-mobile-view) .minmin-main-nav,
+        body:has(.minmin-accounting-mobile-shell) .minmin-app-logo,
+        body:has(.minmin-accounting-mobile-shell) .minmin-main-nav {
+          display: none !important;
+        }
+        .minmin-accounting-desktop-view {
+          display: none !important;
+        }
+        .minmin-accounting-mobile-view,
+        .minmin-accounting-mobile-only {
+          display: block;
+        }
+        .minmin-accounting-mobile-view,
+        .minmin-accounting-mobile-shell {
+          min-height: 100dvh;
+          background: #f3f4f6;
+          color: #17212b;
+        }
+        .minmin-accounting-mobile-header {
+          position: sticky;
+          top: 0;
+          z-index: 40;
+          display: grid;
+          grid-template-columns: 42px minmax(0, 1fr) 42px;
+          align-items: center;
+          gap: 0.6rem;
+          min-height: 70px;
+          padding: 0.65rem 0.75rem;
+          background: #36a85d;
+          color: #fff;
+        }
+        .minmin-accounting-mobile-header button {
+          display: inline-flex;
+          width: 42px;
+          height: 42px;
+          align-items: center;
+          justify-content: center;
+          border: 1px solid rgba(255, 255, 255, 0.35);
+          border-radius: 50%;
+          color: #fff;
+        }
+        .minmin-accounting-mobile-header svg,
+        .minmin-accounting-mobile-action svg,
+        .minmin-accounting-mobile-bottom svg,
+        .minmin-accounting-more-item svg {
+          width: 24px;
+          height: 24px;
+          fill: none;
+          stroke: currentColor;
+          stroke-linecap: round;
+          stroke-linejoin: round;
+          stroke-width: 1.9;
+        }
+        .minmin-accounting-mobile-content {
+          display: grid;
+          gap: 0.75rem;
+          padding: 0.75rem 0.75rem 6.5rem;
+        }
+        .minmin-accounting-mobile-card {
+          overflow: hidden;
+          border: 1px solid rgba(17, 19, 21, 0.08);
+          border-radius: 0.5rem;
+          background: #fff;
+          box-shadow: 0 2px 8px rgba(23, 32, 42, 0.05);
+        }
+        .minmin-accounting-mobile-actions {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 0.65rem;
+          padding: 0.75rem;
+        }
+        .minmin-accounting-mobile-action {
+          display: flex;
+          min-height: 118px;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 0.55rem;
+          border: 1px solid rgba(17, 19, 21, 0.06);
+          border-radius: 0.5rem;
+          background: #f4f4f6;
+          color: #17212b;
+          font-size: 0.95rem;
+          font-weight: 900;
+        }
+        .minmin-accounting-mobile-action span:first-child {
+          display: inline-flex;
+          width: 46px;
+          height: 46px;
+          align-items: center;
+          justify-content: center;
+          border-radius: 50%;
+          background: #e7f6ec;
+          color: #36a85d;
+        }
+        .minmin-accounting-mobile-row {
+          display: flex;
+          min-height: 52px;
+          align-items: center;
+          justify-content: space-between;
+          gap: 1rem;
+          border-top: 1px solid rgba(17, 19, 21, 0.08);
+          padding: 0.65rem 0.8rem;
+        }
+        .minmin-accounting-mobile-row:first-child {
+          border-top: 0;
+        }
+        .minmin-accounting-mobile-row strong {
+          text-align: right;
+          font-size: 0.9rem;
+        }
+        .minmin-accounting-mobile-alerts {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 0.6rem;
+          padding: 0.75rem;
+        }
+        .minmin-accounting-mobile-alert {
+          min-width: 0;
+          border-radius: 0.5rem;
+          background: #f7f7f2;
+          padding: 0.7rem;
+        }
+        .minmin-accounting-mobile-alert strong {
+          display: block;
+          margin-top: 0.25rem;
+          overflow-wrap: anywhere;
+          font-size: 0.95rem;
+        }
+        .minmin-accounting-mobile-bottom {
+          position: fixed;
+          inset: auto 0 0;
+          z-index: 50;
+          display: grid;
+          grid-template-columns: repeat(5, minmax(0, 1fr));
+          min-height: 68px;
+          border-top: 1px solid rgba(17, 19, 21, 0.1);
+          background: rgba(255, 255, 255, 0.98);
+          padding: 0.35rem 0.3rem max(0.35rem, env(safe-area-inset-bottom));
+          box-shadow: 0 -4px 16px rgba(23, 32, 42, 0.08);
+          backdrop-filter: blur(12px);
+        }
+        .minmin-accounting-mobile-bottom button {
+          display: flex;
+          min-width: 0;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 0.15rem;
+          color: rgba(23, 32, 42, 0.48);
+          font-size: 0.65rem;
+          font-weight: 800;
+        }
+        .minmin-accounting-mobile-bottom button.is-active {
+          color: #36a85d;
+        }
+        .minmin-accounting-mobile-bottom svg {
+          width: 20px;
+          height: 20px;
+        }
+        .minmin-accounting-more-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 0.65rem;
+          padding: 0.75rem;
+        }
+        .minmin-accounting-more-item {
+          display: flex;
+          min-height: 92px;
+          flex-direction: column;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 0.6rem;
+          border: 1px solid rgba(17, 19, 21, 0.08);
+          border-radius: 0.5rem;
+          background: #fff;
+          padding: 0.8rem;
+          text-align: left;
+          font-size: 0.85rem;
+          font-weight: 900;
+        }
+        .minmin-accounting-more-item svg {
+          color: #36a85d;
+        }
+        .minmin-accounting-mobile-shell > .minmin-accounting-section {
+          max-width: none !important;
+          gap: 0.75rem !important;
+          padding: 0.75rem 0.75rem 6.5rem !important;
+        }
+        .minmin-accounting-mobile-shell > .minmin-accounting-section > :first-child {
+          display: none !important;
+        }
+      }
     </style>
   </head>
   <body class="min-h-screen bg-[#F7F7F2] font-sans text-ink">
@@ -13570,6 +13769,145 @@ document.addEventListener('click',event=>{
   state.ui.quoteCustomerOpen=!!open;
   saveDraft();
   render({force:true});
+});
+
+function accountingMobileIcon(name){
+  const paths={
+    back:'<path d="m15 18-6-6 6-6"/><path d="M9 12h10"/>',
+    sync:'<path d="M20 7h-5V2"/><path d="M4 17h5v5"/><path d="M5.1 9A8 8 0 0 1 18 5l2 2"/><path d="M18.9 15A8 8 0 0 1 6 19l-2-2"/>',
+    sale:'<path d="M4 5h2l2 10h9l2-7H7"/><circle cx="10" cy="19" r="1"/><circle cx="17" cy="19" r="1"/>',
+    income:'<circle cx="12" cy="12" r="9"/><path d="M16 8h-5a2 2 0 0 0 0 4h2a2 2 0 0 1 0 4H8"/><path d="M12 6v12"/><path d="m5 12-2 2 2 2"/>',
+    purchase:'<path d="M6 8h12l-1 12H7L6 8Z"/><path d="M9 8a3 3 0 0 1 6 0"/>',
+    expense:'<circle cx="12" cy="12" r="9"/><path d="M8 8h5a2 2 0 0 1 0 4h-2a2 2 0 0 0 0 4h5"/><path d="M12 6v12"/><path d="m19 12 2 2-2 2"/>',
+    home:'<path d="m3 11 9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/>',
+    payments:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/><path d="M7 15h3"/>',
+    more:'<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
+    report:'<path d="M5 3h14v18H5z"/><path d="M9 17v-5M12 17V8M15 17v-3"/>',
+    debt:'<path d="M4 7h16v12H4z"/><path d="M8 7V5h8v2"/><path d="M8 12h8M8 15h5"/>',
+    tax:'<circle cx="8" cy="8" r="2"/><circle cx="16" cy="16" r="2"/><path d="m17 7-10 10"/>',
+    voucher:'<path d="M6 3h9l3 3v15H6z"/><path d="M14 3v4h4M9 12h6M9 16h6"/>',
+    cashbook:'<path d="M5 3h14v18H5z"/><path d="M9 3v18M12 8h4M12 12h4"/>',
+    reconcile:'<path d="M7 7h11l-3-3"/><path d="m18 7-3 3"/><path d="M17 17H6l3 3"/><path d="m6 17 3-3"/>'
+  };
+  return `<svg viewBox="0 0 24 24" aria-hidden="true">${paths[name]||paths.more}</svg>`;
+}
+function accountingMobilePeriodLabel(){
+  const period=String(state.accounting?.filters?.period||'');
+  const match=period.match(/^(\d{4})-(\d{2})$/);
+  return match?`Tháng ${Number(match[2])}/${match[1]}`:'Tất cả dữ liệu';
+}
+function accountingMobileSummary(){
+  const filters=state.accounting?.filters||{}, period=String(filters.period||''), year=String(filters.year||'');
+  const inPeriod=value=>{const date=String(value||''); return period?date.startsWith(period):(year?date.includes(year):true);};
+  const incoming=(state.inputInvoices?.invoices||[]).filter(item=>inPeriod(item.invoice_date||item.period));
+  const outgoing=(state.accounting?.outgoingInvoices||[]).filter(item=>inPeriod(item.invoice_date||item.request_date));
+  const payments=(state.accounting?.payments||[]).filter(item=>inPeriod(item.payment_date||item.date));
+  const sum=(rows,key)=>rows.reduce((total,row)=>total+Number(row?.[key]||0),0);
+  const revenue=sum(outgoing,'net_amount'), outputVat=sum(outgoing,'vat_amount'), purchases=sum(incoming,'net_amount'), inputVat=sum(incoming,'vat_amount');
+  const received=payments.filter(item=>item.payment_type==='Thu').reduce((total,item)=>total+Number(item.amount||0),0);
+  const spent=payments.filter(item=>item.payment_type!=='Thu').reduce((total,item)=>total+Number(item.amount||0),0);
+  const receivable=outgoing.reduce((total,item)=>total+Math.max(0,Number(item.total_amount||0)-(typeof outgoingPaid==='function'?Number(outgoingPaid(item)||0):0)),0);
+  const payable=incoming.reduce((total,item)=>total+Math.max(0,Number(item.total_amount||0)-(typeof incomingPaid==='function'?Number(incomingPaid(item)||0):0)),0);
+  return {revenue,outputVat,purchases,inputVat,received,spent,receivable,payable,vatPayable:Math.max(0,outputVat-inputVat),outgoingCount:outgoing.length,incomingCount:incoming.length};
+}
+function accountingMobileHeader(title,subtitle,back='quote'){
+  return `<div class="minmin-accounting-mobile-header">
+    <button data-accounting-mobile-back="${esc(back)}" type="button" aria-label="Quay lại">${accountingMobileIcon('back')}</button>
+    <div class="min-w-0"><div class="truncate text-base font-black">${esc(title)}</div><div class="mt-0.5 truncate text-[11px] font-bold text-white/75">${esc(subtitle)}</div></div>
+    <button id="syncAccountingMobile" type="button" aria-label="Đồng bộ kế toán">${accountingMobileIcon('sync')}</button>
+  </div>`;
+}
+function accountingMobileBottom(active='overview'){
+  const items=[['overview','Tổng quan','home'],['outgoing','Bán hàng','sale'],['incoming','Mua hàng','purchase'],['payments','Thu chi','payments'],['mobile-more','Thêm','more']];
+  const activeKey=['overview','outgoing','incoming','payments'].includes(active)?active:'mobile-more';
+  return `<nav class="minmin-accounting-mobile-bottom" aria-label="Điều hướng kế toán">${items.map(([view,label,icon])=>`<button data-accounting-mobile-view="${view}" type="button" class="${activeKey===view?'is-active':''}">${accountingMobileIcon(icon)}<span>${label}</span></button>`).join('')}</nav>`;
+}
+function accountingMobileDashboard(){
+  const summary=accountingMobileSummary(), period=accountingMobilePeriodLabel();
+  const action=(view,label,icon,paymentType='')=>`<button data-accounting-mobile-view="${view}" ${paymentType?`data-accounting-mobile-payment-type="${paymentType}"`:''} type="button" class="minmin-accounting-mobile-action"><span>${accountingMobileIcon(icon)}</span><strong>${label}</strong></button>`;
+  const taxRows=[['Doanh thu tính thuế GTGT',summary.revenue],['Thuế GTGT đầu ra',summary.outputVat],['Giá trị mua vào',summary.purchases],['Thuế GTGT đầu vào',summary.inputVat],['VAT tạm phải nộp',summary.vatPayable]];
+  return `<div class="minmin-accounting-mobile-view">
+    ${accountingMobileHeader('Kế toán MINMIN','Quản lý kế toán nội bộ','quote')}
+    <div class="minmin-accounting-mobile-content">
+      <div class="minmin-accounting-mobile-card">
+        <div class="flex items-center justify-between px-3 pt-3"><h2 class="text-base font-black">Lập chứng từ</h2><span class="text-xs font-bold text-black/40">${esc(period)}</span></div>
+        <div class="minmin-accounting-mobile-actions">${action('outgoing','Bán hàng','sale')}${action('payments','Thu tiền','income','Thu')}${action('incoming','Mua hàng','purchase')}${action('payments','Chi tiền','expense','Chi')}</div>
+      </div>
+      <div class="minmin-accounting-mobile-card">
+        <div class="flex items-center justify-between px-3 py-3"><h2 class="text-base font-black">Tiền thuế <span class="text-xs font-semibold text-black/40">(đồng)</span></h2><span class="text-xs font-bold text-black/45">${esc(period)}</span></div>
+        ${taxRows.map(([label,value])=>`<div class="minmin-accounting-mobile-row"><span class="text-sm font-semibold text-black/65">${esc(label)}</span><strong>${money(value)}</strong></div>`).join('')}
+      </div>
+      <div class="minmin-accounting-mobile-card">
+        <div class="px-3 pt-3"><h2 class="text-base font-black">Tình hình tài chính</h2></div>
+        <div class="minmin-accounting-mobile-alerts">
+          <div class="minmin-accounting-mobile-alert"><span class="text-[10px] font-bold uppercase text-black/40">Đã thu</span><strong class="text-mint">${money(summary.received)}</strong></div>
+          <div class="minmin-accounting-mobile-alert"><span class="text-[10px] font-bold uppercase text-black/40">Đã chi</span><strong class="text-[#8a5a00]">${money(summary.spent)}</strong></div>
+          <div class="minmin-accounting-mobile-alert"><span class="text-[10px] font-bold uppercase text-black/40">Phải thu</span><strong>${money(summary.receivable)}</strong></div>
+          <div class="minmin-accounting-mobile-alert"><span class="text-[10px] font-bold uppercase text-black/40">Phải trả</span><strong>${money(summary.payable)}</strong></div>
+        </div>
+      </div>
+      <div class="minmin-accounting-mobile-card">
+        <button data-accounting-mobile-view="reports" type="button" class="flex w-full items-center justify-between gap-3 p-3 text-left"><span><strong class="block text-base">Báo cáo kế toán</strong><span class="mt-1 block text-xs font-semibold text-black/45">${summary.outgoingCount} bán ra · ${summary.incomingCount} mua vào</span></span><span class="text-2xl text-mint">›</span></button>
+      </div>
+    </div>
+    ${accountingMobileBottom('overview')}
+  </div>`;
+}
+function accountingMobileMore(){
+  const items=[['debts','Công nợ','debt'],['vat','Thuế GTGT','tax'],['vouchers','Chứng từ','voucher'],['cashbook','Sổ quỹ','cashbook'],['reports','Báo cáo','report'],['reconcile','Đối soát','reconcile']];
+  return `<div class="minmin-accounting-mobile-view">
+    ${accountingMobileHeader('Tiện ích kế toán','Chọn nghiệp vụ cần mở','overview')}
+    <div class="minmin-accounting-mobile-content">
+      <div class="minmin-accounting-mobile-card"><div class="px-3 pt-3"><h2 class="text-base font-black">Nghiệp vụ khác</h2><p class="mt-1 text-xs font-semibold text-black/45">Mở nhanh từng khu vực quản lý.</p></div><div class="minmin-accounting-more-grid">${items.map(([view,label,icon])=>`<button data-accounting-mobile-view="${view}" type="button" class="minmin-accounting-more-item">${accountingMobileIcon(icon)}<span>${label}</span></button>`).join('')}</div></div>
+    </div>
+    ${accountingMobileBottom('mobile-more')}
+  </div>`;
+}
+const renderAccountingTabDesktopBase=renderAccountingTab;
+renderAccountingTab=function renderAccountingTabResponsive(){
+  const requested=state.accounting?.view||'overview';
+  if(requested==='overview')return `<div class="minmin-accounting-desktop-view">${renderAccountingTabDesktopBase()}</div>${accountingMobileDashboard()}`;
+  if(requested==='mobile-more'){
+    state.accounting.view='overview';
+    const desktop=renderAccountingTabDesktopBase();
+    state.accounting.view=requested;
+    return `<div class="minmin-accounting-desktop-view">${desktop}</div>${accountingMobileMore()}`;
+  }
+  const titleMap={outgoing:'Bán hàng',incoming:'Mua hàng',payments:'Thu chi',debts:'Công nợ',vat:'Thuế GTGT',vouchers:'Chứng từ',cashbook:'Sổ quỹ',reports:'Báo cáo',reconcile:'Đối soát'};
+  return `<div class="minmin-accounting-mobile-shell"><div class="minmin-accounting-mobile-only">${accountingMobileHeader(titleMap[requested]||'Kế toán',accountingMobilePeriodLabel(),'overview')}</div>${renderAccountingTabDesktopBase()}<div class="minmin-accounting-mobile-only">${accountingMobileBottom(requested)}</div></div>`;
+};
+document.addEventListener('click',event=>{
+  const mainAccountingTab=event.target.closest?.('[data-tab="accounting"]');
+  if(mainAccountingTab&&window.matchMedia?.('(max-width: 640px)').matches){
+    state.accounting.view='overview';
+    saveAccounting();
+    setTimeout(()=>render({force:true}),0);
+    return;
+  }
+  const back=event.target.closest?.('[data-accounting-mobile-back]');
+  if(back){
+    const target=back.dataset.accountingMobileBack||'overview';
+    if(target==='quote')state.activeTab='quote';
+    else state.accounting.view=target;
+    saveAccounting();
+    render({force:true});
+    return;
+  }
+  const viewButton=event.target.closest?.('[data-accounting-mobile-view]');
+  if(viewButton){
+    state.accounting.view=viewButton.dataset.accountingMobileView||'overview';
+    state.accounting.filters=state.accounting.filters||{};
+    const paymentType=viewButton.dataset.accountingMobilePaymentType;
+    if(paymentType)state.accounting.filters.paymentType=paymentType;
+    else if(state.accounting.view==='payments')state.accounting.filters.paymentType='all';
+    if(state.accounting.view==='incoming'&&state.inputInvoices?.view==='rules')state.inputInvoices.view='list';
+    saveAccounting();
+    render({force:true});
+  }
+});
+document.addEventListener('click',event=>{
+  const sync=event.target.closest?.('#syncAccountingMobile');
+  if(sync&&typeof syncAccountingFromSupabase==='function')syncAccountingFromSupabase();
 });
 
 initApp();
