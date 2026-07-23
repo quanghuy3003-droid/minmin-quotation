@@ -1414,6 +1414,583 @@
           display: none !important;
         }
       }
+      .minmin-website-mobile-view {
+        display: none;
+      }
+      @media (max-width: 640px) {
+        body:has(.minmin-website-mobile-view) {
+          background: #f6f7f7;
+        }
+        body:has(.minmin-website-mobile-view) .minmin-topbar,
+        body:has(.minmin-website-mobile-view) .minmin-main-nav {
+          display: none !important;
+        }
+        .minmin-website-desktop-view {
+          display: none !important;
+        }
+        .minmin-website-mobile-view {
+          display: block;
+          min-height: 100dvh;
+          padding-bottom: calc(82px + env(safe-area-inset-bottom));
+          background: #f6f7f7;
+          color: #13191f;
+        }
+        .minmin-website-mobile-header {
+          position: sticky;
+          top: 0;
+          z-index: 45;
+          border-bottom: 1px solid rgba(17, 19, 21, 0.08);
+          background: rgba(255, 255, 255, 0.98);
+          backdrop-filter: blur(14px);
+        }
+        .minmin-website-mobile-brand {
+          display: grid;
+          grid-template-columns: 44px minmax(0, 1fr) 44px;
+          align-items: center;
+          gap: 0.65rem;
+          min-height: 74px;
+          padding: 0.55rem 1rem 0.35rem;
+        }
+        .minmin-website-mobile-brand img {
+          width: auto;
+          height: 48px;
+          max-width: 190px;
+          justify-self: center;
+          object-fit: contain;
+        }
+        .minmin-website-mobile-icon {
+          display: inline-flex;
+          width: 42px;
+          height: 42px;
+          align-items: center;
+          justify-content: center;
+          border-radius: 50%;
+        }
+        .minmin-website-mobile-icon svg,
+        .minmin-website-mobile-nav svg,
+        .minmin-website-action-row svg,
+        .minmin-website-search svg,
+        .minmin-website-detail-back svg {
+          width: 23px;
+          height: 23px;
+          fill: none;
+          stroke: currentColor;
+          stroke-linecap: round;
+          stroke-linejoin: round;
+          stroke-width: 1.8;
+        }
+        .minmin-website-mobile-nav {
+          display: grid;
+          grid-template-columns: repeat(5, minmax(0, 1fr));
+          min-height: 72px;
+          padding: 0 0.25rem;
+          background: #111820;
+          color: #fff;
+        }
+        .minmin-website-mobile-nav button {
+          display: flex;
+          min-width: 0;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 0.25rem;
+          border-bottom: 3px solid transparent;
+          color: rgba(255, 255, 255, 0.75);
+          font-size: 0.64rem;
+          font-weight: 800;
+        }
+        .minmin-website-mobile-nav button.is-active {
+          border-bottom-color: #239177;
+          color: #fff;
+        }
+        .minmin-website-mobile-content {
+          display: grid;
+          gap: 0.75rem;
+          padding: 0.8rem 0.75rem 1rem;
+        }
+        .minmin-website-mobile-title h1 {
+          font-size: 1.25rem;
+          font-weight: 900;
+        }
+        .minmin-website-mobile-title p {
+          margin-top: 0.15rem;
+          color: rgba(17, 19, 21, 0.5);
+          font-size: 0.72rem;
+          font-weight: 650;
+        }
+        .minmin-website-card {
+          overflow: hidden;
+          border: 1px solid rgba(17, 19, 21, 0.08);
+          border-radius: 0.5rem;
+          background: #fff;
+          box-shadow: 0 2px 8px rgba(23, 32, 42, 0.04);
+        }
+        .minmin-website-stats {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          padding: 0.65rem 0;
+        }
+        .minmin-website-stat {
+          min-width: 0;
+          border-left: 1px solid rgba(17, 19, 21, 0.08);
+          padding: 0.55rem 0.35rem;
+          text-align: center;
+        }
+        .minmin-website-stat:first-child {
+          border-left: 0;
+        }
+        .minmin-website-stat strong,
+        .minmin-website-stat span {
+          display: block;
+        }
+        .minmin-website-stat strong {
+          font-size: 1.35rem;
+          line-height: 1;
+        }
+        .minmin-website-stat span {
+          margin-top: 0.4rem;
+          color: rgba(17, 19, 21, 0.55);
+          font-size: 0.63rem;
+          font-weight: 750;
+        }
+        .minmin-website-action-row {
+          display: grid;
+          grid-template-columns: 34px minmax(0, 1fr) 22px;
+          align-items: center;
+          gap: 0.65rem;
+          width: 100%;
+          min-height: 68px;
+          border-top: 1px solid rgba(17, 19, 21, 0.08);
+          padding: 0.65rem 0.8rem;
+          text-align: left;
+        }
+        .minmin-website-action-row:first-child {
+          border-top: 0;
+        }
+        .minmin-website-action-row > svg:first-child {
+          color: #13191f;
+        }
+        .minmin-website-action-row strong,
+        .minmin-website-action-row small {
+          display: block;
+        }
+        .minmin-website-action-row strong {
+          font-size: 0.86rem;
+        }
+        .minmin-website-action-row small {
+          margin-top: 0.15rem;
+          color: rgba(17, 19, 21, 0.48);
+          font-size: 0.66rem;
+          font-weight: 650;
+        }
+        .minmin-website-sync-state {
+          padding: 0.8rem;
+        }
+        .minmin-website-sync-state strong {
+          display: block;
+          margin-top: 0.35rem;
+          color: #239177;
+          font-size: 0.82rem;
+        }
+        .minmin-website-toolbar {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) 44px;
+          gap: 0.5rem;
+        }
+        .minmin-website-search {
+          display: grid;
+          grid-template-columns: 22px minmax(0, 1fr);
+          align-items: center;
+          gap: 0.4rem;
+          min-height: 46px;
+          border: 1px solid rgba(17, 19, 21, 0.1);
+          border-radius: 0.5rem;
+          background: #fff;
+          padding: 0 0.7rem;
+          color: rgba(17, 19, 21, 0.42);
+        }
+        .minmin-website-search input {
+          min-width: 0;
+          height: 42px;
+          background: transparent;
+          color: #13191f;
+          font-size: 0.78rem;
+          outline: none;
+        }
+        .minmin-website-filter-button {
+          display: inline-flex;
+          width: 44px;
+          height: 46px;
+          align-items: center;
+          justify-content: center;
+          border: 1px solid rgba(17, 19, 21, 0.1);
+          border-radius: 0.5rem;
+          background: #fff;
+          font-size: 1.1rem;
+        }
+        .minmin-website-chips {
+          display: flex;
+          gap: 0.45rem;
+          overflow-x: auto;
+          padding-bottom: 0.1rem;
+          scrollbar-width: none;
+        }
+        .minmin-website-chips button {
+          min-height: 36px;
+          flex: 0 0 auto;
+          border: 1px solid rgba(17, 19, 21, 0.1);
+          border-radius: 0.45rem;
+          background: #fff;
+          padding: 0 0.7rem;
+          font-size: 0.7rem;
+          font-weight: 850;
+        }
+        .minmin-website-chips button.is-active {
+          border-color: #111820;
+          background: #111820;
+          color: #fff;
+        }
+        .minmin-website-product-row {
+          display: grid;
+          grid-template-columns: 66px minmax(0, 1fr) 30px;
+          align-items: center;
+          gap: 0.7rem;
+          min-height: 92px;
+          border-top: 1px solid rgba(17, 19, 21, 0.08);
+          padding: 0.65rem;
+        }
+        .minmin-website-product-row:first-child {
+          border-top: 0;
+        }
+        .minmin-website-product-photo {
+          display: flex;
+          width: 66px;
+          height: 72px;
+          align-items: center;
+          justify-content: center;
+          overflow: hidden;
+          border-radius: 0.45rem;
+          background: #f3f3ef;
+        }
+        .minmin-website-product-photo img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+        .minmin-website-product-copy {
+          min-width: 0;
+        }
+        .minmin-website-product-copy strong,
+        .minmin-website-product-copy span {
+          display: block;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .minmin-website-product-copy strong {
+          font-size: 0.78rem;
+        }
+        .minmin-website-product-copy span {
+          margin-top: 0.15rem;
+          color: rgba(17, 19, 21, 0.48);
+          font-size: 0.65rem;
+        }
+        .minmin-website-product-copy b {
+          display: block;
+          margin-top: 0.35rem;
+          font-size: 0.76rem;
+        }
+        .minmin-website-product-status {
+          margin-left: 0.4rem;
+          color: #239177;
+          font-size: 0.62rem;
+          font-weight: 850;
+          white-space: nowrap;
+        }
+        .minmin-website-product-menu {
+          width: 30px;
+          height: 42px;
+          font-size: 1.35rem;
+          line-height: 1;
+        }
+        .minmin-website-subheader {
+          position: sticky;
+          top: 0;
+          z-index: 46;
+          display: grid;
+          grid-template-columns: 44px minmax(0, 1fr) 44px;
+          align-items: center;
+          min-height: 66px;
+          border-bottom: 1px solid rgba(17, 19, 21, 0.08);
+          background: rgba(255, 255, 255, 0.98);
+          padding: 0.55rem 0.75rem;
+          backdrop-filter: blur(14px);
+        }
+        .minmin-website-subheader strong {
+          overflow: hidden;
+          text-align: center;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          font-size: 0.9rem;
+        }
+        .minmin-website-detail-hero {
+          display: grid;
+          grid-template-columns: minmax(0, 1.1fr) minmax(100px, 0.9fr);
+          gap: 0.8rem;
+          padding: 0.8rem;
+        }
+        .minmin-website-detail-photo {
+          min-height: 210px;
+          overflow: hidden;
+          border-radius: 0.5rem;
+          background: #f3f3ef;
+        }
+        .minmin-website-detail-photo img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+        .minmin-website-detail-meta {
+          display: grid;
+          align-content: start;
+          gap: 0.65rem;
+          font-size: 0.7rem;
+        }
+        .minmin-website-badge {
+          display: inline-flex;
+          width: max-content;
+          max-width: 100%;
+          min-height: 32px;
+          align-items: center;
+          border-radius: 0.45rem;
+          background: #e9f7f2;
+          padding: 0 0.55rem;
+          color: #178168;
+          font-size: 0.68rem;
+          font-weight: 850;
+        }
+        .minmin-website-detail-tabs {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          border-bottom: 1px solid rgba(17, 19, 21, 0.08);
+        }
+        .minmin-website-detail-tabs button {
+          min-height: 46px;
+          border-bottom: 2px solid transparent;
+          font-size: 0.67rem;
+          font-weight: 800;
+        }
+        .minmin-website-detail-tabs button.is-active {
+          border-bottom-color: #239177;
+          color: #239177;
+        }
+        .minmin-website-info-list {
+          padding: 0.2rem 0.8rem 0.8rem;
+        }
+        .minmin-website-info-row {
+          display: grid;
+          gap: 0.15rem;
+          border-top: 1px solid rgba(17, 19, 21, 0.07);
+          padding: 0.65rem 0;
+        }
+        .minmin-website-info-row:first-child {
+          border-top: 0;
+        }
+        .minmin-website-info-row span {
+          color: rgba(17, 19, 21, 0.48);
+          font-size: 0.64rem;
+        }
+        .minmin-website-info-row strong {
+          overflow-wrap: anywhere;
+          font-size: 0.78rem;
+        }
+        .minmin-website-primary {
+          display: inline-flex;
+          width: 100%;
+          min-height: 48px;
+          align-items: center;
+          justify-content: center;
+          border-radius: 0.5rem;
+          background: #111820;
+          padding: 0 1rem;
+          color: #fff;
+          font-size: 0.82rem;
+          font-weight: 900;
+        }
+        .minmin-website-secondary {
+          display: inline-flex;
+          width: 100%;
+          min-height: 46px;
+          align-items: center;
+          justify-content: center;
+          border: 1px solid rgba(17, 19, 21, 0.12);
+          border-radius: 0.5rem;
+          background: #fff;
+          padding: 0 0.8rem;
+          font-size: 0.78rem;
+          font-weight: 850;
+        }
+        .minmin-website-steps {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 0.2rem;
+          padding: 0.8rem 0.75rem 0;
+        }
+        .minmin-website-step {
+          display: flex;
+          min-width: 0;
+          align-items: center;
+          gap: 0.25rem;
+          color: rgba(17, 19, 21, 0.42);
+          font-size: 0.58rem;
+          font-weight: 800;
+        }
+        .minmin-website-step b {
+          display: inline-flex;
+          width: 22px;
+          height: 22px;
+          flex: 0 0 22px;
+          align-items: center;
+          justify-content: center;
+          border: 1px solid rgba(17, 19, 21, 0.15);
+          border-radius: 50%;
+          background: #fff;
+        }
+        .minmin-website-step.is-active {
+          color: #239177;
+        }
+        .minmin-website-step.is-active b {
+          border-color: #239177;
+          background: #239177;
+          color: #fff;
+        }
+        .minmin-website-form {
+          display: grid;
+          gap: 0.75rem;
+          padding: 0.8rem;
+        }
+        .minmin-website-form label {
+          display: grid;
+          gap: 0.3rem;
+          color: rgba(17, 19, 21, 0.58);
+          font-size: 0.64rem;
+          font-weight: 800;
+        }
+        .minmin-website-form input,
+        .minmin-website-form select,
+        .minmin-website-form textarea {
+          width: 100%;
+          min-width: 0;
+          min-height: 46px;
+          border: 1px solid rgba(17, 19, 21, 0.12);
+          border-radius: 0.45rem;
+          background: #fff;
+          padding: 0 0.7rem;
+          color: #13191f;
+          font-size: 0.78rem;
+          font-weight: 700;
+          outline: none;
+        }
+        .minmin-website-form textarea {
+          min-height: 96px;
+          padding-top: 0.65rem;
+          resize: vertical;
+        }
+        .minmin-website-upload-grid {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+          gap: 0.65rem;
+        }
+        .minmin-website-upload {
+          display: flex;
+          min-height: 152px;
+          align-items: center;
+          justify-content: center;
+          overflow: hidden;
+          border: 1px dashed rgba(17, 19, 21, 0.2);
+          border-radius: 0.5rem;
+          background: #fafafa;
+          text-align: center;
+        }
+        .minmin-website-upload img {
+          width: 100%;
+          height: 152px;
+          object-fit: cover;
+        }
+        .minmin-website-gallery {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 0.45rem;
+        }
+        .minmin-website-gallery img {
+          width: 100%;
+          aspect-ratio: 1;
+          border-radius: 0.4rem;
+          object-fit: cover;
+        }
+        .minmin-website-form-actions {
+          position: sticky;
+          bottom: 0;
+          z-index: 35;
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 0.55rem;
+          border-top: 1px solid rgba(17, 19, 21, 0.08);
+          background: rgba(255, 255, 255, 0.98);
+          padding: 0.7rem 0.75rem max(0.7rem, env(safe-area-inset-bottom));
+          backdrop-filter: blur(14px);
+        }
+        .minmin-website-form-actions.is-single {
+          grid-template-columns: 1fr;
+        }
+        .minmin-website-switch-row {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) 48px;
+          align-items: center;
+          gap: 0.75rem;
+          border-top: 1px solid rgba(17, 19, 21, 0.08);
+          padding: 0.75rem 0;
+        }
+        .minmin-website-switch-row:first-child {
+          border-top: 0;
+        }
+        .minmin-website-switch-row strong,
+        .minmin-website-switch-row small {
+          display: block;
+        }
+        .minmin-website-switch-row strong {
+          font-size: 0.78rem;
+        }
+        .minmin-website-switch-row small {
+          margin-top: 0.2rem;
+          color: rgba(17, 19, 21, 0.46);
+          font-size: 0.64rem;
+        }
+        .minmin-website-switch {
+          position: relative;
+          width: 46px;
+          height: 26px;
+          border-radius: 13px;
+          background: #b9bdba;
+        }
+        .minmin-website-switch::after {
+          position: absolute;
+          top: 3px;
+          left: 3px;
+          width: 20px;
+          height: 20px;
+          border-radius: 50%;
+          background: #fff;
+          content: "";
+          transition: transform 0.18s ease;
+        }
+        .minmin-website-switch.is-on {
+          background: #239177;
+        }
+        .minmin-website-switch.is-on::after {
+          transform: translateX(20px);
+        }
+      }
     </style>
   </head>
   <body class="min-h-screen bg-[#F7F7F2] font-sans text-ink">
@@ -14564,6 +15141,348 @@ document.addEventListener('click',event=>{
   if(action==='export-excel')exportQuotation().catch(error=>alert('Chưa xuất được Excel: '+error.message));
   if(action==='preview-pdf')exportQuotationPdfFromXlsx({preview:true}).catch(error=>alert('Chưa xem trước được PDF: '+error.message));
   if(action==='export-pdf')exportQuotationPdfFromXlsx().catch(error=>alert('Chưa xuất được PDF: '+error.message));
+});
+
+function websiteMobileIcon(name){
+  const paths={
+    menu:'<path d="M4 7h16M4 12h16M4 17h16"/>',
+    bell:'<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/>',
+    quote:'<path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3Z"/><path d="M9 8h6M9 12h6"/>',
+    stock:'<path d="m12 3 8 4-8 4-8-4 8-4Z"/><path d="m4 7 8 4 8-4v10l-8 4-8-4V7Z"/><path d="M12 11v10"/>',
+    website:'<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/>',
+    accounting:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 12h2M14 12h2M8 16h2M14 16h2"/>',
+    document:'<path d="M6 3h9l3 3v15H6z"/><path d="M14 3v4h4M9 12h6M9 16h6"/>',
+    sync:'<path d="M20 7h-5V2"/><path d="M20 7a8 8 0 1 0 1 8"/><path d="m20 7-4-4"/>',
+    plus:'<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>',
+    list:'<path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h.01M4 12h.01M4 18h.01"/>',
+    settings:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"/>',
+    search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',
+    back:'<path d="m15 18-6-6 6-6"/><path d="M9 12h10"/>',
+    chevron:'<path d="m9 18 6-6-6-6"/>',
+    external:'<path d="M14 4h6v6M20 4l-9 9"/><path d="M18 13v6H5V6h6"/>',
+    upload:'<path d="M12 16V4M7 9l5-5 5 5"/><path d="M5 14v6h14v-6"/>'
+  };
+  return `<svg viewBox="0 0 24 24" aria-hidden="true">${paths[name]||paths.website}</svg>`;
+}
+function ensureWebsiteMobileState(){
+  state.ui=state.ui||{};
+  state.ui.websiteMobileView=state.ui.websiteMobileView||'dashboard';
+  state.ui.websiteMobileStep=Math.max(1,Math.min(4,Number(state.ui.websiteMobileStep||1)));
+  state.ui.websiteMobileDetailTab=state.ui.websiteMobileDetailTab||'info';
+  state.ui.websiteMobileStatus=state.ui.websiteMobileStatus||'all';
+  state.ui.websiteMobileSearch=state.ui.websiteMobileSearch||'';
+  state.ui.websiteMobileCategory=state.ui.websiteMobileCategory||'';
+  if(typeof state.ui.websiteMobileAutoSync!=='boolean')state.ui.websiteMobileAutoSync=true;
+  if(typeof state.ui.websiteMobileSyncImages!=='boolean')state.ui.websiteMobileSyncImages=true;
+  if(typeof state.ui.websiteMobileSkipEmptyCategory!=='boolean')state.ui.websiteMobileSkipEmptyCategory=true;
+  state.website=normalizeWebsiteProducts(state.website||websiteProductsDefaults());
+}
+function websiteMobileNav(){
+  const items=[['quote','Báo giá','quote'],['stock','Kho hàng','stock'],['website','Website','website'],['accounting','Kế toán','accounting'],['documents','Hồ sơ','document']];
+  return `<nav class="minmin-website-mobile-nav" aria-label="Điều hướng chính">${items.map(([tab,label,icon])=>`<button data-website-mobile-tab="${tab}" type="button" class="${tab==='website'?'is-active':''}">${websiteMobileIcon(icon)}<span>${label}</span></button>`).join('')}</nav>`;
+}
+function websiteMobileMainHeader(){
+  return `<header class="minmin-website-mobile-header"><div class="minmin-website-mobile-brand"><button data-website-mobile-menu type="button" class="minmin-website-mobile-icon" aria-label="Mở cài đặt">${websiteMobileIcon('menu')}</button><img src="${UI_LOGO_DATA_URL}" alt="Minmin Lifestyle"/><button data-website-mobile-notifications type="button" class="minmin-website-mobile-icon" aria-label="Thông báo">${websiteMobileIcon('bell')}</button></div>${websiteMobileNav()}</header>`;
+}
+function websiteMobileSubheader(title,back='dashboard'){
+  return `<header class="minmin-website-subheader"><button data-website-mobile-view="${esc(back)}" type="button" class="minmin-website-mobile-icon minmin-website-detail-back" aria-label="Quay lại">${websiteMobileIcon('back')}</button><strong>${esc(title)}</strong><button data-website-mobile-view="settings" type="button" class="minmin-website-mobile-icon" aria-label="Cài đặt">⋯</button></header>`;
+}
+function websiteMobileDashboard(){
+  const products=state.website.products||[];
+  const published=products.filter(p=>p.website_status==='Đã đăng website'||p.wooProductId).length;
+  const missing=products.filter(p=>websiteMissingFields(p).length).length;
+  const errors=products.filter(p=>/lỗi|error/i.test(String(p.wooStatus||''))).length;
+  const action=(view,label,caption,icon)=>`<button data-website-mobile-view="${view}" type="button" class="minmin-website-action-row">${websiteMobileIcon(icon)}<span><strong>${label}</strong><small>${caption}</small></span>${websiteMobileIcon('chevron')}</button>`;
+  return `<section class="minmin-website-mobile-view">${websiteMobileMainHeader()}<div class="minmin-website-mobile-content">
+    <div class="minmin-website-mobile-title"><h1>Website</h1><p>Quản lý sản phẩm WooCommerce</p></div>
+    <div class="minmin-website-card"><div class="minmin-website-stats">
+      <div class="minmin-website-stat"><strong>${products.length}</strong><span>Tổng sản phẩm</span></div>
+      <div class="minmin-website-stat"><strong class="text-mint">${published}</strong><span>Đã đăng</span></div>
+      <div class="minmin-website-stat"><strong class="text-[#a06a00]">${missing}</strong><span>Thiếu dữ liệu</span></div>
+    </div>${errors?`<div class="border-t border-black/5 py-2 text-center text-xs font-black text-coral">${errors} sản phẩm lỗi đồng bộ</div>`:''}</div>
+    <div class="minmin-website-card">
+      <button data-website-mobile-sync type="button" class="minmin-website-action-row">${websiteMobileIcon('sync')}<span><strong>Đồng bộ ngay</strong><small>Cập nhật sản phẩm lên website</small></span>${websiteMobileIcon('chevron')}</button>
+      ${action('wizard','Tạo sản phẩm mới','Thêm sản phẩm lên website','plus')}
+      ${action('list','Danh sách sản phẩm','Xem và quản lý tất cả sản phẩm','list')}
+      ${action('settings','Cài đặt Website','Kết nối và tùy chọn đồng bộ','settings')}
+    </div>
+    <div class="minmin-website-card minmin-website-sync-state"><span class="text-xs font-bold text-black/45">Trạng thái đồng bộ gần nhất</span><strong>${esc(state.websiteWoo?.status||'Chưa có lần đồng bộ nào')}</strong><span class="mt-1 block text-[10px] font-semibold text-black/40">${state.website.lastWooSyncAt?new Date(state.website.lastWooSyncAt).toLocaleString('vi-VN'):''}</span></div>
+  </div></section>`;
+}
+function websiteMobileFilteredProducts(){
+  const query=String(state.ui.websiteMobileSearch||'').trim().toLowerCase();
+  const status=state.ui.websiteMobileStatus||'all';
+  const category=state.ui.websiteMobileCategory||'';
+  return (state.website.products||[]).filter(p=>{
+    const published=p.website_status==='Đã đăng website'||!!p.wooProductId;
+    const missing=websiteMissingFields(p).length>0;
+    const error=/lỗi|error/i.test(String(p.wooStatus||''));
+    if(status==='published'&&!published)return false;
+    if(status==='draft'&&published)return false;
+    if(status==='missing'&&!missing)return false;
+    if(status==='error'&&!error)return false;
+    if(category&&!websiteCategoryList(p.category).includes(category))return false;
+    return !query||[p.sku,p.product_name_en,p.product_name_vi,p.category,p.stock_code].join(' ').toLowerCase().includes(query);
+  });
+}
+function websiteMobileProductRows(){
+  const rows=websiteMobileFilteredProducts();
+  if(!rows.length)return `<div class="p-6 text-center text-sm font-bold text-black/40">Không có sản phẩm phù hợp.</div>`;
+  return rows.map(p=>{
+    const image=p.featured_image_url||p.gallery_image_urls?.[0]||'';
+    const published=p.website_status==='Đã đăng website'||!!p.wooProductId;
+    const status=published?'Đã đăng':websiteMissingFields(p).length?'Thiếu dữ liệu':'Bản nháp';
+    return `<button data-website-mobile-detail="${esc(p.id)}" type="button" class="minmin-website-product-row text-left"><span class="minmin-website-product-photo">${image?`<img src="${esc(image)}" alt="${esc(p.product_name_en||p.sku)}" loading="lazy"/>`:'<span class="text-[9px] font-bold text-black/30">Chưa có ảnh</span>'}</span><span class="minmin-website-product-copy"><strong>${esc(p.sku||'Chưa có SKU')}<span class="minmin-website-product-status">${esc(status)}</span></strong><span>${esc(p.product_name_en||p.product_name_vi||'Chưa đặt tên')}</span><span>${esc(websiteCategoryLabel(p.category)||'Chưa chọn danh mục')}</span><b>${money(websiteMoneyNumber(p.sale_price)||websiteMoneyNumber(p.regular_price))}</b></span><span class="minmin-website-product-menu">⋮</span></button>`;
+  }).join('');
+}
+function websiteMobileList(){
+  const statuses=[['all','Tất cả'],['published','Đã đăng'],['draft','Chưa đăng'],['missing','Thiếu dữ liệu'],['error','Lỗi']];
+  const categories=websiteCategories();
+  return `<section class="minmin-website-mobile-view">${websiteMobileMainHeader()}<div class="minmin-website-mobile-content">
+    <div class="minmin-website-toolbar"><label class="minmin-website-search">${websiteMobileIcon('search')}<input data-website-mobile-search type="search" value="${esc(state.ui.websiteMobileSearch)}" placeholder="Tìm SKU, tên, danh mục..."/></label><button data-website-mobile-filter-toggle type="button" class="minmin-website-filter-button" aria-label="Lọc">⌘</button></div>
+    <div class="minmin-website-chips">${statuses.map(([key,label])=>`<button data-website-mobile-status="${key}" type="button" class="${state.ui.websiteMobileStatus===key?'is-active':''}">${label}</button>`).join('')}</div>
+    ${state.ui.websiteMobileFilterOpen?`<label class="minmin-website-card p-2 text-[11px] font-bold text-black/50">Danh mục<select data-website-mobile-category class="mt-1 h-10 w-full rounded-md border border-black/10 bg-white px-2 text-xs font-bold"><option value="">Tất cả danh mục</option>${categories.map(value=>`<option value="${esc(value)}" ${state.ui.websiteMobileCategory===value?'selected':''}>${esc(websiteCategoryLabel(value))}</option>`).join('')}</select></label>`:''}
+    <div class="flex items-center justify-between"><span class="text-xs font-black">${websiteMobileFilteredProducts().length} sản phẩm</span><button data-website-mobile-view="wizard" type="button" class="text-xs font-black text-mint">+ Tạo mới</button></div>
+    <div class="minmin-website-card">${websiteMobileProductRows()}</div>
+  </div></section>`;
+}
+function websiteMobileDetailContent(p){
+  const tab=state.ui.websiteMobileDetailTab;
+  if(tab==='images'){
+    const images=[p.featured_image_url,...(p.gallery_image_urls||[])].filter(Boolean);
+    return `<div class="p-3"><div class="minmin-website-gallery">${images.map(url=>`<img src="${esc(url)}" alt="Ảnh sản phẩm"/>`).join('')||'<span class="col-span-4 py-6 text-center text-xs font-bold text-black/40">Chưa có ảnh sản phẩm</span>'}</div></div>`;
+  }
+  if(tab==='attributes'){
+    return `<div class="minmin-website-info-list">${WEBSITE_SIMPLE_ATTRIBUTES.map(([label,key])=>`<div class="minmin-website-info-row"><span>${esc(label)}</span><strong>${esc(p[key]||'Chưa nhập')}</strong></div>`).join('')}</div>`;
+  }
+  if(tab==='preview'){
+    return `<div class="p-3"><h2 class="text-lg font-black">${esc(p.product_name_en||p.product_name_vi||p.sku)}</h2><p class="mt-2 text-sm leading-6 text-black/60">${esc(p.short_description||p.seo_description||'Chưa có mô tả sản phẩm.')}</p><strong class="mt-4 block text-xl text-mint">${money(websiteMoneyNumber(p.sale_price)||websiteMoneyNumber(p.regular_price))}</strong></div>`;
+  }
+  const rows=[['Tên sản phẩm',p.product_name_en||p.product_name_vi],['SKU',p.sku],['Danh mục',websiteCategoryLabel(p.category)],['Giá',money(websiteMoneyNumber(p.sale_price)||websiteMoneyNumber(p.regular_price))],['Trạng thái',p.website_status],['Tồn kho',websiteLinkedStock(p.stock_code)?.qty??'Chưa liên kết']];
+  return `<div class="minmin-website-info-list">${rows.map(([label,value])=>`<div class="minmin-website-info-row"><span>${esc(label)}</span><strong>${esc(value||'Chưa nhập')}</strong></div>`).join('')}</div>`;
+}
+function websiteMobileDate(value){
+  if(!value)return'--';
+  const date=new Date(value);
+  return Number.isNaN(date.getTime())?'--':date.toLocaleDateString('vi-VN');
+}
+function websiteMobileDetail(){
+  const p=(state.website.products||[]).find(item=>String(item.id)===String(state.ui.websiteMobileDetailId));
+  if(!p){state.ui.websiteMobileView='list';return websiteMobileList();}
+  const image=p.featured_image_url||p.gallery_image_urls?.[0]||'';
+  const tabs=[['info','Thông tin'],['images','Ảnh'],['attributes','Thuộc tính'],['preview','Xem trước']];
+  const productUrl=p.wooProductUrl||p.website_product_url;
+  return `<section class="minmin-website-mobile-view">${websiteMobileSubheader('Chi tiết sản phẩm','list')}<div class="minmin-website-mobile-content">
+    <div class="minmin-website-card"><div class="minmin-website-detail-hero"><div class="minmin-website-detail-photo">${image?`<img src="${esc(image)}" alt="${esc(p.product_name_en||p.sku)}"/>`:'<span class="flex h-full items-center justify-center text-xs font-bold text-black/35">Chưa có ảnh</span>'}</div><div class="minmin-website-detail-meta"><span class="minmin-website-badge">${p.website_status==='Đã đăng website'||p.wooProductId?'✓ Đã đăng':'Bản nháp'}</span><span>Woo ID: ${esc(p.wooProductId||'--')}</span><span>Cập nhật:<br>${esc(websiteMobileDate(p.updated_at||p.created_at))}</span>${productUrl?`<a href="${esc(productUrl)}" target="_blank" rel="noopener" class="minmin-website-secondary">Xem website ${websiteMobileIcon('external')}</a>`:''}</div></div>
+      <div class="minmin-website-detail-tabs">${tabs.map(([key,label])=>`<button data-website-mobile-detail-tab="${key}" type="button" class="${state.ui.websiteMobileDetailTab===key?'is-active':''}">${label}</button>`).join('')}</div>${websiteMobileDetailContent(p)}
+    </div>
+    <button data-website-mobile-edit="${esc(p.id)}" type="button" class="minmin-website-primary">Chỉnh sửa nhanh</button>
+  </div></section>`;
+}
+function websiteMobileField(label,key,type='text',placeholder=''){
+  const p=state.website.current||websiteProductDefaults();
+  return `<label>${esc(label)}<input data-website-mobile-field="${esc(key)}" type="${esc(type)}" value="${esc(p[key]||'')}" placeholder="${esc(placeholder)}"/></label>`;
+}
+function websiteMobileWizardBody(){
+  const p=normalizeWebsiteProduct(state.website.current||{}),step=state.ui.websiteMobileStep;
+  if(step===1){
+    return `<div class="minmin-website-form">${websiteMobileField('Tên sản phẩm *','product_name_en','text','Nhập tên sản phẩm')}${websiteMobileField('SKU *','sku','text','Nhập SKU')}<label>Danh mục *<select data-website-mobile-field="category"><option value="">Chọn danh mục</option>${WEBSITE_CATEGORY_OPTIONS.map(option=>`<option value="${esc(option.value)}" ${websiteCategoryList(p.category).includes(option.value)?'selected':''}>${esc(option.label)}</option>`).join('')}</select></label>${websiteMobileField('Giá (VND) *','regular_price','number','Nhập giá')}<label>Trạng thái<select data-website-mobile-field="website_status">${['Nháp','Sẵn sàng CSV','Đã đăng website','Tạm ẩn'].map(value=>`<option value="${esc(value)}" ${p.website_status===value?'selected':''}>${esc(value)}</option>`).join('')}</select></label>${websiteMobileField('Mã liên kết kho','stock_code','text','STK...')}</div>`;
+  }
+  if(step===2){
+    const gallery=p.gallery_image_urls||[];
+    return `<div class="minmin-website-form"><strong class="text-base">Ảnh đại diện</strong><div class="minmin-website-upload-grid"><label class="minmin-website-upload">${p.featured_image_url?`<img src="${esc(p.featured_image_url)}" alt="Ảnh đại diện"/>`:`<span>${websiteMobileIcon('upload')}<small class="mt-2 block">Chọn ảnh đại diện</small></span>`}<input data-website-mobile-featured type="file" accept="image/*" class="hidden"/></label><div class="minmin-website-upload">${p.featured_image_url?`<img src="${esc(p.featured_image_url)}" alt="Xem trước"/>`:'<span class="text-xs font-bold text-black/35">Ảnh xem trước</span>'}</div></div><strong class="mt-2 text-base">Gallery sản phẩm</strong><div class="minmin-website-gallery">${gallery.map(url=>`<img src="${esc(url)}" alt="Ảnh gallery"/>`).join('')}<label class="flex aspect-square cursor-pointer items-center justify-center rounded-md border border-dashed border-black/20 bg-white text-2xl">+<input data-website-mobile-gallery type="file" accept="image/*" multiple class="hidden"/></label></div></div>`;
+  }
+  if(step===3){
+    return `<div class="minmin-website-form">${WEBSITE_SIMPLE_ATTRIBUTES.map(([label,key])=>websiteMobileField(label,key)).join('')}<label>Mô tả ngắn<textarea data-website-mobile-field="short_description" placeholder="Mô tả sản phẩm">${esc(p.short_description||'')}</textarea></label></div>`;
+  }
+  const image=p.featured_image_url||p.gallery_image_urls?.[0]||'';
+  return `<div class="minmin-website-form"><div class="minmin-website-card overflow-hidden">${image?`<img src="${esc(image)}" alt="${esc(p.product_name_en||p.sku)}" class="h-60 w-full object-cover"/>`:''}<div class="p-3"><h2 class="text-xl font-black">${esc(p.product_name_en||p.product_name_vi||'Tên sản phẩm')}</h2><p class="mt-1 text-xs text-black/50">${esc(p.sku||'Chưa có SKU')} · ${esc(websiteCategoryLabel(p.category)||'Chưa có danh mục')}</p><strong class="mt-3 block text-xl text-mint">${money(websiteMoneyNumber(p.sale_price)||websiteMoneyNumber(p.regular_price))}</strong><p class="mt-3 text-sm leading-6 text-black/60">${esc(p.short_description||'Chưa có mô tả.')}</p></div></div></div>`;
+}
+function websiteMobileWizard(){
+  const labels=['Thông tin','Ảnh','Thuộc tính','Xem trước'];
+  return `<section class="minmin-website-mobile-view">${websiteMobileSubheader(state.website.editingId?'Chỉnh sửa sản phẩm':'Tạo sản phẩm mới',state.website.editingId?'detail':'dashboard')}<div class="minmin-website-steps">${labels.map((label,index)=>`<span class="minmin-website-step ${state.ui.websiteMobileStep===index+1?'is-active':''}"><b>${index+1}</b><span>${label}</span></span>`).join('')}</div>${websiteMobileWizardBody()}<div class="minmin-website-form-actions ${state.ui.websiteMobileStep===1?'is-single':''}">${state.ui.websiteMobileStep>1?`<button data-website-mobile-step="${state.ui.websiteMobileStep-1}" type="button" class="minmin-website-secondary">Quay lại</button>`:''}<button data-website-mobile-step="${state.ui.websiteMobileStep<4?state.ui.websiteMobileStep+1:'save'}" type="button" class="minmin-website-primary">${state.ui.websiteMobileStep<4?'Tiếp tục':'Lưu sản phẩm'}</button></div></section>`;
+}
+function websiteMobileSettings(){
+  const c=normalizeWebsiteWooConfig(state.websiteWoo||websiteWooDefaults());
+  const toggle=(key,label,caption)=>`<button data-website-mobile-toggle="${key}" type="button" class="minmin-website-switch-row text-left"><span><strong>${label}</strong><small>${caption}</small></span><span class="minmin-website-switch ${state.ui[key]?'is-on':''}"></span></button>`;
+  return `<section class="minmin-website-mobile-view">${websiteMobileSubheader('Cài đặt Website','dashboard')}<div class="minmin-website-mobile-content">
+    <div class="minmin-website-card"><div class="minmin-website-form"><h2 class="text-base font-black">Kết nối WooCommerce</h2><label>Website URL<input data-website-mobile-woo="siteUrl" type="url" value="${esc(c.siteUrl||'https://minmin-lifestyle.com')}"/></label><label>Consumer Key<input data-website-mobile-woo="consumerKey" type="password" value="${esc(c.consumerKey||'')}"/></label><label>Consumer Secret<input data-website-mobile-woo="consumerSecret" type="password" value="${esc(c.consumerSecret||'')}"/></label><span class="text-xs font-black ${websiteWooReady()?'text-mint':'text-coral'}">${websiteWooReady()?'✓ Đã nhập đủ thông tin kết nối':'Chưa cấu hình đủ WooCommerce'}</span><button data-website-mobile-test-woo type="button" class="minmin-website-secondary">Kiểm tra kết nối</button></div></div>
+    <div class="minmin-website-card px-3"><h2 class="pt-3 text-base font-black">Tùy chọn đồng bộ</h2>${toggle('websiteMobileAutoSync','Tự động đồng bộ','Tự động đồng bộ sản phẩm theo lịch.')}${toggle('websiteMobileSyncImages','Đồng bộ ảnh','Đồng bộ ảnh sản phẩm lên website.')}${toggle('websiteMobileSkipEmptyCategory','Không gửi danh mục trống','Bỏ qua danh mục không có sản phẩm.')}</div>
+    <button data-website-mobile-save-settings type="button" class="minmin-website-primary">Lưu cài đặt</button>
+  </div></section>`;
+}
+function websiteMobileView(){
+  ensureWebsiteMobileState();
+  const view=state.ui.websiteMobileView;
+  if(view==='list')return websiteMobileList();
+  if(view==='detail')return websiteMobileDetail();
+  if(view==='wizard')return websiteMobileWizard();
+  if(view==='settings')return websiteMobileSettings();
+  return websiteMobileDashboard();
+}
+function mountWebsiteMobile(){
+  if(!appUnlocked||state.activeTab!=='website')return;
+  const main=document.querySelector('main');
+  const section=document.getElementById('websiteNew')?.closest('section')||document.getElementById('websiteSave')?.closest('section');
+  if(!main||!section)return;
+  section.classList.add('minmin-website-desktop-view');
+  main.insertAdjacentHTML('beforeend',websiteMobileView());
+}
+const renderWithWebsiteMobile=render;
+render=function(...args){
+  const result=renderWithWebsiteMobile(...args);
+  mountWebsiteMobile();
+  return result;
+};
+document.addEventListener('input',event=>{
+  const search=event.target.closest?.('[data-website-mobile-search]');
+  if(search){
+    state.ui.websiteMobileSearch=search.value||'';
+    const card=document.querySelector('.minmin-website-mobile-content .minmin-website-card:last-child');
+    if(card)card.innerHTML=websiteMobileProductRows();
+    return;
+  }
+  const field=event.target.closest?.('[data-website-mobile-field]');
+  if(field){
+    websiteSetCurrent({[field.dataset.websiteMobileField]:field.value});
+    saveWebsiteProducts();
+    return;
+  }
+  const woo=event.target.closest?.('[data-website-mobile-woo]');
+  if(woo){
+    state.websiteWoo=normalizeWebsiteWooConfig(state.websiteWoo||websiteWooDefaults());
+    state.websiteWoo[woo.dataset.websiteMobileWoo]=woo.value;
+    saveWebsiteWooConfig();
+  }
+});
+document.addEventListener('change',async event=>{
+  const category=event.target.closest?.('[data-website-mobile-category]');
+  if(category){
+    state.ui.websiteMobileCategory=category.value||'';
+    saveDraft();
+    render({force:true});
+    return;
+  }
+  const field=event.target.closest?.('[data-website-mobile-field]');
+  if(field){
+    websiteSetCurrent({[field.dataset.websiteMobileField]:field.value});
+    saveWebsiteProducts();
+    return;
+  }
+  const featured=event.target.closest?.('[data-website-mobile-featured]');
+  if(featured?.files?.[0]){
+    try{await uploadWebsiteFeatured(featured.files[0]);render({force:true});}
+    catch(error){alert('Chưa tải được ảnh đại diện: '+(error.message||error));}
+    return;
+  }
+  const gallery=event.target.closest?.('[data-website-mobile-gallery]');
+  if(gallery?.files?.length){
+    try{await uploadWebsiteGallery(gallery.files);render({force:true});}
+    catch(error){alert('Chưa tải được gallery: '+(error.message||error));}
+  }
+});
+document.addEventListener('click',event=>{
+  const tab=event.target.closest?.('[data-website-mobile-tab]');
+  if(tab){
+    state.activeTab=tab.dataset.websiteMobileTab||'website';
+    if(state.activeTab==='accounting')state.accounting.view='overview';
+    saveDraft();
+    render({force:true});
+    return;
+  }
+  if(event.target.closest?.('[data-website-mobile-menu]')){
+    state.ui.websiteMobileView='settings';
+    render({force:true});
+    return;
+  }
+  const view=event.target.closest?.('[data-website-mobile-view]');
+  if(view){
+    const next=view.dataset.websiteMobileView||'dashboard';
+    if(next==='wizard'){
+      state.website.editingId='';
+      state.website.current=websiteProductDefaults();
+      state.ui.websiteMobileStep=1;
+    }
+    state.ui.websiteMobileView=next;
+    saveWebsiteProducts();
+    render({force:true});
+    return;
+  }
+  const detail=event.target.closest?.('[data-website-mobile-detail]');
+  if(detail){
+    state.ui.websiteMobileDetailId=detail.dataset.websiteMobileDetail;
+    state.ui.websiteMobileDetailTab='info';
+    state.ui.websiteMobileView='detail';
+    saveDraft();
+    render({force:true});
+    return;
+  }
+  const detailTab=event.target.closest?.('[data-website-mobile-detail-tab]');
+  if(detailTab){
+    state.ui.websiteMobileDetailTab=detailTab.dataset.websiteMobileDetailTab;
+    render({force:true});
+    return;
+  }
+  const edit=event.target.closest?.('[data-website-mobile-edit]');
+  if(edit){
+    const p=state.website.products.find(item=>String(item.id)===String(edit.dataset.websiteMobileEdit));
+    if(!p)return;
+    state.website.editingId=p.id;
+    state.website.current=normalizeWebsiteProduct(p);
+    state.ui.websiteMobileStep=1;
+    state.ui.websiteMobileView='wizard';
+    saveWebsiteProducts();
+    render({force:true});
+    return;
+  }
+  const status=event.target.closest?.('[data-website-mobile-status]');
+  if(status){
+    state.ui.websiteMobileStatus=status.dataset.websiteMobileStatus||'all';
+    saveDraft();
+    render({force:true});
+    return;
+  }
+  if(event.target.closest?.('[data-website-mobile-filter-toggle]')){
+    state.ui.websiteMobileFilterOpen=!state.ui.websiteMobileFilterOpen;
+    render({force:true});
+    return;
+  }
+  const step=event.target.closest?.('[data-website-mobile-step]');
+  if(step){
+    if(step.dataset.websiteMobileStep==='save'){
+      state.ui.websiteMobileView='list';
+      websiteSaveProduct();
+    }else{
+      state.ui.websiteMobileStep=Number(step.dataset.websiteMobileStep)||1;
+      saveWebsiteProducts();
+      render({force:true});
+    }
+    return;
+  }
+  const toggle=event.target.closest?.('[data-website-mobile-toggle]');
+  if(toggle){
+    const key=toggle.dataset.websiteMobileToggle;
+    state.ui[key]=!state.ui[key];
+    saveDraft();
+    render({force:true});
+    return;
+  }
+  if(event.target.closest?.('[data-website-mobile-save-settings]')){
+    saveWebsiteWooConfig();
+    state.ui.websiteMobileView='dashboard';
+    render({force:true});
+    return;
+  }
+  if(event.target.closest?.('[data-website-mobile-test-woo]')){
+    testWebsiteWooConnection().catch(error=>{state.websiteWoo.status='Lỗi WooCommerce: '+(error.message||error);saveWebsiteWooConfig();render({force:true});});
+    return;
+  }
+  if(event.target.closest?.('[data-website-mobile-sync]')){
+    const run=typeof minminUploadAllWooSuperFast==='function'
+      ?minminUploadAllWooSuperFast({includeImages:!!state.ui.websiteMobileSyncImages})
+      :uploadAllWebsiteProductsToWoo();
+    Promise.resolve(run).then(()=>render({force:true})).catch(error=>{alert('Chưa đồng bộ được Website: '+(error.message||error));render({force:true});});
+  }
 });
 
 initApp();
