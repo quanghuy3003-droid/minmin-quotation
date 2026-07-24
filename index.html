@@ -3187,6 +3187,52 @@
         .minmin-quote-desktop-view > aside .grid.gap-2 > div:last-child { border-bottom: 0; }
         .minmin-quote-desktop-view.mm-quote-exact-active > .mm-quote-legacy-left,
         .minmin-quote-desktop-view.mm-quote-exact-active > .mm-quote-legacy-aside { display: none !important; }
+        .minmin-quote-desktop-view > .mm-quote-legacy-aside { display: none !important; }
+        .mm-quote-editor-overlay {
+          position: fixed;
+          inset: 0;
+          z-index: 90;
+          display: grid;
+          place-items: center;
+          overflow-y: auto;
+          background: rgba(17,21,28,.42);
+          padding: 32px;
+          backdrop-filter: blur(4px);
+        }
+        .mm-quote-editor-dialog {
+          width: min(980px,calc(100vw - 64px));
+          max-height: calc(100vh - 64px);
+          overflow: auto;
+          border: 1px solid #e9ecef;
+          border-radius: 18px;
+          background: #f7f8fa;
+          box-shadow: 0 24px 70px rgba(17,21,28,.20);
+        }
+        .mm-quote-editor-head {
+          position: sticky;
+          top: 0;
+          z-index: 5;
+          display: flex;
+          min-height: 62px;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+          border-bottom: 1px solid #e9ecef;
+          background: rgba(255,255,255,.97);
+          padding: 0 18px;
+          backdrop-filter: blur(10px);
+        }
+        .mm-quote-editor-head strong { font-size: 15px; font-weight: 900; }
+        .mm-quote-editor-close { min-height: 38px; border: 1px solid #e9ecef; border-radius: 12px; background: #fff; padding: 0 14px; font-size: 12px; font-weight: 900; }
+        .mm-quote-editor-body { padding: 16px; }
+        .mm-quote-editor-body > * { display: block !important; margin: 0 !important; border-radius: 14px !important; box-shadow: none !important; }
+        .mm-quote-editor-body .mm-quote-source-customer { display: block !important; }
+        .mm-quote-editor-body [data-line] { margin: 0 !important; border-radius: 14px !important; box-shadow: none !important; }
+        .mm-quote-editor-body [data-line-collapse],
+        .mm-quote-editor-body [data-customer-collapse] { display: none !important; }
+        .mm-quote-editor-body [data-line] .mm-quote-row-price,
+        .mm-quote-editor-body [data-line] .mm-quote-row-qty,
+        .mm-quote-editor-body [data-line] .mm-quote-row-total { display: none !important; }
         .mm-quote-exact-left { display: grid; min-width: 0; gap: 18px; }
         .mm-quote-exact-right { align-self: start; position: sticky; top: 18px; display: grid; gap: 12px; }
         .minmin-quote-desktop-view > aside.mm-quote-exact-right {
@@ -17332,6 +17378,37 @@ function mmQuoteExactDashboard(){
   const summary=[['Tổng giá trị',t.subtotal],['Chiết khấu',t.discount],['Sau chiết khấu',t.afterDiscount],[`VAT (${Number(info.vatRate||0)}%)`,t.vat],['Đặt cọc',t.deposit],['Còn lại',t.remaining]];
   return `<section class="mm-quote-exact-left"><div class="mm-quote-exact-head"><div><h1>Báo giá&nbsp; / &nbsp;${esc(quoteCode)} <span class="mm-quote-status">Đang mở</span></h1><p>Tạo ngày ${esc(quoteDate)} · Cập nhật ${esc(new Date().toLocaleDateString('vi-VN'))}</p></div><div class="mm-desktop-actions"><button class="mm-button" type="button" data-mm-quote-customer>✎ Chỉnh sửa khách hàng</button><button class="mm-button" type="button">••• Khác</button></div></div><div class="mm-quote-exact-customer"><div><span>Khách hàng</span><strong>${esc(info.client||'Chưa nhập')}</strong><p>${esc(info.tel||'Chưa có điện thoại')}${info.email?` · ${esc(info.email)}`:info.representative?` · ${esc(info.representative)}`:''}</p></div><div><span>Mã khách hàng</span><strong>${esc(info.customerCode||info.clientCode||'--')}</strong></div><div><span>Địa chỉ</span><strong>${esc(info.address||'Xác nhận sau')}</strong><p>${esc(info.delivery||'')}</p></div></div><div class="mm-quote-exact-title"><h2>Bảng sản phẩm</h2><p>Chọn loại đèn, kiểu hàng và nhập thông tin trước khi xuất Excel.</p></div><div class="mm-quote-exact-table"><div class="mm-quote-exact-tools"><label>⌕ <input data-mm-quote-exact-search type="search" placeholder="Tìm mã, tên, loại đèn..."/></label><label><select data-mm-quote-exact-type><option value="">Loại đèn: Tất cả</option><option value="den tha">Đèn thả</option><option value="den tuong">Đèn tường</option><option value="den ban">Đèn bàn</option></select></label><label><select><option>Trạng thái: Tất cả</option></select></label><button class="mm-button primary" type="button" data-mm-quote-product>＋ Thêm sản phẩm</button></div><div class="mm-quote-exact-columns"><span>Sản phẩm</span><span>Đơn giá</span><span>Số lượng</span><span class="text-right">Thành tiền</span><span></span></div><div data-mm-quote-exact-list>${rows||'<div class="p-8 text-center text-sm text-black/45">Chưa có sản phẩm.</div>'}</div><footer class="mm-quote-exact-foot"><span>Hiển thị 1 – ${state.lines.length} trong ${state.lines.length} sản phẩm</span><button type="button">⚙</button></footer></div></section><aside class="mm-quote-exact-right"><div class="mm-quote-dark-summary"><header><span>Tổng tiền sau VAT</span><strong>${money(t.afterVat)}</strong><p>${esc(numberToVietnamese(t.afterVat))}</p></header><dl>${summary.map(([label,value])=>`<div><dt>${esc(label)}</dt><dd>${money(value)}</dd></div>`).join('')}</dl></div><div class="mm-quote-finance-actions"><div class="mm-quote-finance-grid"><label>Phí vận chuyển<input data-mm-quote-finance="shipPriceText" inputmode="numeric" value="${Number(info.shipPriceText||0)}"/></label><label>SL phí<input data-mm-quote-finance="shipQty" type="number" value="${Number(info.shipQty||1)}"/></label></div><div class="mm-quote-finance-grid three"><label>Chiết khấu %<input data-mm-quote-finance="discountRate" type="number" value="${Number(info.discountRate||0)}"/></label><label>VAT %<input data-mm-quote-finance="vatRate" type="number" value="${Number(info.vatRate||0)}"/></label><label>Đặt cọc %<input data-mm-quote-finance="depositRate" type="number" value="${Number(info.depositRate||0)}"/></label></div><button class="mm-quote-action primary" type="button" data-mm-quote-action="excel">▧ Xuất Excel</button><button class="mm-quote-action" type="button" data-mm-quote-action="preview">◉ Xem trước PDF</button><button class="mm-quote-action" type="button" data-mm-quote-action="pdf">▧ Xuất PDF</button><button class="mm-quote-action" type="button" data-mm-quote-action="import">▧ Nhập Excel cũ</button></div></aside>`;
 }
+function mmMountQuoteEditor(quote){
+  document.querySelector('.mm-quote-editor-overlay')?.remove();
+  const mode=String(state.ui?.desktopQuoteEditor||'');
+  if(!quote||!mode)return;
+  const legacy=quote.querySelector(':scope > .mm-quote-legacy-left');
+  if(!legacy)return;
+  let target=null;
+  let title='Chỉnh sửa báo giá';
+  if(mode==='customer'){
+    const heading=[...legacy.querySelectorAll('h2')].find(node=>node.textContent.trim()==='Thông tin khách hàng');
+    target=heading?.parentElement||null;
+    target?.classList.add('mm-quote-source-customer');
+    title='Chỉnh sửa khách hàng';
+  }else{
+    target=legacy.querySelector(`[data-line="${CSS.escape(mode)}"]`);
+    const line=state.lines.find(item=>String(item.uid)===mode);
+    title=`Chỉnh sửa sản phẩm${line?.code?` · ${line.code}`:''}`;
+  }
+  if(!target){
+    state.ui.desktopQuoteEditor='';
+    return;
+  }
+  const overlay=document.createElement('div');
+  overlay.className='mm-quote-editor-overlay';
+  overlay.setAttribute('role','dialog');
+  overlay.setAttribute('aria-modal','true');
+  overlay.setAttribute('aria-label',title);
+  overlay.innerHTML=`<section class="mm-quote-editor-dialog"><header class="mm-quote-editor-head"><strong>${esc(title)}</strong><button class="mm-quote-editor-close" type="button" data-mm-quote-editor-close>Đóng</button></header><div class="mm-quote-editor-body"></div></section>`;
+  overlay.querySelector('.mm-quote-editor-body').appendChild(target);
+  document.body.appendChild(overlay);
+}
 function mountMinminDesktopUi(){
   if(window.matchMedia?.('(max-width: 767px)').matches)return;
 
@@ -17342,6 +17419,7 @@ function mountMinminDesktopUi(){
     quote.querySelector(':scope > aside')?.classList.add('mm-quote-legacy-aside');
     quote.insertAdjacentHTML('afterbegin',mmQuoteExactDashboard());
   }
+  mmMountQuoteEditor(quote);
 
   const stockWrap=document.querySelector('.minmin-stock-desktop-view');
   const stockSection=stockWrap?.querySelector(':scope > section');
@@ -17398,9 +17476,9 @@ document.addEventListener('click',event=>{
     return;
   }
   if(event.target.closest?.('[data-mm-quote-customer]')){
-    const quote=document.querySelector('.minmin-quote-desktop-view');
-    quote?.classList.remove('mm-quote-exact-active');
-    quote?.querySelector('.mm-quote-legacy-left')?.scrollIntoView({behavior:'smooth',block:'start'}); return;
+    state.ui.desktopQuoteEditor='customer';
+    state.ui.quoteCustomerOpen=true;
+    render({force:true}); return;
   }
   if(event.target.closest?.('[data-mm-quote-product]')){
     document.querySelector('[data-add-line],#addProduct,#addLine')?.click(); return;
@@ -17420,12 +17498,15 @@ document.addEventListener('click',event=>{
   }
   const edit=event.target.closest?.('[data-mm-quote-edit]');
   if(edit){
-    const original=document.querySelector(`.minmin-quote-desktop-view [data-line="${CSS.escape(edit.dataset.mmQuoteEdit)}"] [data-line-expand]`);
-    original?.click();
-    const quote=document.querySelector('.minmin-quote-desktop-view');
-    quote?.classList.remove('mm-quote-exact-active');
-    quote?.querySelector(`[data-line="${CSS.escape(edit.dataset.mmQuoteEdit)}"]`)?.scrollIntoView({behavior:'smooth',block:'center'});
-    return;
+    const id=String(edit.dataset.mmQuoteEdit||'');
+    state.ui.desktopQuoteEditor=id;
+    state.ui.quoteLineOpen=state.ui.quoteLineOpen||{};
+    state.ui.quoteLineOpen[id]=true;
+    render({force:true}); return;
+  }
+  if(event.target.closest?.('[data-mm-quote-editor-close]')||event.target.matches?.('.mm-quote-editor-overlay')){
+    state.ui.desktopQuoteEditor='';
+    render({force:true}); return;
   }
   const action=event.target.closest?.('[data-mm-quote-action]');
   if(action){

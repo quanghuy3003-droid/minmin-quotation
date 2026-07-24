@@ -30,3 +30,14 @@ test('desktop enhancement delegates actions to existing controls', () => {
   assert.ok(html.includes("document.querySelector('[data-website-sync-all],#syncWebsiteProducts')?.click()"));
   assert.ok(html.includes("document.querySelector('[data-sync-inventory],#syncInventory')"));
 });
+
+test('quotation editors stay isolated from the legacy layout and duplicate summary', () => {
+  assert.ok(html.includes('function mmMountQuoteEditor(quote)'));
+  assert.ok(html.includes("state.ui.desktopQuoteEditor='customer'"));
+  assert.ok(html.includes('state.ui.quoteLineOpen[id]=true'));
+  assert.match(html, /\.minmin-quote-desktop-view\s*>\s*\.mm-quote-legacy-aside\s*\{\s*display:\s*none\s*!important;/);
+  assert.doesNotMatch(
+    html,
+    /data-mm-quote-customer[\s\S]{0,500}classList\.remove\('mm-quote-exact-active'\)/,
+  );
+});
