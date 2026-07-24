@@ -3703,7 +3703,7 @@
           overflow: hidden;
           border: 0;
           background: linear-gradient(100deg,#080b0f 0%,#10151b 100%) !important;
-          padding: 0 max(14px,calc((100% - 1480px)/2 + 24px)) !important;
+          padding: 0 24px !important;
           box-shadow: 0 1px 0 rgba(255,255,255,.05),0 7px 22px rgba(8,11,15,.16);
         }
         .minmin-nav-logo {
@@ -3724,15 +3724,19 @@
           filter: brightness(0) invert(1);
         }
         body .minmin-main-nav .minmin-tab-button {
-          min-width: 0 !important;
+          width: 108px !important;
+          min-width: 108px !important;
+          max-width: 108px !important;
           min-height: 48px;
           flex: 0 0 auto;
+          box-sizing: border-box;
           border: 1px solid transparent;
           border-radius: 10px !important;
           padding: 0 clamp(8px,1vw,14px) !important;
           color: rgba(255,255,255,.78);
           font-size: 12px;
           font-weight: 850;
+          white-space: nowrap !important;
         }
         body .minmin-main-nav .minmin-tab-button:hover {
           border-color: rgba(255,255,255,.06);
@@ -3780,6 +3784,18 @@
       }
       @media (min-width: 1500px) {
         .minmin-stock-desktop-view .minmin-stock-group-body { grid-template-columns: repeat(4,minmax(0,1fr)); }
+      }
+      @media (min-width: 768px) and (max-width: 1050px) {
+        body .minmin-main-nav { padding-right: 14px !important; padding-left: 14px !important; }
+        .minmin-nav-logo { width: 110px; margin-right: 8px; }
+        body .minmin-main-nav .minmin-tab-button {
+          width: 96px !important;
+          min-width: 96px !important;
+          max-width: 96px !important;
+          padding-right: 7px !important;
+          padding-left: 7px !important;
+          font-size: 11px;
+        }
       }
     </style>
   </head>
