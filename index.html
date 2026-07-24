@@ -587,6 +587,7 @@
         display: none;
       }
       @media (max-width: 640px) {
+        body:has(.minmin-stock-mobile-view) .minmin-app-logo,
         body:has(.minmin-stock-mobile-view) .minmin-main-nav {
           display: none !important;
         }
@@ -3000,6 +3001,229 @@
           font-size: 0.8rem;
           font-weight: 700;
         }
+      }
+      /* MINMIN desktop design system — visual layer only, business logic stays untouched. */
+      :root {
+        --mm-green: #11845f;
+        --mm-green-soft: #edf8f4;
+        --mm-ink: #111820;
+        --mm-canvas: #f7f7f4;
+        --mm-line: rgba(17, 24, 32, .10);
+        --mm-muted: #68717d;
+        --mm-radius: 16px;
+        --mm-shadow: 0 8px 30px rgba(17, 24, 32, .045);
+      }
+      @media (min-width: 768px) {
+        body { background: var(--mm-canvas); color: var(--mm-ink); }
+        .minmin-topbar, .minmin-main-nav { position: relative; z-index: 45; }
+        .minmin-main-nav { box-shadow: 0 1px 0 rgba(255,255,255,.06), 0 8px 24px rgba(0,0,0,.08); }
+        .minmin-tab-button { min-height: 46px; border-radius: 10px !important; transition: background-color .18s ease, color .18s ease, box-shadow .18s ease, transform .18s ease; }
+        .minmin-tab-button:hover { transform: translateY(-1px); }
+        .mm-desktop-hero {
+          grid-column: 1 / -1;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 20px;
+          padding: 4px 2px 2px;
+        }
+        .mm-desktop-hero h1 { margin: 0; font-size: 27px; line-height: 1.15; font-weight: 900; letter-spacing: -.025em; }
+        .mm-desktop-hero p { margin: 6px 0 0; color: var(--mm-muted); font-size: 13px; font-weight: 600; }
+        .mm-desktop-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; }
+        .mm-button {
+          display: inline-flex;
+          min-height: 42px;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          border: 1px solid var(--mm-line);
+          border-radius: 10px;
+          background: #fff;
+          padding: 0 16px;
+          color: var(--mm-ink);
+          font-size: 13px;
+          font-weight: 850;
+          box-shadow: 0 2px 8px rgba(17,24,32,.025);
+          transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+        }
+        .mm-button:hover { transform: translateY(-1px); border-color: rgba(17,132,95,.45); box-shadow: 0 7px 18px rgba(17,24,32,.07); }
+        .mm-button.primary { border-color: var(--mm-green); background: var(--mm-green); color: #fff; }
+        .mm-stat-strip {
+          grid-column: 1 / -1;
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0,1fr));
+          overflow: hidden;
+          border: 1px solid var(--mm-line);
+          border-radius: var(--mm-radius);
+          background: #fff;
+          box-shadow: var(--mm-shadow);
+        }
+        .mm-stat { min-width: 0; padding: 18px 20px; border-right: 1px solid var(--mm-line); }
+        .mm-stat:last-child { border-right: 0; }
+        .mm-stat span { display: block; color: var(--mm-muted); font-size: 10px; font-weight: 850; letter-spacing: .08em; text-transform: uppercase; }
+        .mm-stat strong { display: block; margin-top: 7px; overflow-wrap: anywhere; font-size: 21px; line-height: 1.1; font-weight: 900; }
+        .mm-stat small { display: block; margin-top: 6px; color: var(--mm-muted); font-size: 11px; font-weight: 650; }
+        .mm-desktop-side {
+          align-self: start;
+          border: 1px solid var(--mm-line);
+          border-radius: var(--mm-radius);
+          background: #fff;
+          padding: 18px;
+          box-shadow: var(--mm-shadow);
+        }
+        .mm-desktop-side h2 { margin: 0; font-size: 15px; font-weight: 900; }
+        .mm-desktop-side-row { display: grid; grid-template-columns: 42px minmax(0,1fr) auto; align-items: center; gap: 10px; padding: 11px 0; border-bottom: 1px solid rgba(17,24,32,.07); }
+        .mm-desktop-side-row:last-child { border-bottom: 0; }
+        .mm-desktop-side-row img { width: 42px; height: 42px; border: 1px solid var(--mm-line); border-radius: 9px; object-fit: contain; background: #f7f7f4; }
+        .mm-desktop-side-row b { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+        .mm-desktop-side-row small { color: var(--mm-muted); font-size: 10px; font-weight: 700; }
+        .mm-progress { height: 5px; margin-top: 7px; overflow: hidden; border-radius: 999px; background: #e9ece9; }
+        .mm-progress > i { display: block; height: 100%; border-radius: inherit; background: var(--mm-green); }
+
+        /* Quote: generous 70/30 workspace and quiet product list. */
+        .minmin-quote-desktop-view {
+          width: 100%;
+          max-width: 1500px !important;
+          gap: 22px !important;
+          padding: 26px 28px 34px !important;
+        }
+        .minmin-quote-desktop-view > .mm-desktop-hero { order: -3; }
+        .minmin-quote-desktop-view > div { gap: 18px !important; }
+        .minmin-quote-desktop-view > div > div,
+        .minmin-quote-desktop-view [data-line] {
+          border-color: var(--mm-line) !important;
+          border-radius: var(--mm-radius) !important;
+          box-shadow: var(--mm-shadow) !important;
+        }
+        .minmin-quote-desktop-view [data-line] { padding: 14px 16px !important; transition: transform .18s ease, box-shadow .18s ease; }
+        .minmin-quote-desktop-view [data-line]:hover { transform: translateY(-1px); box-shadow: 0 12px 28px rgba(17,24,32,.075) !important; }
+        .minmin-quote-desktop-view > aside {
+          top: 18px !important;
+          border: 0 !important;
+          border-radius: var(--mm-radius) !important;
+          background: linear-gradient(145deg,#111820,#18232d) !important;
+          padding: 19px !important;
+          box-shadow: 0 16px 36px rgba(17,24,32,.14) !important;
+        }
+        .minmin-quote-desktop-view > aside button,
+        .minmin-quote-desktop-view > aside label { min-height: 44px; border-radius: 10px !important; }
+
+        /* Inventory: dashboard header, statistics and card grid. */
+        .minmin-stock-desktop-view > section {
+          width: 100%;
+          max-width: 1540px !important;
+          gap: 20px !important;
+          padding: 26px 28px 38px !important;
+        }
+        .minmin-stock-desktop-view .minmin-stock-entry { display: none; border-radius: var(--mm-radius) !important; box-shadow: var(--mm-shadow); }
+        .minmin-stock-desktop-view.is-entry-open .minmin-stock-entry { display: block; }
+        .minmin-stock-desktop-view .minmin-stock-list-head {
+          margin-bottom: 2px;
+          border: 0 !important;
+          padding-top: 0 !important;
+        }
+        .minmin-stock-desktop-view .minmin-stock-list-head > div:last-child { display: none !important; }
+        .minmin-stock-desktop-view .minmin-stock-group {
+          border: 0 !important;
+          border-radius: 0 !important;
+          background: transparent !important;
+          overflow: visible !important;
+        }
+        .minmin-stock-desktop-view .minmin-stock-group-head {
+          margin: 8px 0 10px;
+          border: 0 !important;
+          padding: 0 2px !important;
+          color: var(--mm-ink) !important;
+        }
+        .minmin-stock-desktop-view .minmin-stock-group-head h3 { font-size: 15px; }
+        .minmin-stock-desktop-view .minmin-stock-group-body {
+          grid-template-columns: repeat(2,minmax(0,1fr));
+          gap: 14px !important;
+          padding: 0 !important;
+          background: transparent !important;
+        }
+        .minmin-stock-desktop-view .minmin-stock-card {
+          position: relative;
+          min-width: 0;
+          border-color: var(--mm-line) !important;
+          border-radius: 14px !important;
+          background: #fff !important;
+          padding: 13px !important;
+          box-shadow: var(--mm-shadow) !important;
+          transition: transform .18s ease, box-shadow .18s ease;
+        }
+        .minmin-stock-desktop-view .minmin-stock-card:hover { transform: translateY(-2px); box-shadow: 0 14px 28px rgba(17,24,32,.08) !important; }
+        .minmin-stock-desktop-view .minmin-stock-grid { display: grid !important; grid-template-columns: 92px minmax(0,1fr) !important; gap: 12px !important; }
+        .minmin-stock-desktop-view .minmin-stock-photo { width: 92px !important; height: 92px !important; border-radius: 11px !important; }
+        .minmin-stock-desktop-view .minmin-stock-info h3 { font-size: 14px !important; }
+        .minmin-stock-desktop-view .stock-file-label,
+        .minmin-stock-desktop-view .stock-timeline,
+        .minmin-stock-desktop-view .minmin-stock-out-row { display: none !important; }
+        .minmin-stock-desktop-view .minmin-stock-actions { grid-column: 1 / -1; max-width: none !important; margin-top: 2px; }
+        .minmin-stock-desktop-view .stock-action-row { grid-template-columns: 1fr auto auto !important; }
+        .minmin-stock-desktop-view .minmin-stock-detail { grid-column: 1 / -1; }
+        .minmin-stock-desktop-view .minmin-stock-history { border-radius: var(--mm-radius) !important; box-shadow: var(--mm-shadow); }
+        .minmin-stock-desktop-view .mm-stock-dashboard-side { display: none; }
+
+        /* Accounting: consistent quiet dashboard cards and horizontal workflow. */
+        .mm-accounting-desktop-redesign > section,
+        .mm-accounting-desktop-redesign .minmin-accounting-desktop-view > section,
+        .mm-accounting-desktop-redesign .minmin-accounting-mobile-shell > section {
+          width: 100%;
+          max-width: 1500px !important;
+          gap: 18px !important;
+          padding: 26px 28px 38px !important;
+        }
+        .mm-accounting-desktop-redesign section > div,
+        .mm-accounting-desktop-redesign .rounded-lg,
+        .mm-accounting-desktop-redesign .rounded-xl {
+          border-color: var(--mm-line) !important;
+          border-radius: 14px !important;
+          box-shadow: var(--mm-shadow);
+        }
+        .mm-accounting-desktop-redesign [data-accounting-view] { min-height: 40px; border-radius: 9px !important; transition: all .18s ease; }
+        .mm-accounting-desktop-redesign table { border-collapse: separate; border-spacing: 0; }
+        .mm-accounting-desktop-redesign th { color: var(--mm-muted); font-size: 10px; letter-spacing: .04em; }
+        .mm-accounting-desktop-redesign td { padding-top: 10px; padding-bottom: 10px; }
+
+        /* Website: dashboard spacing and modern list cards. */
+        .minmin-website-desktop-view {
+          width: 100%;
+          max-width: 1540px !important;
+          gap: 18px !important;
+          padding: 26px 28px 40px !important;
+        }
+        .minmin-website-desktop-view > div,
+        .minmin-website-desktop-view .rounded-lg {
+          border-color: var(--mm-line) !important;
+          border-radius: var(--mm-radius) !important;
+          box-shadow: var(--mm-shadow);
+        }
+        .minmin-website-desktop-view input,
+        .minmin-website-desktop-view select,
+        .minmin-website-desktop-view textarea,
+        .minmin-website-desktop-view button { border-radius: 9px !important; }
+        .minmin-website-desktop-view table { border-collapse: separate !important; border-spacing: 0 9px !important; }
+        .minmin-website-desktop-view thead th { border: 0 !important; }
+        .minmin-website-desktop-view tbody tr { background: #fff; box-shadow: 0 0 0 1px var(--mm-line), 0 5px 16px rgba(17,24,32,.035); }
+        .minmin-website-desktop-view tbody td { border-top: 0 !important; border-bottom: 0 !important; }
+        .minmin-website-desktop-view tbody td:first-child { padding-left: 12px !important; border-radius: 12px 0 0 12px; }
+        .minmin-website-desktop-view tbody td:last-child { padding-right: 12px !important; border-radius: 0 12px 12px 0; }
+      }
+      @media (min-width: 1024px) {
+        .mm-stat-strip { grid-template-columns: repeat(5,minmax(0,1fr)); }
+        .minmin-quote-desktop-view { grid-template-columns: minmax(0, 7fr) minmax(290px, 3fr) !important; }
+        .minmin-stock-desktop-view > section { grid-template-columns: minmax(0,1fr) 300px; }
+        .minmin-stock-desktop-view > section > .mm-desktop-hero,
+        .minmin-stock-desktop-view > section > .mm-stat-strip { grid-column: 1 / -1; }
+        .minmin-stock-desktop-view > section > div:not(.mm-desktop-hero):not(.mm-stat-strip):not(.mm-desktop-side) { min-width: 0; }
+        .minmin-stock-desktop-view .mm-stock-dashboard-side { display: block; position: sticky; top: 18px; }
+      }
+      @media (min-width: 1280px) {
+        .minmin-stock-desktop-view .minmin-stock-group-body { grid-template-columns: repeat(3,minmax(0,1fr)); }
+      }
+      @media (min-width: 1500px) {
+        .minmin-stock-desktop-view .minmin-stock-group-body { grid-template-columns: repeat(4,minmax(0,1fr)); }
       }
     </style>
   </head>
@@ -16847,6 +17071,108 @@ document.addEventListener('click',event=>{
   const paymentEdit=event.target.closest?.('[data-accounting-unified-payment-edit]');
   if(paymentEdit){const payment=state.accounting.payments.find(item=>String(item.id)===String(paymentEdit.dataset.accountingUnifiedPaymentEdit));if(!payment)return;state.accounting.editingPaymentId=payment.id;state.ui.pendingPaymentProofUrl=payment.proof_url||'';state.ui.accountingMobilePanel='payment-form';render({force:true});return;}
   if(event.target.closest?.('[data-accounting-unified-submit-payment]')){document.getElementById('addPayment')?.click();}
+});
+
+/* MINMIN DESKTOP WORKSPACE 2026-07-24
+   Presentation-only enhancement. It consumes the existing state and delegates every
+   action to the existing controls so data, exports and business rules stay intact. */
+function mmDesktopCurrency(value){
+  return new Intl.NumberFormat('vi-VN').format(Math.round(Number(value)||0))+' đ';
+}
+function mmDesktopImage(item){
+  return item?.photoDataUrl||item?.photo_data_url||item?.photo||item?.image_url||item?.image||'';
+}
+function mmDesktopInventoryStage(item){
+  return String(item?.stage||item?.status||item?.inventory_stage||'').toLowerCase();
+}
+function mmDesktopInventoryStats(){
+  const items=Array.isArray(state.inventory?.items)?state.inventory.items:[];
+  const stock=items.filter(item=>!/(sold|đã bán|xuất kho)/i.test(mmDesktopInventoryStage(item)));
+  const production=items.filter(item=>/(production|sản xuất|đang đặt)/i.test(mmDesktopInventoryStage(item)));
+  const sold=items.filter(item=>/(sold|đã bán|xuất kho)/i.test(mmDesktopInventoryStage(item)));
+  const qty=stock.reduce((sum,item)=>sum+(Number(item.quantity??item.stock_quantity??1)||0),0);
+  const value=stock.reduce((sum,item)=>sum+(Number(item.quantity??item.stock_quantity??1)||0)*(Number(item.cost_price??item.purchase_price??item.price)||0),0);
+  const review=items.filter(item=>!item.name||!item.id||!mmDesktopImage(item)).length;
+  return {items,stock,production,sold,qty,value,review};
+}
+function mmDesktopStockAside(stats){
+  const groups=new Map();
+  stats.stock.forEach(item=>{
+    const label=typeof productTypeName==='function'?productTypeName(item.productType||item.product_type||item.type):(item.productType||item.product_type||item.type||'Khác');
+    groups.set(label,(groups.get(label)||0)+1);
+  });
+  const max=Math.max(1,...groups.values());
+  const categories=[...groups.entries()].sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const low=stats.stock.filter(item=>(Number(item.quantity??item.stock_quantity??1)||0)<=1).slice(0,4);
+  return `<aside class="mm-desktop-side mm-stock-dashboard-side" aria-label="Tóm tắt kho hàng">
+    <h2>Tồn kho theo danh mục</h2>
+    <div class="mt-2">${categories.length?categories.map(([name,count])=>`<div class="py-2"><div class="flex items-center justify-between gap-3 text-xs font-bold"><span>${esc(name)}</span><small>${count} sản phẩm</small></div><div class="mm-progress"><i style="width:${Math.max(8,Math.round(count/max*100))}%"></i></div></div>`).join(''):'<p class="py-4 text-xs text-black/45">Chưa có dữ liệu tồn kho.</p>'}</div>
+    <div class="mt-5 flex items-center justify-between"><h2>Sắp hết hàng</h2><small>${low.length} sản phẩm</small></div>
+    <div>${low.length?low.map(item=>`<div class="mm-desktop-side-row">${mmDesktopImage(item)?`<img src="${esc(mmDesktopImage(item))}" alt=""/>`:'<span class="h-[42px] rounded-lg bg-black/5"></span>'}<span><b>${esc(item.id||item.code||item.name||'Sản phẩm')}</b><small>Tồn: ${Number(item.quantity??item.stock_quantity??1)||0}</small></span><strong class="text-xs text-[#b34b45]">Cần nhập</strong></div>`).join(''):'<p class="py-4 text-xs text-black/45">Không có sản phẩm sắp hết.</p>'}</div>
+  </aside>`;
+}
+function mountMinminDesktopUi(){
+  if(window.matchMedia?.('(max-width: 767px)').matches)return;
+
+  const quote=document.querySelector('.minmin-quote-desktop-view');
+  if(quote&&!quote.querySelector(':scope > [data-mm-desktop-hero]')){
+    const client=state.info?.client||state.info?.customerName||'Báo giá mới';
+    quote.insertAdjacentHTML('afterbegin',`<header class="mm-desktop-hero" data-mm-desktop-hero><div><h1>Báo giá / ${esc(client)}</h1><p>Quản lý khách hàng, sản phẩm và xuất báo giá trong một không gian làm việc.</p></div><div class="mm-desktop-actions"><button class="mm-button" type="button" data-mm-quote-customer>Chỉnh sửa khách hàng</button><button class="mm-button primary" type="button" data-mm-quote-product>＋ Thêm sản phẩm</button></div></header>`);
+  }
+
+  const stockWrap=document.querySelector('.minmin-stock-desktop-view');
+  const stockSection=stockWrap?.querySelector(':scope > section');
+  if(stockSection&&!stockSection.querySelector(':scope > [data-mm-desktop-hero]')){
+    const stats=mmDesktopInventoryStats();
+    stockWrap.classList.toggle('is-entry-open',!!state.ui?.desktopStockEntryOpen);
+    stockSection.insertAdjacentHTML('afterbegin',`<header class="mm-desktop-hero" data-mm-desktop-hero><div><h1>Kho hàng</h1><p>Quản lý tồn kho, nhập – xuất – kiểm kê và giá vốn sản phẩm.</p></div><div class="mm-desktop-actions"><button class="mm-button" type="button" data-mm-stock-entry>＋ Nhập kho</button><button class="mm-button" type="button" data-mm-stock-import>Nhập báo giá</button><button class="mm-button primary" type="button" data-mm-stock-sync>Đồng bộ</button></div></header><div class="mm-stat-strip"><div class="mm-stat"><span>Tổng kho</span><strong>${stats.qty}</strong><small>${stats.stock.length} sản phẩm tồn</small></div><div class="mm-stat"><span>Giá trị tồn kho</span><strong>${mmDesktopCurrency(stats.value)}</strong><small>Theo giá hiện có</small></div><div class="mm-stat"><span>Đang sản xuất</span><strong>${stats.production.length}</strong><small>Sản phẩm</small></div><div class="mm-stat"><span>Đã xuất / bán</span><strong>${stats.sold.length}</strong><small>Sản phẩm</small></div><div class="mm-stat"><span>Cần kiểm tra</span><strong>${stats.review}</strong><small>Thiếu ảnh hoặc dữ liệu</small></div></div>`);
+    stockSection.insertAdjacentHTML('beforeend',mmDesktopStockAside(stats));
+  }
+
+  const website=document.querySelector('.minmin-website-desktop-view');
+  if(website&&!website.querySelector(':scope > [data-mm-desktop-hero]')){
+    website.insertAdjacentHTML('afterbegin',`<header class="mm-desktop-hero" data-mm-desktop-hero><div><h1>Website Minmin Lifestyle</h1><p>Quản lý sản phẩm và đồng bộ dữ liệu với website WooCommerce.</p></div><div class="mm-desktop-actions"><button class="mm-button" type="button" data-mm-website-open>Xem website</button><button class="mm-button primary" type="button" data-mm-website-sync>Đồng bộ ngay</button></div></header>`);
+  }
+}
+const renderAccountingDesktopDesignBase=renderAccountingTab;
+renderAccountingTab=function renderAccountingDesktopDesign(){
+  const html=renderAccountingDesktopDesignBase.apply(this,arguments);
+  return window.matchMedia?.('(max-width: 767px)').matches?html:`<div class="mm-accounting-desktop-redesign">${html}</div>`;
+};
+const renderMinminDesktopBase=render;
+render=function renderWithMinminDesktopUi(){
+  const output=renderMinminDesktopBase.apply(this,arguments);
+  mountMinminDesktopUi();
+  return output;
+};
+document.addEventListener('click',event=>{
+  if(window.innerWidth<768)return;
+  if(event.target.closest?.('[data-mm-stock-entry]')){
+    state.ui.desktopStockEntryOpen=!state.ui.desktopStockEntryOpen;
+    render({force:true}); return;
+  }
+  if(event.target.closest?.('[data-mm-stock-import]')){
+    state.ui.desktopStockEntryOpen=true; render({force:true});
+    setTimeout(()=>document.getElementById('stockImportQuotation')?.click(),0); return;
+  }
+  if(event.target.closest?.('[data-mm-stock-sync]')){
+    const existing=document.querySelector('[data-sync-inventory],#syncInventory');
+    if(existing)existing.click(); else if(typeof syncInventoryFromSupabase==='function')syncInventoryFromSupabase();
+    return;
+  }
+  if(event.target.closest?.('[data-mm-quote-customer]')){
+    document.querySelector('[data-quote-mobile-edit-customer],#customerName,[name="client"]')?.click(); return;
+  }
+  if(event.target.closest?.('[data-mm-quote-product]')){
+    document.querySelector('[data-add-line],#addProduct,#addLine')?.click(); return;
+  }
+  if(event.target.closest?.('[data-mm-website-open]')){
+    const url=state.websiteWoo?.siteUrl||state.websiteWoo?.url;
+    if(url)window.open(url,'_blank','noopener'); return;
+  }
+  if(event.target.closest?.('[data-mm-website-sync]')){
+    document.querySelector('[data-website-sync-all],#syncWebsiteProducts')?.click(); return;
+  }
 });
 
 initApp();
