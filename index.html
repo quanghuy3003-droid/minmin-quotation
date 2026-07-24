@@ -3083,9 +3083,9 @@
         /* Quote: generous 70/30 workspace and quiet product list. */
         .minmin-quote-desktop-view {
           width: 100%;
-          max-width: 1500px !important;
+          max-width: none !important;
           gap: 22px !important;
-          padding: 26px 28px 34px !important;
+          padding: 28px 28px 36px !important;
         }
         .minmin-quote-desktop-view > .mm-desktop-hero { order: -3; }
         .minmin-quote-desktop-view > div { gap: 18px !important; }
@@ -3185,29 +3185,52 @@
         .minmin-quote-desktop-view.mm-quote-exact-active > .mm-quote-legacy-aside { display: none !important; }
         .mm-quote-exact-left { display: grid; min-width: 0; gap: 18px; }
         .mm-quote-exact-right { align-self: start; position: sticky; top: 18px; display: grid; gap: 12px; }
+        .minmin-quote-desktop-view > aside.mm-quote-exact-right {
+          top: 18px !important;
+          overflow: visible !important;
+          border: 0 !important;
+          border-radius: 0 !important;
+          background: transparent !important;
+          padding: 0 !important;
+          box-shadow: none !important;
+        }
+        body:has(.mm-quote-exact-left) { background: #f7f8fa; }
+        body:has(.mm-quote-exact-left) .minmin-topbar { display: none; }
+        body:has(.mm-quote-exact-left) .minmin-main-nav {
+          min-height: 66px;
+          align-items: center;
+          gap: 8px !important;
+          max-width: none !important;
+          padding: 0 28px !important;
+          background: #11151c !important;
+        }
+        .mm-quote-nav-brand { display: flex; width: 178px; flex: 0 0 178px; align-items: center; margin-right: 10px; }
+        .mm-quote-nav-brand img { width: 148px; height: 44px; object-fit: contain; filter: invert(1); }
         .mm-quote-exact-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
         .mm-quote-exact-head h1 { margin: 0; font-size: 24px; line-height: 1.2; font-weight: 900; letter-spacing: -.025em; }
         .mm-quote-exact-head p { margin: 7px 0 0; color: var(--mm-muted); font-size: 12px; font-weight: 650; }
         .mm-quote-status { display: inline-flex; margin-left: 8px; border: 1px solid rgba(17,132,95,.2); border-radius: 7px; background: var(--mm-green-soft); padding: 5px 9px; color: var(--mm-green); font-size: 11px; font-weight: 850; vertical-align: middle; }
         .mm-quote-exact-customer {
           display: grid; grid-template-columns: 1.1fr .35fr 1fr; gap: 24px; min-height: 118px; align-items: center;
-          border: 1px solid var(--mm-line); border-radius: 14px; background: #fff; padding: 20px; box-shadow: var(--mm-shadow);
+          border: 1px solid #e9ecef; border-radius: 18px; background: #fff; padding: 22px 20px; box-shadow: 0 2px 10px rgba(17,21,28,.025);
         }
         .mm-quote-exact-customer span { color: var(--mm-muted); font-size: 10px; font-weight: 800; letter-spacing: .055em; text-transform: uppercase; }
         .mm-quote-exact-customer strong { display: block; margin-top: 8px; font-size: 18px; font-weight: 900; }
         .mm-quote-exact-customer p { margin: 5px 0 0; color: var(--mm-muted); font-size: 12px; font-weight: 650; }
         .mm-quote-exact-title h2 { margin: 0; font-size: 18px; font-weight: 900; }
         .mm-quote-exact-title p { margin: 5px 0 0; color: var(--mm-muted); font-size: 12px; }
-        .mm-quote-exact-table { overflow: hidden; border: 1px solid var(--mm-line); border-radius: 14px; background: #fff; box-shadow: var(--mm-shadow); }
-        .mm-quote-exact-tools { display: grid; grid-template-columns: minmax(220px,1fr) 175px 175px auto; gap: 8px; padding: 10px; }
-        .mm-quote-exact-tools label { display: flex; height: 40px; min-width: 0; align-items: center; gap: 8px; border: 1px solid var(--mm-line); border-radius: 9px; padding: 0 11px; color: var(--mm-muted); }
+        .mm-quote-exact-table { overflow: hidden; border: 1px solid #e9ecef; border-radius: 18px; background: #fff; box-shadow: 0 2px 10px rgba(17,21,28,.025); }
+        .mm-quote-exact-tools { display: grid; grid-template-columns: minmax(180px,1fr) 148px 148px 158px; gap: 8px; padding: 10px; }
+        .mm-quote-exact-tools label { display: flex; height: 42px; min-width: 0; align-items: center; gap: 8px; border: 1px solid #e9ecef; border-radius: 12px; padding: 0 11px; color: var(--mm-muted); }
         .mm-quote-exact-tools input,.mm-quote-exact-tools select { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; font-size: 12px; font-weight: 700; }
+        .mm-quote-exact-tools .mm-button { min-width: 0; padding: 0 10px; white-space: nowrap; font-size: 12px; }
         .mm-quote-exact-columns,.mm-quote-exact-row { display: grid; grid-template-columns: minmax(270px,1.5fr) minmax(105px,.45fr) minmax(130px,.5fr) minmax(135px,.55fr) 42px; gap: 14px; align-items: center; }
         .mm-quote-exact-columns { border-top: 1px solid var(--mm-line); border-bottom: 1px solid var(--mm-line); padding: 10px 16px; color: var(--mm-muted); font-size: 10px; font-weight: 850; letter-spacing: .04em; text-transform: uppercase; }
-        .mm-quote-exact-row { min-height: 90px; border-bottom: 1px solid var(--mm-line); padding: 11px 16px; }
+        .mm-quote-exact-row { min-height: 94px; border-bottom: 1px solid #e9ecef; padding: 13px 16px; transition: background-color 150ms ease; }
+        .mm-quote-exact-row:hover { background: #fafbfb; }
         .mm-quote-exact-row:last-of-type { border-bottom: 0; }
         .mm-quote-product-cell { display: grid; grid-template-columns: 68px minmax(0,1fr); align-items: center; gap: 12px; min-width: 0; }
-        .mm-quote-product-cell img,.mm-quote-product-placeholder { width: 68px; height: 68px; border: 1px solid var(--mm-line); border-radius: 9px; object-fit: contain; background: #f7f7f4; }
+        .mm-quote-product-cell img,.mm-quote-product-placeholder { width: 64px; height: 64px; border: 1px solid #e9ecef; border-radius: 12px; object-fit: contain; background: #f7f8fa; }
         .mm-quote-product-cell b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 900; }
         .mm-quote-product-cell small { display: block; margin-top: 5px; color: var(--mm-muted); font-size: 11px; font-weight: 650; }
         .mm-quote-price,.mm-quote-total { font-size: 12px; font-weight: 900; }
@@ -3215,9 +3238,10 @@
         .mm-quote-quantity { display: grid; grid-template-columns: 31px 38px 31px; justify-content: center; overflow: hidden; border: 1px solid var(--mm-line); border-radius: 9px; }
         .mm-quote-quantity button,.mm-quote-quantity span { display: flex; height: 31px; align-items: center; justify-content: center; border: 0; background: #fff; font-size: 12px; font-weight: 900; }
         .mm-quote-quantity span { border-right: 1px solid var(--mm-line); border-left: 1px solid var(--mm-line); }
-        .mm-quote-row-menu { width: 36px; height: 36px; border: 1px solid var(--mm-line); border-radius: 9px; background: #fff; font-weight: 900; }
+        .mm-quote-row-menu { width: 36px; height: 36px; border: 1px solid #e9ecef; border-radius: 12px; background: #fff; font-weight: 900; transition: background-color 150ms ease,border-color 150ms ease; }
+        .mm-quote-row-menu:hover { border-color: #cfd5d9; background:#f7f8fa; }
         .mm-quote-exact-foot { display: flex; min-height: 42px; align-items: center; justify-content: space-between; border-top: 1px solid var(--mm-line); padding: 0 16px; color: var(--mm-muted); font-size: 11px; font-weight: 700; }
-        .mm-quote-dark-summary { overflow: hidden; border-radius: 14px; background: #111a23; color: #fff; box-shadow: 0 16px 36px rgba(17,24,32,.14); }
+        .mm-quote-dark-summary { overflow: hidden; border-radius: 18px; background: #11151c; color: #fff; box-shadow: 0 4px 14px rgba(17,21,28,.07); }
         .mm-quote-dark-summary header { padding: 20px 18px 16px; }
         .mm-quote-dark-summary header span { color: rgba(255,255,255,.55); font-size: 10px; font-weight: 850; letter-spacing: .055em; text-transform: uppercase; }
         .mm-quote-dark-summary header strong { display: block; margin-top: 9px; font-size: 27px; font-weight: 900; }
@@ -3226,21 +3250,20 @@
         .mm-quote-dark-summary dl div { display: flex; min-height: 39px; align-items: center; justify-content: space-between; gap: 12px; border-bottom: 1px solid rgba(255,255,255,.13); font-size: 12px; }
         .mm-quote-dark-summary dl div:last-child { border-bottom: 0; }
         .mm-quote-dark-summary dd { margin: 0; font-weight: 900; }
-        .mm-quote-finance-actions { display: grid; gap: 9px; border: 1px solid var(--mm-line); border-radius: 14px; background: #fff; padding: 11px; box-shadow: var(--mm-shadow); }
+        .mm-quote-finance-actions { display: grid; gap: 10px; border: 1px solid #e9ecef; border-radius: 18px; background: #fff; padding: 12px; box-shadow: 0 2px 10px rgba(17,21,28,.025); }
         .mm-quote-finance-grid { display: grid; grid-template-columns: 1fr .6fr; gap: 9px; }
         .mm-quote-finance-grid.three { grid-template-columns: repeat(3,1fr); }
         .mm-quote-finance-grid label { display: grid; gap: 5px; color: var(--mm-muted); font-size: 9px; font-weight: 850; letter-spacing: .04em; text-transform: uppercase; }
-        .mm-quote-finance-grid input { width: 100%; height: 48px; border: 1px solid var(--mm-line); border-radius: 9px; padding: 0 11px; color: var(--mm-ink); font-size: 14px; font-weight: 900; }
-        .mm-quote-action { display: flex; min-height: 48px; align-items: center; justify-content: center; border: 1px solid var(--mm-line); border-radius: 9px; background: #fff; color: var(--mm-ink); font-size: 13px; font-weight: 900; }
-        .mm-quote-action.primary { border-color: var(--mm-green); background: var(--mm-green); color: #fff; }
+        .mm-quote-finance-grid input { width: 100%; height: 50px; border: 1px solid #e9ecef; border-radius: 12px; padding: 0 11px; color: var(--mm-ink); font-size: 14px; font-weight: 900; }
+        .mm-quote-action { display: flex; min-height: 52px; align-items: center; justify-content: center; border: 1px solid #e9ecef; border-radius: 14px; background: #fff; color: var(--mm-ink); font-size: 13px; font-weight: 900; transition: background-color 150ms ease,border-color 150ms ease,transform 150ms ease; }
+        .mm-quote-action:hover { border-color:#cfd5d9; background:#f7f8fa; transform:translateY(-1px); }
+        .mm-quote-action.primary { border-color: #0f8a4b; background: #0f8a4b; color: #fff; }
+        .mm-quote-action.primary:hover { background:#0d7b43; }
         @media (max-width:1050px) and (min-width:768px) {
           .mm-quote-exact-customer { grid-template-columns: 1fr 1fr; }
           .mm-quote-exact-customer > div:last-child { grid-column: 1 / -1; }
-          .mm-quote-exact-tools { grid-template-columns: 1fr 1fr; }
-          .mm-quote-exact-tools label:first-child { grid-column: 1 / -1; }
-          .mm-quote-exact-columns { display:none; }
-          .mm-quote-exact-row { grid-template-columns: minmax(220px,1fr) 100px 120px 42px; }
-          .mm-quote-exact-row .mm-quote-price { display:none; }
+          .mm-quote-exact-tools { grid-template-columns: minmax(150px,1fr) 120px 120px 138px; }
+          .mm-quote-exact-columns,.mm-quote-exact-row { grid-template-columns: minmax(210px,1.4fr) 90px 104px 105px 38px; gap:8px; }
         }
 
         /* Inventory: dashboard header, statistics and card grid. */
@@ -3385,7 +3408,7 @@
       }
       @media (min-width: 1024px) {
         .mm-stat-strip { grid-template-columns: repeat(5,minmax(0,1fr)); }
-        .minmin-quote-desktop-view { grid-template-columns: minmax(0, 7fr) minmax(290px, 3fr) !important; }
+        .minmin-quote-desktop-view { grid-template-columns: minmax(0, 72fr) minmax(286px, 28fr) !important; }
         .minmin-stock-desktop-view > section { grid-template-columns: minmax(0,1fr) 300px; }
         .minmin-stock-desktop-view > section > .mm-desktop-hero,
         .minmin-stock-desktop-view > section > .mm-stat-strip { grid-column: 1 / -1; }
@@ -17302,7 +17325,7 @@ function mmQuoteExactDashboard(){
     return `<article class="mm-quote-exact-row" data-mm-quote-row="${esc(line.uid)}" data-mm-quote-search="${esc(invoiceNorm([line.code,line.name,line.productType,line.dimension].join(' ')))}" data-mm-quote-type="${esc(invoiceNorm(line.name||line.productType||''))}"><div class="mm-quote-product-cell">${image?`<img src="${esc(image)}" alt=""/>`:'<span class="mm-quote-product-placeholder"></span>'}<span><b>${esc(line.code||`Sản phẩm ${index+1}`)}</b><small>${esc(line.name||productTypeName(line.productType))}</small><small>SL ${Number(line.quantity||0)} ${esc(line.unit||'')}</small></span></div><strong class="mm-quote-price">${money(line.price)}</strong><div class="mm-quote-quantity"><button type="button" data-mm-quote-qty="${esc(line.uid)}" data-step="-1">−</button><span>${Number(line.quantity||0)}</span><button type="button" data-mm-quote-qty="${esc(line.uid)}" data-step="1">＋</button></div><strong class="mm-quote-total">${money(lineAmount(line))}</strong><button type="button" class="mm-quote-row-menu" data-mm-quote-edit="${esc(line.uid)}">•••</button></article>`;
   }).join('');
   const summary=[['Tổng giá trị',t.subtotal],['Chiết khấu',t.discount],['Sau chiết khấu',t.afterDiscount],[`VAT (${Number(info.vatRate||0)}%)`,t.vat],['Đặt cọc',t.deposit],['Còn lại',t.remaining]];
-  return `<section class="mm-quote-exact-left"><div class="mm-quote-exact-head"><div><h1>Báo giá&nbsp; / &nbsp;${esc(quoteCode)} <span class="mm-quote-status">Đang mở</span></h1><p>Tạo ngày ${esc(quoteDate)} · Cập nhật ${esc(new Date().toLocaleDateString('vi-VN'))}</p></div><div class="mm-desktop-actions"><button class="mm-button" type="button" data-mm-quote-customer>✎ Chỉnh sửa khách hàng</button><button class="mm-button" type="button">••• Khác</button></div></div><div class="mm-quote-exact-customer"><div><span>Khách hàng</span><strong>${esc(info.client||'Chưa nhập')}</strong><p>${esc(info.tel||'Chưa có điện thoại')}${info.representative?` · ${esc(info.representative)}`:''}</p></div><div><span>Ngày báo giá</span><strong>${esc(quoteDate)}</strong></div><div><span>Địa chỉ</span><strong>${esc(info.address||'Xác nhận sau')}</strong><p>${esc(info.delivery||'')}</p></div></div><div class="mm-quote-exact-title"><h2>Bảng sản phẩm</h2><p>Chọn loại đèn, kiểu hàng và nhập thông tin trước khi xuất Excel.</p></div><div class="mm-quote-exact-table"><div class="mm-quote-exact-tools"><label>⌕ <input data-mm-quote-exact-search type="search" placeholder="Tìm mã, tên, loại đèn..."/></label><label><select data-mm-quote-exact-type><option value="">Loại đèn: Tất cả</option><option value="den tha">Đèn thả</option><option value="den tuong">Đèn tường</option><option value="den ban">Đèn bàn</option></select></label><label><select><option>Trạng thái: Tất cả</option></select></label><button class="mm-button primary" type="button" data-mm-quote-product>＋ Thêm sản phẩm</button></div><div class="mm-quote-exact-columns"><span>Sản phẩm</span><span>Đơn giá</span><span>Số lượng</span><span class="text-right">Thành tiền</span><span></span></div><div data-mm-quote-exact-list>${rows||'<div class="p-8 text-center text-sm text-black/45">Chưa có sản phẩm.</div>'}</div><footer class="mm-quote-exact-foot"><span>Hiển thị 1 – ${state.lines.length} trong ${state.lines.length} sản phẩm</span><button type="button">⚙</button></footer></div></section><aside class="mm-quote-exact-right"><div class="mm-quote-dark-summary"><header><span>Tổng tiền sau VAT</span><strong>${money(t.afterVat)}</strong><p>${esc(numberToVietnamese(t.afterVat))}</p></header><dl>${summary.map(([label,value])=>`<div><dt>${esc(label)}</dt><dd>${money(value)}</dd></div>`).join('')}</dl></div><div class="mm-quote-finance-actions"><div class="mm-quote-finance-grid"><label>Phí vận chuyển<input data-mm-quote-finance="shipPriceText" inputmode="numeric" value="${Number(info.shipPriceText||0)}"/></label><label>SL phí<input data-mm-quote-finance="shipQty" type="number" value="${Number(info.shipQty||1)}"/></label></div><div class="mm-quote-finance-grid three"><label>Chiết khấu %<input data-mm-quote-finance="discountRate" type="number" value="${Number(info.discountRate||0)}"/></label><label>VAT %<input data-mm-quote-finance="vatRate" type="number" value="${Number(info.vatRate||0)}"/></label><label>Đặt cọc %<input data-mm-quote-finance="depositRate" type="number" value="${Number(info.depositRate||0)}"/></label></div><button class="mm-quote-action primary" type="button" data-mm-quote-action="excel">▧ Xuất Excel</button><button class="mm-quote-action" type="button" data-mm-quote-action="preview">◉ Xem trước PDF</button><button class="mm-quote-action" type="button" data-mm-quote-action="pdf">▧ Xuất PDF</button><button class="mm-quote-action" type="button" data-mm-quote-action="import">▧ Nhập Excel cũ</button></div></aside>`;
+  return `<section class="mm-quote-exact-left"><div class="mm-quote-exact-head"><div><h1>Báo giá&nbsp; / &nbsp;${esc(quoteCode)} <span class="mm-quote-status">Đang mở</span></h1><p>Tạo ngày ${esc(quoteDate)} · Cập nhật ${esc(new Date().toLocaleDateString('vi-VN'))}</p></div><div class="mm-desktop-actions"><button class="mm-button" type="button" data-mm-quote-customer>✎ Chỉnh sửa khách hàng</button><button class="mm-button" type="button">••• Khác</button></div></div><div class="mm-quote-exact-customer"><div><span>Khách hàng</span><strong>${esc(info.client||'Chưa nhập')}</strong><p>${esc(info.tel||'Chưa có điện thoại')}${info.email?` · ${esc(info.email)}`:info.representative?` · ${esc(info.representative)}`:''}</p></div><div><span>Mã khách hàng</span><strong>${esc(info.customerCode||info.clientCode||'--')}</strong></div><div><span>Địa chỉ</span><strong>${esc(info.address||'Xác nhận sau')}</strong><p>${esc(info.delivery||'')}</p></div></div><div class="mm-quote-exact-title"><h2>Bảng sản phẩm</h2><p>Chọn loại đèn, kiểu hàng và nhập thông tin trước khi xuất Excel.</p></div><div class="mm-quote-exact-table"><div class="mm-quote-exact-tools"><label>⌕ <input data-mm-quote-exact-search type="search" placeholder="Tìm mã, tên, loại đèn..."/></label><label><select data-mm-quote-exact-type><option value="">Loại đèn: Tất cả</option><option value="den tha">Đèn thả</option><option value="den tuong">Đèn tường</option><option value="den ban">Đèn bàn</option></select></label><label><select><option>Trạng thái: Tất cả</option></select></label><button class="mm-button primary" type="button" data-mm-quote-product>＋ Thêm sản phẩm</button></div><div class="mm-quote-exact-columns"><span>Sản phẩm</span><span>Đơn giá</span><span>Số lượng</span><span class="text-right">Thành tiền</span><span></span></div><div data-mm-quote-exact-list>${rows||'<div class="p-8 text-center text-sm text-black/45">Chưa có sản phẩm.</div>'}</div><footer class="mm-quote-exact-foot"><span>Hiển thị 1 – ${state.lines.length} trong ${state.lines.length} sản phẩm</span><button type="button">⚙</button></footer></div></section><aside class="mm-quote-exact-right"><div class="mm-quote-dark-summary"><header><span>Tổng tiền sau VAT</span><strong>${money(t.afterVat)}</strong><p>${esc(numberToVietnamese(t.afterVat))}</p></header><dl>${summary.map(([label,value])=>`<div><dt>${esc(label)}</dt><dd>${money(value)}</dd></div>`).join('')}</dl></div><div class="mm-quote-finance-actions"><div class="mm-quote-finance-grid"><label>Phí vận chuyển<input data-mm-quote-finance="shipPriceText" inputmode="numeric" value="${Number(info.shipPriceText||0)}"/></label><label>SL phí<input data-mm-quote-finance="shipQty" type="number" value="${Number(info.shipQty||1)}"/></label></div><div class="mm-quote-finance-grid three"><label>Chiết khấu %<input data-mm-quote-finance="discountRate" type="number" value="${Number(info.discountRate||0)}"/></label><label>VAT %<input data-mm-quote-finance="vatRate" type="number" value="${Number(info.vatRate||0)}"/></label><label>Đặt cọc %<input data-mm-quote-finance="depositRate" type="number" value="${Number(info.depositRate||0)}"/></label></div><button class="mm-quote-action primary" type="button" data-mm-quote-action="excel">▧ Xuất Excel</button><button class="mm-quote-action" type="button" data-mm-quote-action="preview">◉ Xem trước PDF</button><button class="mm-quote-action" type="button" data-mm-quote-action="pdf">▧ Xuất PDF</button><button class="mm-quote-action" type="button" data-mm-quote-action="import">▧ Nhập Excel cũ</button></div></aside>`;
 }
 function mountMinminDesktopUi(){
   if(window.matchMedia?.('(max-width: 767px)').matches)return;
@@ -17313,6 +17336,8 @@ function mountMinminDesktopUi(){
     quote.querySelector(':scope > div')?.classList.add('mm-quote-legacy-left');
     quote.querySelector(':scope > aside')?.classList.add('mm-quote-legacy-aside');
     quote.insertAdjacentHTML('afterbegin',mmQuoteExactDashboard());
+    const nav=document.querySelector('.minmin-main-nav');
+    if(nav&&!nav.querySelector('.mm-quote-nav-brand'))nav.insertAdjacentHTML('afterbegin',`<div class="mm-quote-nav-brand"><img src="${UI_LOGO_DATA_URL}" alt="Minmin Lifestyle"/></div>`);
   }
 
   const stockWrap=document.querySelector('.minmin-stock-desktop-view');

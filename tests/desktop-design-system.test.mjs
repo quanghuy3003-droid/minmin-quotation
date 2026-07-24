@@ -22,7 +22,7 @@ test('all four desktop modules are covered without replacing business logic', ()
     '.minmin-website-desktop-view',
     'mountMinminDesktopUi',
   ]) assert.ok(html.includes(marker), `missing ${marker}`);
-  assert.match(html, /grid-template-columns:\s*minmax\(0,\s*7fr\)\s+minmax\(290px,\s*3fr\)/);
+  assert.match(html, /grid-template-columns:\s*minmax\(0,\s*72fr\)\s+minmax\(286px,\s*28fr\)/);
 });
 
 test('desktop enhancement delegates actions to existing controls', () => {
