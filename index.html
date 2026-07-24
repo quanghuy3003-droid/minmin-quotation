@@ -3949,11 +3949,23 @@ const WEBSITE_SIMPLE_ATTRIBUTES=[
   ['Light source type','bulb_type'],
   ['Size','dimensions']
 ];
-function websiteProductDefaults(){ return {id:'',sku:'',stock_code:'',product_name_en:'',product_name_vi:'',slug:'',category:'',tags:'',product_type:'',shade_material:'',body_material:'',color:'',dimensions:'',diameter:'',height:'',cord_length:'',bulb_type:'',bulb_count:'',wattage:'',voltage:'',color_temperature:'',dimmable:'',cri:'',cost_price:'',regular_price:'',sale_price:'',seo_title:'',seo_description:'',short_description:'',long_description:'',technical_specs:'',website_status:'Nháp',website_product_url:'',featured_image_url:'',gallery_image_urls:[],wooProductId:'',wooProductUrl:'',wooStatus:'',wooProgress:0,wooUploadedAt:'',created_at:'',updated_at:''}; }
+function websiteProductDefaults(){ return {id:'',sku:'',stock_code:'',product_name_en:'',product_name_vi:'',slug:'',category:'',tags:'',product_type:'',shade_material:'',body_material:'',color:'',dimensions:'',diameter:'',height:'',cord_length:'',bulb_type:'',bulb_count:'',wattage:'',voltage:'',color_temperature:'',dimmable:'',cri:'',cost_price:'',regular_price:'',sale_price:'',seo_title:'',seo_description:'',short_description:'',long_description:'',technical_specs:'',website_status:'Nháp',website_product_url:'',featured_image_url:'',gallery_image_urls:[],wooProductId:'',wooProductUrl:'',wooStatus:'',wooProgress:0,wooUploadedAt:'',imageUpdatedAt:'',wooImageSyncedAt:'',wooImageSignature:'',created_at:'',updated_at:''}; }
 function websiteProductsDefaults(){ return {search:'',statusFilter:'',categoryFilter:'',missingFilter:'',editingId:'',current:websiteProductDefaults(),products:[],updatedAt:'',lastWooSyncAt:''}; }
 function slugifyWebsite(v){ return String(v||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,''); }
 function websiteMoneyNumber(v){ return Number(String(v??'').replace(/[^\d.-]/g,''))||0; }
 function websiteUrlOnly(value){ const v=driveStoredValue(value); return v&&/^https?:\/\//i.test(v)?v:''; }
+function websiteImageSignature(product={}){
+  const raw=product||{};
+  return [...new Set([
+    websiteUrlOnly(raw.featured_image_url||raw.featuredImageUrl||raw.featured||''),
+    ...(Array.isArray(raw.gallery_image_urls)?raw.gallery_image_urls:(Array.isArray(raw.galleryImageUrls)?raw.galleryImageUrls:(Array.isArray(raw.gallery)?raw.gallery:[])))
+  ].map(websiteUrlOnly).filter(Boolean))].join('|');
+}
+function websiteImagesNeedSync(product={}){
+  const imageUpdated=Date.parse(product?.imageUpdatedAt||0)||0;
+  const imageSynced=Date.parse(product?.wooImageSyncedAt||0)||0;
+  return !!product?.wooProductId && !!imageUpdated && imageUpdated>imageSynced;
+}
 function normalizeWebsiteProduct(p={}){
   const raw=p||{}, base=websiteProductDefaults(), out={...base};
   WEBSITE_PRODUCT_FIELDS.forEach(k=>{ out[k]=String(raw[k]??base[k]??''); });
@@ -3968,6 +3980,9 @@ function normalizeWebsiteProduct(p={}){
   out.wooStatus=String(raw.wooStatus||raw.woo_status||'');
   out.wooProgress=Math.max(0,Math.min(100,Number(raw.wooProgress||raw.woo_progress||0)||0));
   out.wooUploadedAt=String(raw.wooUploadedAt||raw.woo_uploaded_at||'');
+  out.imageUpdatedAt=String(raw.imageUpdatedAt||raw.image_updated_at||'');
+  out.wooImageSyncedAt=String(raw.wooImageSyncedAt||raw.woo_image_synced_at||'');
+  out.wooImageSignature=String(raw.wooImageSignature||raw.woo_image_signature||'');
   return out;
 }
 function websiteIsPlaceholderProduct(p){
@@ -4101,6 +4116,8 @@ function websiteProductFromWoo(product){
     wooProductUrl:websiteProductWooUrl(product),
     wooStatus:'Đã tải từ WooCommerce',
     wooUploadedAt:product.date_modified_gmt||product.date_modified||'',
+    wooImageSyncedAt:product.date_modified_gmt||product.date_modified||new Date().toISOString(),
+    wooImageSignature:websiteImageSignature({featured_image_url:images[0]||'',gallery_image_urls:images.slice(1)}),
     updated_at:new Date().toISOString()
   });
 }
@@ -4224,6 +4241,7 @@ function websiteWooSyncBadge(p){
   const time=at&&!Number.isNaN(at.getTime())?at.toLocaleString('vi-VN'):'';
   if(status.startsWith('Lỗi'))return `<div class="mt-1 rounded-md border border-coral/25 bg-coral/10 px-2 py-1 text-[11px] font-extrabold text-coral" title="${esc(status)}">Lỗi đồng bộ · ${progress||0}%${bar(progress||100,'bg-coral')}</div>`;
   if(status==='Đang gửi WooCommerce')return `<div class="mt-1 rounded-md border border-sky-300 bg-sky-50 px-2 py-1 text-[11px] font-extrabold text-sky-800">Đang gửi · ${progress}%${bar(progress,'bg-sky-500')}</div>`;
+  if(status==='Chưa đồng bộ ảnh'||websiteImagesNeedSync(p))return `<div class="mt-1 rounded-md border border-orange-300 bg-orange-50 px-2 py-1 text-[11px] font-extrabold text-orange-700">Chờ đồng bộ ảnh</div>`;
   if(status==='Chưa đồng bộ sau chỉnh sửa')return `<div class="mt-1 rounded-md border border-gold/40 bg-gold/20 px-2 py-1 text-[11px] font-extrabold text-[#8a5a00]">Chưa đồng bộ</div>`;
   if(p?.wooProductId)return `<div class="mt-1 rounded-md border border-mint/25 bg-mint/10 px-2 py-1 text-[11px] font-extrabold text-mint" title="${esc(time)}">Đã đồng bộ · 100%${bar(100,'bg-mint')}</div>`;
   return `<div class="mt-1 rounded-md border border-black/10 bg-black/5 px-2 py-1 text-[11px] font-extrabold text-black/45">Chưa đăng web</div>`;
@@ -4389,7 +4407,7 @@ async function uploadWebsiteFeatured(file){
   const uploadFile=fileFromDataUrl(cropped,`${storageSafePart(p.sku||'featured')}-featured.jpg`);
   const uploaded=await uploadFileToSupabaseStorage(uploadFile,'product',p.sku||'website-featured');
   const url=uploaded?.publicUrl||uploaded?.viewUrl||uploaded?.downloadUrl||uploaded?.url||'';
-  websiteSetCurrent({featured_image_url:url});
+  websiteSetCurrent({featured_image_url:url,imageUpdatedAt:new Date().toISOString(),wooStatus:p.wooProductId?'Chưa đồng bộ ảnh':''});
   saveWebsiteProducts();
 }
 async function recropWebsiteFeatured(){
@@ -4400,7 +4418,7 @@ async function recropWebsiteFeatured(){
   const uploadFile=fileFromDataUrl(cropped,`${storageSafePart(p.sku||'featured')}-featured.jpg`);
   const uploaded=await uploadFileToSupabaseStorage(uploadFile,'product',p.sku||'website-featured');
   const url=uploaded?.publicUrl||uploaded?.viewUrl||uploaded?.downloadUrl||uploaded?.url||'';
-  websiteSetCurrent({featured_image_url:url});
+  websiteSetCurrent({featured_image_url:url,imageUpdatedAt:new Date().toISOString(),wooStatus:p.wooProductId?'Chưa đồng bộ ảnh':''});
   saveWebsiteProducts();
 }
 async function uploadWebsiteGallery(files){
@@ -4416,10 +4434,10 @@ async function uploadWebsiteGallery(files){
     const url=uploaded?.publicUrl||uploaded?.viewUrl||uploaded?.downloadUrl||uploaded?.url||'';
     if(url)next.push(url);
   }
-  websiteSetCurrent({gallery_image_urls:[...new Set(next)]});
+  websiteSetCurrent({gallery_image_urls:[...new Set(next)],imageUpdatedAt:new Date().toISOString(),wooStatus:p.wooProductId?'Chưa đồng bộ ảnh':''});
   saveWebsiteProducts();
 }
-function removeWebsiteGalleryImage(url){ const p=normalizeWebsiteProduct(state.website?.current||{}); websiteSetCurrent({gallery_image_urls:(p.gallery_image_urls||[]).filter(x=>x!==url)}); saveWebsiteProducts(); }
+function removeWebsiteGalleryImage(url){ const p=normalizeWebsiteProduct(state.website?.current||{}); websiteSetCurrent({gallery_image_urls:(p.gallery_image_urls||[]).filter(x=>x!==url),imageUpdatedAt:new Date().toISOString(),wooStatus:p.wooProductId?'Chưa đồng bộ ảnh':''}); saveWebsiteProducts(); }
 function invoiceEmpty(extra={}){ return {id:uid(),invoice_date:'',invoice_number:'',invoice_series:'',invoice_template:'',tax_authority_code:'',seller_name:'',seller_tax_code:'',seller_address:'',buyer_name:'',buyer_tax_code:'',buyer_address:'',raw_item_description:'',accounting_description:'',category:'',net_amount:0,vat_rate:'',vat_amount:0,total_amount:0,suggested_debit_account:'',suggested_vat_account:'',suggested_credit_account:'',payment_status:'không rõ',source_file_url:'',source_file_name:'',source_xml_url:'',source_pdf_url:'',parser_error_message:'',confidence_score:0,ocr_confidence_score:0,raw_ocr_text:'',extraction_method:'MANUAL',needs_manual_review:true,validation_status:'Cần kiểm tra',validation_notes:'',reviewed_by_accountant:false,locked:false,period:'',note:'',items:[],created_at:new Date().toISOString(),updated_at:new Date().toISOString(),...extra}; }
 function invoiceMoney(v){ let s=String(v||'').trim().replace(/[^\d,.-]/g,''); if(!s)return 0; const neg=s.startsWith('-'); s=s.replace(/^-/, ''); if(/[.,]\d{3}([.,]|$)/.test(s))s=s.replace(/[.,]/g,''); else if(/,\d{1,2}$/.test(s))s=s.replace(/\./g,'').replace(',','.'); else s=s.replace(/,/g,''); return Number(`${neg?'-':''}${s}`)||0; }
 function invoiceNorm(v){ return cleanSearch(v).replace(/\s+/g,' ').trim(); }
@@ -7295,7 +7313,7 @@ async function websiteDeleteProduct(id){
   saveWebsiteProducts();
   render();
 }
-function websiteRemoveFeatured(){ websiteSetCurrent({featured_image_url:''}); saveWebsiteProducts(); render(); }
+function websiteRemoveFeatured(){ const p=normalizeWebsiteProduct(state.website?.current||{}); websiteSetCurrent({featured_image_url:'',imageUpdatedAt:new Date().toISOString(),wooStatus:p.wooProductId?'Chưa đồng bộ ảnh':''}); saveWebsiteProducts(); render(); }
 function websiteField(label,key,type='text',wide=false){ const p=normalizeWebsiteProduct(state.website?.current||{}); return `<label class="grid min-w-0 gap-1 ${wide?'lg:col-span-2':''}"><span class="text-[11px] font-extrabold uppercase tracking-wide text-black/45">${esc(label)}</span><input data-website-field="${esc(key)}" type="${type}" value="${esc(p[key]||'')}" class="h-10 min-w-0 rounded-md border border-black/15 bg-white px-3 text-sm font-bold outline-none focus:border-mint focus:ring-4 focus:ring-mint/10"/></label>`; }
 function websiteCategorySelect(){
   const p=normalizeWebsiteProduct(state.website?.current||{}), selected=new Set(websiteCategoryList(p.category)), values=new Set(WEBSITE_CATEGORY_OPTIONS.map(x=>x.value));
@@ -8824,6 +8842,8 @@ function minminWooNeedsUpload(p){
   const x = normalizeWebsiteProduct(p);
   if(!x.sku || (!x.product_name_en && !x.product_name_vi)) return false;
   if(!x.wooProductId) return true;
+  if(websiteImagesNeedSync(x)) return true;
+  if(String(x.wooStatus||'') === 'Chưa đồng bộ ảnh') return true;
   if(String(x.wooStatus||'') === 'Chưa đồng bộ sau chỉnh sửa') return true;
   if(String(x.wooStatus||'').startsWith('Lỗi')) return true;
   const updated = Date.parse(x.updated_at || 0) || 0;
@@ -8849,15 +8869,21 @@ async function minminUploadOneWooFast(id, opts={}){
     const data = item.wooProductId
       ? await wooRequest(`products/${item.wooProductId}`, {method:'PUT', timeoutMs: includeImages ? 90000 : MINMIN_WOO_FAST_TIMEOUT_MS, body:JSON.stringify(payload)})
       : await wooRequest('products', {method:'POST', timeoutMs: includeImages ? 90000 : MINMIN_WOO_FAST_TIMEOUT_MS, body:JSON.stringify(payload)});
+    if(includeImages && payload.images?.length && (!Array.isArray(data?.images) || !data.images.length)){
+      throw new Error('WooCommerce đã nhận dữ liệu chữ nhưng chưa nhận được ảnh. Ảnh vẫn được giữ trong app để đồng bộ lại.');
+    }
+    const syncedAt=minminWooNow();
+    const pendingImages=!includeImages&&!!websiteImageSignature(item);
     Object.assign(item, {
       wooProductId: data?.id || item.wooProductId || '',
       wooProductUrl: websiteProductWooUrl(data) || item.wooProductUrl,
       website_product_url: websiteProductWooUrl(data) || item.website_product_url,
-      wooStatus: 'Đã đồng bộ WooCommerce',
+      wooStatus: pendingImages ? 'Chưa đồng bộ ảnh' : 'Đã đồng bộ WooCommerce',
       wooProgress: 100,
-      wooUploadedAt: minminWooNow(),
+      wooUploadedAt: syncedAt,
+      ...(includeImages ? {wooImageSyncedAt:syncedAt,wooImageSignature:websiteImageSignature(item)} : {}),
       website_status: 'Đã đăng website',
-      updated_at: minminWooNow()
+      updated_at: syncedAt
     });
     saveWebsiteProducts();
     if(!bulk) render();
@@ -8883,7 +8909,13 @@ async function minminUploadAllWooSuperFast(options={}){
     if(!websiteWooReady()) throw new Error('Chưa nhập đủ Website URL, Consumer Key và Consumer Secret.');
     minminClearStuckWooSync(true);
     const includeImages = !!options.includeImages;
-    const items = websiteProductsForExport(state.website.products || []).filter(minminWooNeedsUpload);
+    const forceImages = includeImages && !!options.forceImages;
+    const items = websiteProductsForExport(state.website.products || []).filter(item=>{
+      if(!forceImages)return minminWooNeedsUpload(item);
+      if(!item.sku||(!item.product_name_en&&!item.product_name_vi))return false;
+      const currentSignature=websiteImageSignature(item);
+      return !!currentSignature&&(minminWooNeedsUpload(item)||!item.wooImageSignature||item.wooImageSignature!==currentSignature);
+    });
     if(!items.length){
       minminWooSetStatusText('Không có sản phẩm mới hoặc sản phẩm vừa chỉnh sửa cần đồng bộ.');
       saveWebsiteProducts(); render();
@@ -8922,12 +8954,12 @@ async function minminUploadAllWooSuperFast(options={}){
           const updated = Array.isArray(data?.update) ? data.update : [];
           created.forEach((res,i)=>{
             const item=createRefs[i], live=state.website.products.find(x=>String(x.id)===String(item.id));
-            if(res?.id && live){ Object.assign(live,{wooProductId:res.id, wooProductUrl:websiteProductWooUrl(res)||live.wooProductUrl, website_product_url:websiteProductWooUrl(res)||live.website_product_url, wooStatus:'Đã đồng bộ WooCommerce', wooProgress:100, wooUploadedAt:minminWooNow(), website_status:'Đã đăng website', updated_at:minminWooNow()}); ok++; }
+            if(res?.id && live){ const syncedAt=minminWooNow(), pendingImage=!!websiteImageSignature(live); Object.assign(live,{wooProductId:res.id, wooProductUrl:websiteProductWooUrl(res)||live.wooProductUrl, website_product_url:websiteProductWooUrl(res)||live.website_product_url, wooStatus:pendingImage?'Chưa đồng bộ ảnh':'Đã đồng bộ WooCommerce', wooProgress:100, wooUploadedAt:syncedAt, website_status:'Đã đăng website', updated_at:syncedAt}); ok++; }
             else{ fail++; last=String(res?.message||res?.error?.message||'Không tạo được sản phẩm'); if(live){ live.wooStatus='Lỗi: '+last; live.wooProgress=1; } }
           });
           updated.forEach((res,i)=>{
             const item=updateRefs[i], live=state.website.products.find(x=>String(x.id)===String(item.id));
-            if(res?.id && live){ Object.assign(live,{wooProductId:res.id, wooProductUrl:websiteProductWooUrl(res)||live.wooProductUrl, website_product_url:websiteProductWooUrl(res)||live.website_product_url, wooStatus:'Đã đồng bộ WooCommerce', wooProgress:100, wooUploadedAt:minminWooNow(), website_status:'Đã đăng website', updated_at:minminWooNow()}); ok++; }
+            if(res?.id && live){ const syncedAt=minminWooNow(), pendingImage=!!websiteImageSignature(live); Object.assign(live,{wooProductId:res.id, wooProductUrl:websiteProductWooUrl(res)||live.wooProductUrl, website_product_url:websiteProductWooUrl(res)||live.website_product_url, wooStatus:pendingImage?'Chưa đồng bộ ảnh':'Đã đồng bộ WooCommerce', wooProgress:100, wooUploadedAt:syncedAt, website_status:'Đã đăng website', updated_at:syncedAt}); ok++; }
             else{ fail++; last=String(res?.message||res?.error?.message||'Không cập nhật được sản phẩm'); if(live){ live.wooStatus='Lỗi: '+last; live.wooProgress=1; } }
           });
         }catch(e){
@@ -8940,7 +8972,8 @@ async function minminUploadAllWooSuperFast(options={}){
       saveWebsiteProducts(); render();
       if(fail && /quá \d+ giây|timed out|timeout/i.test(last)) break;
     }
-    minminWooSetStatusText(`Xong WooCommerce: ${ok} thành công, ${fail} lỗi${last?'. Lỗi cuối: '+last:''}${includeImages?'':' · Không gửi ảnh/không quét danh mục.'}`);
+    state.website.lastWooSyncAt=minminWooNow();
+    minminWooSetStatusText(`Xong WooCommerce: ${ok} thành công, ${fail} lỗi${last?'. Lỗi cuối: '+last:''}${includeImages?' · Đã kiểm tra và gửi kèm ảnh.':' · Không gửi ảnh/không quét danh mục.'}`);
     saveWebsiteProducts(); render(); alert(state.websiteWoo.status);
   }finally{
     __minminWooSyncRunning = false;
@@ -17115,7 +17148,7 @@ function websiteMobileDashboard(){
       <div class="minmin-website-stat"><strong>${errors}</strong><span>Lỗi đồng bộ</span></div>
     </div><div class="border-t border-white/10 px-3 py-2 text-[10px] font-bold text-white/55">Lần cuối: ${esc(lastSync)}</div></div>
     <div class="minmin-website-card">
-      <button data-website-mobile-sync type="button" class="minmin-website-action-row">${websiteMobileIcon('sync')}<span><strong>Đồng bộ ngay</strong><small>Cập nhật sản phẩm lên website</small></span>${websiteMobileIcon('chevron')}</button>
+      <button data-website-mobile-sync type="button" class="minmin-website-action-row">${websiteMobileIcon('sync')}<span><strong>Đồng bộ ngay</strong><small>Cập nhật đầy đủ dữ liệu và ảnh lên website</small></span>${websiteMobileIcon('chevron')}</button>
       ${action('wizard','Tạo sản phẩm mới','Thêm sản phẩm lên website','plus')}
       ${action('list','Danh sách sản phẩm','Xem và quản lý tất cả sản phẩm','list')}
       ${action('settings','Cài đặt Website','Kết nối và tùy chọn đồng bộ','settings')}
@@ -17145,11 +17178,12 @@ function websiteMobileProductRows(){
   return rows.map(p=>{
     const image=p.featured_image_url||p.gallery_image_urls?.[0]||'';
     const published=p.website_status==='Đã đăng website'||!!p.wooProductId;
+    const pendingImages=websiteImagesNeedSync(p)||String(p.wooStatus||'')==='Chưa đồng bộ ảnh';
     const error=/lỗi|error/i.test(String(p.wooStatus||''));
     const missing=websiteMissingFields(p).length>0;
-    const status=error?'Lỗi':missing?'Thiếu dữ liệu':published?'Đã đăng':'Chưa đăng';
+    const status=error?'Lỗi':pendingImages?'Chờ đồng bộ ảnh':missing?'Thiếu dữ liệu':published?'Đã đăng':'Chưa đăng';
     const productUrl=p.wooProductUrl||p.website_product_url||'';
-    const syncBadge=published?`<span class="minmin-website-sync-check" title="Đã đồng bộ WooCommerce">${websiteMobileIcon('check')}<span>Đã đồng bộ</span></span>`:'';
+    const syncBadge=published&&!pendingImages&&!error?`<span class="minmin-website-sync-check" title="Đã đồng bộ đầy đủ dữ liệu và ảnh lên WooCommerce">${websiteMobileIcon('check')}<span>Đã đồng bộ</span></span>`:'';
     const statusNote=status==='Đã đăng'?'':`<span class="minmin-website-product-status">${esc(status)}</span>`;
     return `<div class="minmin-website-product-row text-left">
       <button data-website-mobile-detail="${esc(p.id)}" type="button" class="contents text-left">
@@ -17354,7 +17388,7 @@ document.addEventListener('click',event=>{
   if(syncOne){
     const id=syncOne.dataset.websiteMobileSyncOne;
     state.ui.websiteMobileProductMenuId='';
-    uploadWebsiteProductToWoo(id).then(()=>render({force:true})).catch(error=>{alert('Chưa đồng bộ được sản phẩm: '+(error.message||error));render({force:true});});
+    uploadWebsiteProductToWoo(id,{includeImages:true}).then(()=>render({force:true})).catch(error=>{alert('Chưa đồng bộ được sản phẩm kèm ảnh: '+(error.message||error));render({force:true});});
     return;
   }
   const toQuote=event.target.closest?.('[data-website-mobile-to-quote]');
@@ -17469,7 +17503,7 @@ document.addEventListener('click',event=>{
   }
   if(event.target.closest?.('[data-website-mobile-sync]')){
     const run=typeof minminUploadAllWooSuperFast==='function'
-      ?minminUploadAllWooSuperFast({includeImages:!!state.ui.websiteMobileSyncImages})
+      ?minminUploadAllWooSuperFast({includeImages:true,forceImages:true})
       :uploadAllWebsiteProductsToWoo();
     Promise.resolve(run).then(()=>render({force:true})).catch(error=>{alert('Chưa đồng bộ được Website: '+(error.message||error));render({force:true});});
   }
