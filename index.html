@@ -3016,7 +3016,11 @@
       @media (min-width: 768px) {
         body { background: var(--mm-canvas); color: var(--mm-ink); }
         .minmin-topbar, .minmin-main-nav { position: relative; z-index: 45; }
-        .minmin-main-nav { box-shadow: 0 1px 0 rgba(255,255,255,.06), 0 8px 24px rgba(0,0,0,.08); }
+        .minmin-main-nav {
+          justify-content: center;
+          min-height: 58px;
+          box-shadow: 0 1px 0 rgba(255,255,255,.06), 0 8px 24px rgba(0,0,0,.08);
+        }
         .minmin-tab-button { min-height: 46px; border-radius: 10px !important; transition: background-color .18s ease, color .18s ease, box-shadow .18s ease, transform .18s ease; }
         .minmin-tab-button:hover { transform: translateY(-1px); }
         .mm-desktop-hero {
@@ -3083,7 +3087,7 @@
         /* Quote: generous 70/30 workspace and quiet product list. */
         .minmin-quote-desktop-view {
           width: 100%;
-          max-width: none !important;
+          max-width: 1336px !important;
           gap: 22px !important;
           padding: 28px 28px 36px !important;
         }
@@ -3195,16 +3199,17 @@
           box-shadow: none !important;
         }
         body:has(.mm-quote-exact-left) { background: #f7f8fa; }
-        body:has(.mm-quote-exact-left) .minmin-topbar { display: none; }
+        body:has(.mm-quote-exact-left) .minmin-topbar { display: block; }
         body:has(.mm-quote-exact-left) .minmin-main-nav {
-          min-height: 66px;
+          min-height: 58px;
           align-items: center;
+          justify-content: center;
           gap: 8px !important;
           max-width: none !important;
-          padding: 0 28px !important;
+          padding: 8px 28px !important;
           background: #11151c !important;
         }
-        .mm-quote-nav-brand { display: flex; width: 178px; flex: 0 0 178px; align-items: center; margin-right: 10px; }
+        .mm-quote-nav-brand { display: none !important; width: 178px; flex: 0 0 178px; align-items: center; margin-right: 10px; }
         .mm-quote-nav-brand img { width: 148px; height: 44px; object-fit: contain; filter: invert(1); }
         .mm-quote-exact-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
         .mm-quote-exact-head h1 { margin: 0; font-size: 24px; line-height: 1.2; font-weight: 900; letter-spacing: -.025em; }
@@ -3269,7 +3274,7 @@
         /* Inventory: dashboard header, statistics and card grid. */
         .minmin-stock-desktop-view > section {
           width: 100%;
-          max-width: 1540px !important;
+          max-width: 1336px !important;
           gap: 20px !important;
           padding: 26px 28px 38px !important;
         }
@@ -3366,7 +3371,7 @@
         .mm-accounting-desktop-redesign .minmin-accounting-desktop-view > section,
         .mm-accounting-desktop-redesign .minmin-accounting-mobile-shell > section {
           width: 100%;
-          max-width: 1500px !important;
+          max-width: 1336px !important;
           gap: 18px !important;
           padding: 26px 28px 38px !important;
         }
@@ -3385,7 +3390,7 @@
         /* Website: dashboard spacing and modern list cards. */
         .minmin-website-desktop-view {
           width: 100%;
-          max-width: 1540px !important;
+          max-width: 1336px !important;
           gap: 18px !important;
           padding: 26px 28px 40px !important;
         }
@@ -17336,8 +17341,6 @@ function mountMinminDesktopUi(){
     quote.querySelector(':scope > div')?.classList.add('mm-quote-legacy-left');
     quote.querySelector(':scope > aside')?.classList.add('mm-quote-legacy-aside');
     quote.insertAdjacentHTML('afterbegin',mmQuoteExactDashboard());
-    const nav=document.querySelector('.minmin-main-nav');
-    if(nav&&!nav.querySelector('.mm-quote-nav-brand'))nav.insertAdjacentHTML('afterbegin',`<div class="mm-quote-nav-brand"><img src="${UI_LOGO_DATA_URL}" alt="Minmin Lifestyle"/></div>`);
   }
 
   const stockWrap=document.querySelector('.minmin-stock-desktop-view');
