@@ -3,7 +3,8 @@ import {readFile} from 'node:fs/promises';
 
 const source=await readFile(new URL('../index.html',import.meta.url),'utf8');
 
-assert.match(source,/body:has\(\.minmin-stock-mobile-view\) \.minmin-app-logo,[\s\S]*?body:has\(\.minmin-stock-mobile-view\) \.minmin-main-nav[\s\S]*?display: none !important/,'Mobile inventory must replace the global header with its own back toolbar');
+assert.doesNotMatch(source,/body:has\(\.minmin-stock-mobile-view\) \.minmin-app-logo\s*,/,'Mobile inventory must keep the shared Minmin logo visible');
+assert.match(source,/body:has\(\.minmin-stock-mobile-view\) \.minmin-topbar[\s\S]*?display: block !important/,'Mobile inventory must display the shared top logo bar');
 assert.match(source,/\.minmin-stock-mobile-item\s*\{[\s\S]*?grid-template-columns: 104px minmax\(0, 1fr\) 44px/,'Mobile inventory products must use a compact image, information and action row');
 assert.match(source,/function renderInventoryMobileView\(\)[\s\S]*?data-stock-mobile-back="tab"[\s\S]*?data-stock-mobile-category[\s\S]*?data-stock-mobile-search/,'Mobile inventory needs back, category and search controls');
 assert.match(source,/\.minmin-stock-mobile-search-row svg\s*\{[\s\S]*?width:\s*20px;[\s\S]*?height:\s*20px;/,'Mobile inventory search icon must keep a compact explicit size');
