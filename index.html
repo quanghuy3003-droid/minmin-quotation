@@ -3411,6 +3411,239 @@
         .minmin-stock-desktop-view .minmin-stock-card [data-stock-toggle] { color: var(--mm-ink) !important; }
         .minmin-stock-desktop-view .minmin-stock-card.is-mm-filtered { display: none !important; }
         .mm-stock-empty-filter { grid-column: 1 / -1; border: 1px dashed var(--mm-line); border-radius: 14px; padding: 28px; text-align: center; color: var(--mm-muted); font-size: 12px; font-weight: 750; }
+        .minmin-stock-desktop-view .mm-stock-legacy-root { display: none !important; }
+        .mm-stock-toolbar-exact {
+          grid-column: 1 / -1;
+          display: grid;
+          grid-template-columns: auto minmax(260px,1fr) auto auto auto;
+          gap: 10px;
+          align-items: center;
+          border: 1px solid var(--mm-line);
+          border-radius: 14px;
+          background: #fff;
+          padding: 10px 12px;
+          box-shadow: var(--mm-shadow);
+        }
+        .mm-stock-toolbar-exact .mm-stock-search {
+          height: 40px;
+          border-radius: 10px;
+        }
+        .mm-stock-toolbar-exact > select {
+          height: 40px;
+          border: 1px solid var(--mm-line);
+          border-radius: 10px;
+          background: #fff;
+          padding: 0 32px 0 12px;
+          color: var(--mm-ink);
+          font-size: 11px;
+          font-weight: 800;
+        }
+        .mm-stock-filter-button,
+        .mm-stock-view-button {
+          display: inline-flex;
+          width: 42px;
+          height: 40px;
+          align-items: center;
+          justify-content: center;
+          border: 1px solid var(--mm-line);
+          border-radius: 10px;
+          background: #fff;
+          color: var(--mm-ink);
+          transition: border-color 150ms ease, background-color 150ms ease, color 150ms ease;
+        }
+        .mm-stock-filter-button:hover,
+        .mm-stock-view-button:hover { border-color: rgba(17,132,95,.45); }
+        .mm-stock-filter-button.is-active,
+        .mm-stock-view-button.is-active { border-color: var(--mm-green); background: var(--mm-green); color: #fff; }
+        .mm-stock-filter-panel {
+          grid-column: 1 / -1;
+          display: grid;
+          grid-template-columns: minmax(180px,280px) minmax(180px,280px) 1fr;
+          gap: 10px;
+          border-top: 1px solid var(--mm-line);
+          padding-top: 10px;
+        }
+        .mm-stock-filter-panel label { display: grid; gap: 5px; color: var(--mm-muted); font-size: 10px; font-weight: 850; letter-spacing: .04em; text-transform: uppercase; }
+        .mm-stock-filter-panel select { width: 100%; height: 39px; border: 1px solid var(--mm-line); border-radius: 9px; background: #fff; padding: 0 30px 0 11px; font-size: 11px; font-weight: 800; }
+        .mm-stock-exact-main {
+          min-width: 0;
+          overflow: hidden;
+          border: 1px solid var(--mm-line);
+          border-radius: var(--mm-radius);
+          background: #fff;
+          box-shadow: var(--mm-shadow);
+        }
+        .mm-stock-exact-heading {
+          display: flex;
+          min-height: 54px;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+          border-bottom: 1px solid var(--mm-line);
+          padding: 0 16px;
+        }
+        .mm-stock-exact-heading h2 { margin: 0; font-size: 15px; font-weight: 900; }
+        .mm-stock-exact-heading span { color: var(--mm-muted); font-size: 11px; font-weight: 700; }
+        .mm-stock-card-grid {
+          display: grid;
+          grid-template-columns: repeat(2,minmax(0,1fr));
+          gap: 14px;
+          padding: 14px;
+        }
+        .mm-stock-product-card {
+          position: relative;
+          display: grid;
+          min-width: 0;
+          gap: 12px;
+          border: 1px solid var(--mm-line);
+          border-radius: 14px;
+          background: #fff;
+          padding: 12px;
+          transition: transform 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+        }
+        .mm-stock-product-card:hover { transform: translateY(-1px); border-color: rgba(17,132,95,.28); box-shadow: 0 10px 24px rgba(17,24,32,.07); }
+        .mm-stock-card-top { display: grid; grid-template-columns: 80px minmax(0,1fr); gap: 12px; min-width: 0; }
+        .mm-stock-card-photo {
+          display: flex;
+          width: 80px;
+          height: 80px;
+          align-items: center;
+          justify-content: center;
+          overflow: hidden;
+          border: 1px solid var(--mm-line);
+          border-radius: 11px;
+          background: #f7f8fa;
+        }
+        .mm-stock-card-photo img { width: 100%; height: 100%; object-fit: contain; }
+        .mm-stock-card-photo span { padding: 6px; color: var(--mm-muted); font-size: 9px; font-weight: 750; text-align: center; }
+        .mm-stock-card-copy { min-width: 0; padding-right: 12px; }
+        .mm-stock-card-copy b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; font-weight: 900; }
+        .mm-stock-card-copy h3 { margin: 6px 0 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 900; }
+        .mm-stock-card-copy p { margin: 5px 0 0; overflow: hidden; color: var(--mm-muted); font-size: 10px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+        .mm-stock-card-price { display: block; margin-top: 8px; color: var(--mm-green); font-size: 14px; font-weight: 900; }
+        .mm-stock-card-signal { position: absolute; top: 14px; right: 14px; width: 7px; height: 7px; border-radius: 999px; background: #f2a536; }
+        .mm-stock-card-signal.is-stock { background: var(--mm-green); }
+        .mm-stock-card-signal.is-sold { background: #ef5b55; }
+        .mm-stock-card-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 7px 14px; border-top: 1px solid rgba(17,24,32,.07); padding-top: 10px; }
+        .mm-stock-card-meta div { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 8px; color: var(--mm-muted); font-size: 10px; font-weight: 700; }
+        .mm-stock-card-meta strong { min-width: 0; overflow: hidden; color: var(--mm-ink); font-size: 10px; font-weight: 850; text-overflow: ellipsis; white-space: nowrap; }
+        .mm-stock-card-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+        .mm-stock-status { display: inline-flex; min-height: 30px; align-items: center; border-radius: 8px; padding: 0 9px; font-size: 10px; font-weight: 850; }
+        .mm-stock-status.is-stock { background: var(--mm-green-soft); color: var(--mm-green); }
+        .mm-stock-status.is-production { background: #fff6e4; color: #a86a00; }
+        .mm-stock-status.is-sold { background: #fff0ef; color: #c24640; }
+        .mm-stock-card-actions { display: flex; gap: 7px; }
+        .mm-stock-card-actions button {
+          display: inline-flex;
+          width: 34px;
+          height: 34px;
+          align-items: center;
+          justify-content: center;
+          border: 1px solid var(--mm-line);
+          border-radius: 9px;
+          background: #fff;
+          color: var(--mm-ink);
+          font-size: 15px;
+          font-weight: 900;
+        }
+        .mm-stock-card-actions button:last-child { border-color: rgba(17,132,95,.22); background: var(--mm-green-soft); color: var(--mm-green); }
+        .mm-stock-card-grid.is-list { grid-template-columns: 1fr; }
+        .mm-stock-card-grid.is-list .mm-stock-product-card { grid-template-columns: minmax(290px,1.4fr) minmax(240px,.8fr) auto; align-items: center; }
+        .mm-stock-card-grid.is-list .mm-stock-card-top { grid-template-columns: 64px minmax(0,1fr); }
+        .mm-stock-card-grid.is-list .mm-stock-card-photo { width: 64px; height: 64px; }
+        .mm-stock-card-grid.is-list .mm-stock-card-meta { border-top: 0; padding-top: 0; }
+        .mm-stock-card-grid.is-list .mm-stock-card-footer { justify-content: flex-end; }
+        .mm-stock-empty { grid-column: 1 / -1; border: 1px dashed var(--mm-line); border-radius: 13px; padding: 44px 20px; color: var(--mm-muted); font-size: 12px; font-weight: 750; text-align: center; }
+        .mm-stock-pagination {
+          display: flex;
+          min-height: 58px;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          border-top: 1px solid var(--mm-line);
+        }
+        .mm-stock-pagination button {
+          display: inline-flex;
+          min-width: 34px;
+          height: 34px;
+          align-items: center;
+          justify-content: center;
+          border: 1px solid var(--mm-line);
+          border-radius: 9px;
+          background: #fff;
+          color: var(--mm-ink);
+          font-size: 11px;
+          font-weight: 850;
+        }
+        .mm-stock-pagination button.is-active { border-color: var(--mm-green); background: var(--mm-green); color: #fff; }
+        .mm-stock-pagination button:disabled { opacity: .35; }
+        .mm-stock-modal-overlay {
+          position: fixed;
+          inset: 0;
+          z-index: 95;
+          display: grid;
+          place-items: center;
+          overflow-y: auto;
+          background: rgba(17,21,28,.44);
+          padding: 28px;
+          backdrop-filter: blur(4px);
+        }
+        .mm-stock-modal {
+          width: min(1040px,calc(100vw - 56px));
+          max-height: calc(100vh - 56px);
+          overflow: auto;
+          border: 1px solid #e9ecef;
+          border-radius: 18px;
+          background: #f7f8fa;
+          box-shadow: 0 24px 70px rgba(17,21,28,.22);
+        }
+        .mm-stock-modal-head {
+          position: sticky;
+          top: 0;
+          z-index: 6;
+          display: flex;
+          min-height: 62px;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+          border-bottom: 1px solid #e9ecef;
+          background: rgba(255,255,255,.97);
+          padding: 0 18px;
+          backdrop-filter: blur(10px);
+        }
+        .mm-stock-modal-head strong { font-size: 15px; font-weight: 900; }
+        .mm-stock-modal-close { min-height: 38px; border: 1px solid #e9ecef; border-radius: 11px; background: #fff; padding: 0 14px; font-size: 11px; font-weight: 900; }
+        .mm-stock-modal-body { padding: 16px; }
+        .mm-stock-entry-editor { display: block !important; margin: 0 !important; border-radius: 14px !important; box-shadow: none !important; }
+        .mm-stock-entry-editor .minmin-stock-list,
+        .mm-stock-entry-editor .minmin-stock-history { display: none !important; }
+        .mm-stock-picker { display: grid; gap: 9px; }
+        .mm-stock-picker-row { display: grid; grid-template-columns: 52px minmax(0,1fr) auto auto; align-items: center; gap: 12px; border: 1px solid var(--mm-line); border-radius: 12px; background: #fff; padding: 9px; }
+        .mm-stock-picker-row img,.mm-stock-picker-placeholder { width: 52px; height: 52px; border: 1px solid var(--mm-line); border-radius: 9px; object-fit: contain; background: #f7f8fa; }
+        .mm-stock-picker-row b { display: block; font-size: 11px; font-weight: 900; }
+        .mm-stock-picker-row small { display: block; margin-top: 4px; color: var(--mm-muted); font-size: 10px; font-weight: 700; }
+        .mm-stock-picker-row input { width: 92px; height: 38px; border: 1px solid var(--mm-line); border-radius: 9px; padding: 0 10px; font-size: 12px; font-weight: 850; }
+        .mm-stock-picker-row button { min-height: 38px; border: 1px solid rgba(17,132,95,.25); border-radius: 9px; background: var(--mm-green-soft); padding: 0 13px; color: var(--mm-green); font-size: 11px; font-weight: 900; }
+        .mm-stock-edit-shell { display: grid; gap: 12px; }
+        .mm-stock-edit-hero { display: grid; grid-template-columns: 118px minmax(0,1fr); gap: 16px; border: 1px solid var(--mm-line); border-radius: 14px; background: #fff; padding: 14px; }
+        .mm-stock-edit-hero img,.mm-stock-edit-placeholder { width: 118px; height: 118px; border: 1px solid var(--mm-line); border-radius: 11px; object-fit: contain; background: #f7f8fa; }
+        .mm-stock-edit-hero h2 { margin: 4px 0 0; font-size: 20px; font-weight: 900; }
+        .mm-stock-edit-hero p { margin: 6px 0 0; color: var(--mm-muted); font-size: 11px; font-weight: 700; }
+        .mm-stock-edit-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; border: 1px solid var(--mm-line); border-radius: 14px; background: #fff; padding: 14px; }
+        .mm-stock-edit-grid label { display: grid; gap: 6px; color: var(--mm-muted); font-size: 10px; font-weight: 850; letter-spacing: .04em; text-transform: uppercase; }
+        .mm-stock-edit-grid input,.mm-stock-edit-grid select { width: 100%; height: 42px; border: 1px solid var(--mm-line); border-radius: 9px; background: #fff; padding: 0 11px; color: var(--mm-ink); font-size: 12px; font-weight: 800; }
+        .mm-stock-edit-files { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; border: 1px solid var(--mm-line); border-radius: 14px; background: #fff; padding: 14px; }
+        .mm-stock-edit-files > div { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 10px; border: 1px solid var(--mm-line); border-radius: 11px; padding: 10px; }
+        .mm-stock-edit-files span { min-width: 0; overflow: hidden; color: var(--mm-muted); font-size: 10px; font-weight: 850; text-overflow: ellipsis; white-space: nowrap; }
+        .mm-stock-edit-files button,.mm-stock-edit-files label { display: inline-flex; min-height: 36px; flex: 0 0 auto; cursor: pointer; align-items: center; justify-content: center; border: 1px solid rgba(17,132,95,.25); border-radius: 9px; background: var(--mm-green-soft); padding: 0 11px; color: var(--mm-green); font-size: 10px; font-weight: 900; }
+        .mm-stock-edit-files input { display: none; }
+        .mm-stock-edit-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 9px; border: 1px solid var(--mm-line); border-radius: 14px; background: #fff; padding: 12px; }
+        .mm-stock-edit-actions input { width: 90px; height: 40px; border: 1px solid var(--mm-line); border-radius: 9px; padding: 0 10px; font-weight: 850; }
+        .mm-stock-edit-actions button { min-height: 40px; border: 1px solid var(--mm-line); border-radius: 9px; background: #fff; padding: 0 14px; font-size: 11px; font-weight: 900; }
+        .mm-stock-edit-actions button.is-primary { border-color: var(--mm-green); background: var(--mm-green); color: #fff; }
+        .mm-stock-edit-actions button.is-danger { border-color: rgba(194,70,64,.25); color: #c24640; }
+        .mm-stock-more-menu { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
+        .mm-stock-more-menu button { min-height: 62px; border: 1px solid var(--mm-line); border-radius: 12px; background: #fff; color: var(--mm-ink); font-size: 12px; font-weight: 900; }
 
         /* Accounting: consistent quiet dashboard cards and horizontal workflow. */
         .mm-accounting-desktop-redesign > section,
@@ -3473,11 +3706,21 @@
         .mm-quote-product-tools label:first-child { grid-column: 1 / -1; }
         .mm-quote-column-head { display: none; }
         .minmin-quote-desktop-view [data-line] { margin-top: 0; }
-        .mm-stock-toolbar { grid-template-columns: 1fr 1fr; }
-        .mm-stock-tabs, .mm-stock-search { grid-column: 1 / -1; }
+        .mm-stock-toolbar,
+        .mm-stock-toolbar-exact { grid-template-columns: minmax(0,1fr) auto auto auto; }
+        .mm-stock-tabs { grid-column: 1 / -1; }
+        .mm-stock-search { grid-column: 1 / 2; }
+        .mm-stock-filter-panel { grid-template-columns: 1fr 1fr; }
+        .mm-stock-filter-panel > :last-child { display: none; }
+        .minmin-stock-desktop-view .mm-stock-dashboard-side { display: block; position: static; grid-column: 1 / -1; }
+        .mm-stock-card-grid.is-list .mm-stock-product-card { grid-template-columns: minmax(260px,1.1fr) minmax(210px,.8fr); }
+        .mm-stock-card-grid.is-list .mm-stock-card-footer { grid-column: 1 / -1; }
+        .mm-stock-edit-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+        .mm-stock-edit-files { grid-template-columns: 1fr; }
       }
       @media (min-width: 1280px) {
         .minmin-stock-desktop-view .minmin-stock-group-body { grid-template-columns: repeat(3,minmax(0,1fr)); }
+        .mm-stock-card-grid { grid-template-columns: repeat(4,minmax(0,1fr)); }
       }
       @media (min-width: 1500px) {
         .minmin-stock-desktop-view .minmin-stock-group-body { grid-template-columns: repeat(4,minmax(0,1fr)); }
@@ -17343,30 +17586,199 @@ function mmDesktopInventoryStage(item){
   return String(item?.stage||item?.status||item?.inventory_stage||'').toLowerCase();
 }
 function mmDesktopInventoryStats(){
-  const items=Array.isArray(state.inventory?.items)?state.inventory.items:[];
-  const stock=items.filter(item=>!/(sold|đã bán|xuất kho)/i.test(mmDesktopInventoryStage(item)));
-  const production=items.filter(item=>/(production|sản xuất|đang đặt)/i.test(mmDesktopInventoryStage(item)));
-  const sold=items.filter(item=>/(sold|đã bán|xuất kho)/i.test(mmDesktopInventoryStage(item)));
-  const qty=stock.reduce((sum,item)=>sum+(Number(item.quantity??item.stock_quantity??1)||0),0);
-  const value=stock.reduce((sum,item)=>sum+(Number(item.quantity??item.stock_quantity??1)||0)*(Number(item.cost_price??item.purchase_price??item.price)||0),0);
-  const review=items.filter(item=>!item.name||!item.id||!mmDesktopImage(item)).length;
+  const items=(Array.isArray(state.inventory?.items)?state.inventory.items:[]).map(normalizeInventoryItem).filter(item=>!isInventoryDeleted(item));
+  const stock=items.filter(item=>inventoryStage(item).key==='stock');
+  const production=items.filter(item=>inventoryStage(item).key==='production');
+  const sold=items.filter(item=>inventoryStage(item).key==='sold');
+  const qty=stock.reduce((sum,item)=>sum+Math.max(0,Number(item.quantity||0)),0);
+  const value=stock.reduce((sum,item)=>sum+Math.max(0,Number(item.quantity||0))*parseInputMoney(item.purchasePrice||item.price),0);
+  const review=items.filter(item=>!String(item.code||'').trim()||!String(item.name||'').trim()||!String(item.dimension||'').trim()||!mmDesktopImage(item)).length;
   return {items,stock,production,sold,qty,value,review};
+}
+function mmStockDesktopIcon(name){
+  const paths={
+    plus:'<path d="M12 5v14M5 12h14"/>',
+    minus:'<path d="M5 12h14"/>',
+    audit:'<rect x="5" y="4" width="14" height="16" rx="2"/><path d="M9 9h6M9 13h6M9 17h4"/>',
+    more:'<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
+    filter:'<path d="M4 6h16M7 12h10M10 18h4"/>',
+    grid:'<rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/>',
+    list:'<path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/>',
+    search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',
+    edit:'<path d="m4 20 4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10L4 20Z"/><path d="m14 7 3 3"/>'
+  };
+  return `<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name]||paths.more}</svg>`;
+}
+function mmStockDesktopUi(){
+  state.ui=state.ui||{};
+  const current=state.ui.desktopStockDashboard||{};
+  state.ui.desktopStockDashboard={
+    filter:current.filter||'all',
+    query:current.query||'',
+    sort:current.sort||'new',
+    view:current.view==='list'?'list':'grid',
+    page:Math.max(1,Number(current.page||1)),
+    category:current.category||'all',
+    review:current.review||'all',
+    filterOpen:!!current.filterOpen
+  };
+  return state.ui.desktopStockDashboard;
+}
+function mmStockItemKey(item){
+  return String(item?.barcodeId||item?.code||item?.id||'');
+}
+function mmStockCategory(item){
+  return productTypeName(item?.productType||item?.product_type||item?.type)||'Khác';
+}
+function mmStockOwner(item){
+  const attrs=item?.attributes||{};
+  return String(attrs._responsible||attrs._owner||attrs._quotationRepresentative||item?.responsible||inventoryOrderCustomerName(item)||'Chưa gán');
+}
+function mmStockSearchText(item){
+  const attrs=item?.attributes||{};
+  return cleanSearch([item.code,item.name,mmStockCategory(item),item.dimension,item.unit,attrs.color,attrs.bodyMaterial,attrs.shadeMaterial,mmStockOwner(item)].join(' '));
+}
+function mmStockCreatedTime(item){
+  const value=item?.updated_at||item?.updatedAt||item?.created_at||item?.createdAt||item?.importDate||item?.orderDate||'';
+  const time=new Date(value).getTime();
+  return Number.isFinite(time)?time:0;
+}
+function mmStockFilteredItems(stats){
+  const ui=mmStockDesktopUi();
+  const query=cleanSearch(ui.query);
+  let items=stats.items.filter(item=>ui.filter==='all'||inventoryStage(item).key===ui.filter);
+  if(ui.category!=='all')items=items.filter(item=>cleanSearch(mmStockCategory(item))===ui.category);
+  if(ui.review==='review')items=items.filter(item=>!item.code||!item.name||!item.dimension||!mmDesktopImage(item));
+  if(query)items=items.filter(item=>mmStockSearchText(item).includes(query));
+  items=[...items];
+  if(ui.sort==='name')items.sort((a,b)=>String(a.name||a.code||'').localeCompare(String(b.name||b.code||''),'vi'));
+  else if(ui.sort==='quantity')items.sort((a,b)=>Number(a.quantity||0)-Number(b.quantity||0));
+  else if(ui.sort==='price')items.sort((a,b)=>parseInputMoney(b.price)-parseInputMoney(a.price));
+  else items.sort((a,b)=>mmStockCreatedTime(b)-mmStockCreatedTime(a));
+  return items;
+}
+function mmStockProductCard(item){
+  const key=mmStockItemKey(item), stage=inventoryStage(item), finance=inventoryFinance(item), attrs=item.attributes||{};
+  const photo=mmDesktopImage(item);
+  const detail=[mmStockCategory(item),attrs.color,item.dimension].filter(Boolean).join(' · ');
+  const duration=inventoryTotalDays(item);
+  return `<article class="mm-stock-product-card" data-mm-stock-key="${esc(key)}">
+    <span class="mm-stock-card-signal is-${esc(stage.key)}" title="${esc(stage.label)}"></span>
+    <div class="mm-stock-card-top">
+      <div class="mm-stock-card-photo">${photo?`<img src="${esc(driveAssetUrl(photo))}" alt="${esc(item.name||item.code||'Sản phẩm')}"/>`:'<span>Chưa có ảnh</span>'}</div>
+      <div class="mm-stock-card-copy"><b>${esc(item.code||'Chưa có mã')}</b><h3>${esc(item.name||mmStockCategory(item))}</h3><p>${esc(detail||item.unit||'Chưa có thông tin')}</p><strong class="mm-stock-card-price">${money(finance.sell)}</strong></div>
+    </div>
+    <div class="mm-stock-card-meta"><div><span>Tồn kho</span><strong>${Number(item.quantity||0)} ${esc(item.unit||'cái')}</strong></div><div><span>Phụ trách</span><strong>${esc(mmStockOwner(item))}</strong></div></div>
+    <div class="mm-stock-card-footer"><span class="mm-stock-status is-${esc(stage.key)}">${duration.total==null?'':`${duration.total} ngày · `}${esc(stage.label)}</span><div class="mm-stock-card-actions"><button type="button" data-mm-stock-open="${esc(key)}" aria-label="Chỉnh sửa ${esc(item.code||'sản phẩm')}">${mmStockDesktopIcon('more')}</button><button type="button" data-mm-stock-quick="${esc(key)}" aria-label="Thao tác kho ${esc(item.code||'sản phẩm')}">＋</button></div></div>
+  </article>`;
 }
 function mmDesktopStockAside(stats){
   const groups=new Map();
   stats.stock.forEach(item=>{
-    const label=typeof productTypeName==='function'?productTypeName(item.productType||item.product_type||item.type):(item.productType||item.product_type||item.type||'Khác');
+    const label=mmStockCategory(item);
     groups.set(label,(groups.get(label)||0)+1);
   });
   const max=Math.max(1,...groups.values());
   const categories=[...groups.entries()].sort((a,b)=>b[1]-a[1]).slice(0,5);
-  const low=stats.stock.filter(item=>(Number(item.quantity??item.stock_quantity??1)||0)<=1).slice(0,4);
+  const low=[...stats.sold,...stats.stock.filter(item=>Number(item.quantity||0)<=1)].slice(0,5);
   return `<aside class="mm-desktop-side mm-stock-dashboard-side" aria-label="Tóm tắt kho hàng">
-    <h2>Tồn kho theo danh mục</h2>
-    <div class="mt-2">${categories.length?categories.map(([name,count])=>`<div class="py-2"><div class="flex items-center justify-between gap-3 text-xs font-bold"><span>${esc(name)}</span><small>${count} sản phẩm</small></div><div class="mm-progress"><i style="width:${Math.max(8,Math.round(count/max*100))}%"></i></div></div>`).join(''):'<p class="py-4 text-xs text-black/45">Chưa có dữ liệu tồn kho.</p>'}</div>
+    <div class="flex items-center justify-between gap-3"><h2>Tồn kho theo danh mục</h2><button type="button" data-mm-stock-filter-reset class="text-[10px] font-extrabold text-mint">Xem tất cả</button></div>
+    <div class="mt-2">${categories.length?categories.map(([name,count])=>`<button type="button" data-mm-stock-category-shortcut="${esc(cleanSearch(name))}" class="block w-full py-2 text-left"><div class="flex items-center justify-between gap-3 text-xs font-bold"><span>${esc(name)}</span><small>${count} sản phẩm</small></div><div class="mm-progress"><i style="width:${Math.max(8,Math.round(count/max*100))}%"></i></div></button>`).join(''):'<p class="py-4 text-xs text-black/45">Chưa có dữ liệu tồn kho.</p>'}</div>
     <div class="mt-5 flex items-center justify-between"><h2>Sắp hết hàng</h2><small>${low.length} sản phẩm</small></div>
-    <div>${low.length?low.map(item=>`<div class="mm-desktop-side-row">${mmDesktopImage(item)?`<img src="${esc(mmDesktopImage(item))}" alt=""/>`:'<span class="h-[42px] rounded-lg bg-black/5"></span>'}<span><b>${esc(item.id||item.code||item.name||'Sản phẩm')}</b><small>Tồn: ${Number(item.quantity??item.stock_quantity??1)||0}</small></span><strong class="text-xs text-[#b34b45]">Cần nhập</strong></div>`).join(''):'<p class="py-4 text-xs text-black/45">Không có sản phẩm sắp hết.</p>'}</div>
+    <div>${low.length?low.map(item=>`<button type="button" data-mm-stock-open="${esc(mmStockItemKey(item))}" class="mm-desktop-side-row w-full text-left">${mmDesktopImage(item)?`<img src="${esc(driveAssetUrl(mmDesktopImage(item)))}" alt=""/>`:'<span class="h-[42px] rounded-lg bg-black/5"></span>'}<span><b>${esc(item.code||item.name||'Sản phẩm')}</b><small>${esc(item.name||mmStockCategory(item))} · Tồn ${Number(item.quantity||0)}</small></span><strong class="text-xs text-[#b34b45]">${Number(item.quantity||0)<=0?'Hết hàng':'Cần nhập'}</strong></button>`).join(''):'<p class="py-4 text-xs text-black/45">Không có sản phẩm sắp hết.</p>'}</div>
   </aside>`;
+}
+function mmStockExactDashboard(stats){
+  const ui=mmStockDesktopUi(), filtered=mmStockFilteredItems(stats);
+  const pageSize=ui.view==='list'?10:8;
+  const totalPages=Math.max(1,Math.ceil(filtered.length/pageSize));
+  ui.page=Math.min(ui.page,totalPages);
+  const start=(ui.page-1)*pageSize, pageItems=filtered.slice(start,start+pageSize);
+  const categories=[...new Set(stats.items.map(mmStockCategory))].filter(Boolean).sort((a,b)=>a.localeCompare(b,'vi'));
+  const tabs=[['all','Tất cả',stats.items.length],['stock','Trong kho',stats.stock.length],['production','Đang sản xuất',stats.production.length],['sold','Hết hàng',stats.sold.length]];
+  const pages=Array.from({length:totalPages},(_,index)=>index+1);
+  return `<div class="mm-stock-toolbar-exact">
+    <div class="mm-stock-tabs">${tabs.map(([key,label,count])=>`<button type="button" data-mm-stock-exact-filter="${key}" class="${ui.filter===key?'is-active':''}">${label} (${count})</button>`).join('')}</div>
+    <label class="mm-stock-search">${mmStockDesktopIcon('search')}<input data-mm-stock-exact-search type="search" value="${esc(ui.query)}" placeholder="Tìm mã, tên, kích thước, danh mục..."/></label>
+    <button type="button" class="mm-stock-filter-button ${ui.filterOpen?'is-active':''}" data-mm-stock-filter-toggle aria-label="Bộ lọc">${mmStockDesktopIcon('filter')}</button>
+    <select data-mm-stock-exact-sort><option value="new" ${ui.sort==='new'?'selected':''}>Sắp xếp: Mới nhất</option><option value="name" ${ui.sort==='name'?'selected':''}>Tên A–Z</option><option value="quantity" ${ui.sort==='quantity'?'selected':''}>Tồn kho thấp</option><option value="price" ${ui.sort==='price'?'selected':''}>Giá cao nhất</option></select>
+    <div class="flex gap-2"><button type="button" class="mm-stock-view-button ${ui.view==='grid'?'is-active':''}" data-mm-stock-view="grid" aria-label="Dạng lưới">${mmStockDesktopIcon('grid')}</button><button type="button" class="mm-stock-view-button ${ui.view==='list'?'is-active':''}" data-mm-stock-view="list" aria-label="Dạng danh sách">${mmStockDesktopIcon('list')}</button></div>
+    ${ui.filterOpen?`<div class="mm-stock-filter-panel"><label>Danh mục<select data-mm-stock-category><option value="all">Tất cả danh mục</option>${categories.map(name=>`<option value="${esc(cleanSearch(name))}" ${ui.category===cleanSearch(name)?'selected':''}>${esc(name)}</option>`).join('')}</select></label><label>Dữ liệu<select data-mm-stock-review><option value="all" ${ui.review==='all'?'selected':''}>Tất cả dữ liệu</option><option value="review" ${ui.review==='review'?'selected':''}>Cần kiểm tra</option></select></label><span></span></div>`:''}
+  </div>
+  <div class="mm-stock-exact-main">
+    <div class="mm-stock-exact-heading"><h2>Danh sách sản phẩm</h2><span>Hiển thị ${filtered.length?start+1:0}–${Math.min(start+pageSize,filtered.length)} trong ${filtered.length} sản phẩm</span></div>
+    <div class="mm-stock-card-grid ${ui.view==='list'?'is-list':''}">${pageItems.length?pageItems.map(mmStockProductCard).join(''):'<div class="mm-stock-empty">Không tìm thấy sản phẩm phù hợp với bộ lọc.</div>'}</div>
+    <div class="mm-stock-pagination"><button type="button" data-mm-stock-page="${ui.page-1}" ${ui.page<=1?'disabled':''}>‹</button>${pages.slice(Math.max(0,ui.page-3),Math.min(totalPages,ui.page+2)).map(page=>`<button type="button" data-mm-stock-page="${page}" class="${page===ui.page?'is-active':''}">${page}</button>`).join('')}<button type="button" data-mm-stock-page="${ui.page+1}" ${ui.page>=totalPages?'disabled':''}>›</button></div>
+  </div>${mmDesktopStockAside(stats)}`;
+}
+function mmStockPickerRows(items,mode){
+  return `<div class="mm-stock-picker">${items.length?items.map(item=>{
+    const photo=mmDesktopImage(item), key=mmStockItemKey(item);
+    return `<div class="mm-stock-picker-row">${photo?`<img src="${esc(driveAssetUrl(photo))}" alt=""/>`:'<span class="mm-stock-picker-placeholder"></span>'}<span><b>${esc(item.code||'Chưa có mã')} · ${esc(item.name||mmStockCategory(item))}</b><small>${money(item.price)} · Tồn ${Number(item.quantity||0)}</small></span>${mode==='audit'?`<input data-mm-stock-audit-qty="${esc(key)}" type="number" min="0" value="${Number(item.quantity||0)}" aria-label="Số lượng kiểm kê ${esc(item.code||'')}"/>`:''}<button type="button" ${mode==='audit'?`data-mm-stock-audit-save="${esc(key)}"`:`data-mm-stock-picker-open="${esc(key)}"`}>${mode==='audit'?'Cập nhật':'Chọn sản phẩm'}</button></div>`;
+  }).join(''):'<div class="mm-stock-empty">Không có sản phẩm phù hợp.</div>'}</div>`;
+}
+function mmStockEditPanel(item){
+  const key=mmStockItemKey(item), stage=inventoryStage(item), attrs=item.attributes||{}, photo=mmDesktopImage(item);
+  const productOptions=PRODUCT_TYPES.map(type=>`<option value="${esc(type.value)}" ${item.productType===type.value?'selected':''}>${esc(type.label)}</option>`).join('');
+  const attributeInputs=ATTRIBUTE_FIELDS.map(field=>`<label>${esc(field.label)}<input data-mm-stock-edit-attr="${esc(field.key)}" data-key="${esc(key)}" value="${esc(attrs[field.key]||'')}"/></label>`).join('');
+  const invoiceFiles=item.itemKind==='sample'?'':`<div class="mm-stock-edit-files">
+    <div><span>Hóa đơn mua vào${item.invoiceName?` · ${esc(item.invoiceName)}`:''}</span>${inventoryHasInboundInvoice(item)?`<button type="button" data-mm-stock-file="${esc(key)}" data-field="invoiceDataUrl">Mở hóa đơn</button>`:`<label>＋ Tải PDF<input data-mm-stock-upload="${esc(key)}" data-field="invoiceDataUrl" data-name-field="invoiceName" data-kind="invoice" type="file" accept="application/pdf,.pdf"/></label>`}</div>
+    <div><span>Hóa đơn đầu ra${item.saleInvoiceName?` · ${esc(item.saleInvoiceName)}`:''}</span>${item.saleInvoiceDataUrl?`<button type="button" data-mm-stock-file="${esc(key)}" data-field="saleInvoiceDataUrl">Mở hóa đơn</button>`:`<label>＋ Tải PDF<input data-mm-stock-upload="${esc(key)}" data-field="saleInvoiceDataUrl" data-name-field="saleInvoiceName" data-kind="sale-invoice" type="file" accept="application/pdf,.pdf"/></label>`}</div>
+  </div>`;
+  return `<div class="mm-stock-edit-shell">
+    <div class="mm-stock-edit-hero">${photo?`<img src="${esc(driveAssetUrl(photo))}" alt=""/>`:'<span class="mm-stock-edit-placeholder"></span>'}<div><span class="mm-stock-status is-${esc(stage.key)}">${esc(stage.label)}</span><h2>${esc(item.name||mmStockCategory(item))}</h2><p>${esc(item.code||'Chưa có mã')} · Tồn ${Number(item.quantity||0)} ${esc(item.unit||'sản phẩm')}</p><strong class="mm-stock-card-price">${money(item.price)}</strong></div></div>
+    <div class="mm-stock-edit-grid">
+      <label>Tên sản phẩm<input data-mm-stock-edit-field="name" data-key="${esc(key)}" value="${esc(item.name||'')}"/></label>
+      <label>Loại đèn<select data-mm-stock-edit-field="productType" data-key="${esc(key)}">${productOptions}</select></label>
+      <label>Đơn vị<input data-mm-stock-edit-field="unit" data-key="${esc(key)}" value="${esc(item.unit||'')}"/></label>
+      <label>Kích thước<input data-mm-stock-edit-field="dimension" data-key="${esc(key)}" value="${esc(item.dimension||'')}"/></label>
+      <label>Giá mua vào<input data-mm-stock-edit-field="purchasePrice" data-key="${esc(key)}" inputmode="numeric" value="${esc(moneyPlain(item.purchasePrice||0))}"/></label>
+      <label>Giá bán ra<input data-mm-stock-edit-field="price" data-key="${esc(key)}" inputmode="numeric" value="${esc(moneyPlain(item.price||0))}"/></label>
+      <label>Ngày đặt hàng<input data-mm-stock-edit-field="orderDate" data-key="${esc(key)}" type="date" value="${esc(isValidIsoDate(item.orderDate)?item.orderDate:'')}"/></label>
+      <label>Ngày nhập hàng<input data-mm-stock-edit-field="importDate" data-key="${esc(key)}" type="date" value="${esc(isValidIsoDate(item.importDate)?item.importDate:'')}"/></label>
+      <label>Ngày xuất hàng<input data-mm-stock-edit-field="exportDate" data-key="${esc(key)}" type="date" value="${esc(isValidIsoDate(item.exportDate)?item.exportDate:'')}"/></label>
+      ${attributeInputs}
+    </div>${invoiceFiles}
+    <div class="mm-stock-edit-actions"><input data-mm-stock-action-qty="${esc(key)}" type="number" min="1" value="1" aria-label="Số lượng thao tác"/>
+      ${stage.key==='production'?`<button type="button" class="is-primary" data-mm-stock-arrive="${esc(key)}">Nhập kho VN</button>`:`<button type="button" data-mm-stock-adjust="in" data-key="${esc(key)}">＋ Nhập thêm</button>`}
+      ${stage.key==='stock'?`<button type="button" class="is-primary" data-mm-stock-adjust="out" data-key="${esc(key)}">− Xuất kho</button>`:''}
+      ${stage.key==='sold'?`<button type="button" data-mm-stock-export-adjust="${esc(key)}">Tùy chỉnh đã xuất</button>`:''}
+      <button type="button" class="is-danger" data-mm-stock-delete="${esc(key)}">Xóa sản phẩm</button>
+    </div>
+  </div>`;
+}
+function mmMountStockDesktopModal(stockWrap){
+  document.querySelector('.mm-stock-modal-overlay')?.remove();
+  const mode=String(state.ui?.desktopStockModal||'');
+  if(!stockWrap||!mode)return;
+  const stats=mmDesktopInventoryStats();
+  let title='Kho hàng', body='', movedTarget=null;
+  if(mode==='entry'){
+    title='Nhập kho';
+    movedTarget=stockWrap.querySelector('.mm-stock-legacy-root .minmin-stock-entry');
+    movedTarget?.classList.add('mm-stock-entry-editor');
+  }else if(mode==='out'){
+    title='Xuất kho · Chọn sản phẩm';
+    body=mmStockPickerRows(stats.stock,'out');
+  }else if(mode==='audit'){
+    title='Kiểm kê tồn kho';
+    body=mmStockPickerRows(stats.items,'audit');
+  }else if(mode==='more'){
+    title='Thao tác khác';
+    body=`<div class="mm-stock-more-menu"><button type="button" data-mm-stock-more-action="import">Import báo giá Excel</button><button type="button" data-mm-stock-more-action="sync">Đồng bộ dữ liệu kho</button></div>`;
+  }else if(mode.startsWith('item:')){
+    const item=findInventoryItem(mode.slice(5));
+    if(item){title=`Chi tiết sản phẩm · ${item.code||''}`;body=mmStockEditPanel(item);}
+  }
+  if(!body&&!movedTarget){state.ui.desktopStockModal='';return;}
+  const overlay=document.createElement('div');
+  overlay.className='mm-stock-modal-overlay';
+  overlay.setAttribute('role','dialog');
+  overlay.setAttribute('aria-modal','true');
+  overlay.setAttribute('aria-label',title);
+  overlay.innerHTML=`<section class="mm-stock-modal"><header class="mm-stock-modal-head"><strong>${esc(title)}</strong><button type="button" class="mm-stock-modal-close" data-mm-stock-modal-close>Đóng</button></header><div class="mm-stock-modal-body">${body}</div></section>`;
+  if(movedTarget)overlay.querySelector('.mm-stock-modal-body').appendChild(movedTarget);
+  document.body.appendChild(overlay);
 }
 function mmQuoteExactDashboard(){
   const info=state.info||{}, t=totals(), quoteCode=`BG${quoteDateCode()}-001`;
@@ -17425,24 +17837,11 @@ function mountMinminDesktopUi(){
   const stockSection=stockWrap?.querySelector(':scope > section');
   if(stockSection&&!stockSection.querySelector(':scope > [data-mm-desktop-hero]')){
     const stats=mmDesktopInventoryStats();
-    stockWrap.classList.toggle('is-entry-open',!!state.ui?.desktopStockEntryOpen);
-    stockSection.insertAdjacentHTML('afterbegin',`<header class="mm-desktop-hero" data-mm-desktop-hero><div><h1>Kho hàng</h1><p>Quản lý tồn kho, nhập – xuất – kiểm kê và giá vốn sản phẩm.</p></div><div class="mm-desktop-actions"><button class="mm-button" type="button" data-mm-stock-entry>＋ Nhập kho</button><button class="mm-button" type="button" data-mm-stock-import>Nhập báo giá</button><button class="mm-button primary" type="button" data-mm-stock-sync>Đồng bộ</button></div></header><div class="mm-stat-strip"><div class="mm-stat"><span>Tổng kho</span><strong>${stats.qty}</strong><small>${stats.stock.length} sản phẩm tồn</small></div><div class="mm-stat"><span>Giá trị tồn kho</span><strong>${mmDesktopCurrency(stats.value)}</strong><small>Theo giá hiện có</small></div><div class="mm-stat"><span>Đang sản xuất</span><strong>${stats.production.length}</strong><small>Sản phẩm</small></div><div class="mm-stat"><span>Đã xuất / bán</span><strong>${stats.sold.length}</strong><small>Sản phẩm</small></div><div class="mm-stat"><span>Cần kiểm tra</span><strong>${stats.review}</strong><small>Thiếu ảnh hoặc dữ liệu</small></div></div>`);
-    stockSection.querySelector('.mm-stat-strip')?.insertAdjacentHTML('afterend',`<div class="mm-stock-toolbar"><div class="mm-stock-tabs"><button type="button" data-mm-stock-filter="all" class="is-active">Tất cả (${stats.items.length})</button><button type="button" data-mm-stock-filter="stock">Trong kho (${stats.stock.length})</button><button type="button" data-mm-stock-filter="production">Đang sản xuất (${stats.production.length})</button><button type="button" data-mm-stock-filter="sold">Hết hàng (${stats.sold.length})</button></div><label class="mm-stock-search">⌕ <input data-mm-stock-search type="search" placeholder="Tìm mã, tên, kích thước, danh mục..."/></label><select data-mm-stock-sort><option value="new">Sắp xếp: Mới nhất</option><option value="name">Tên A–Z</option><option value="quantity">Tồn kho thấp</option></select><button class="mm-button" type="button">☷ Lọc</button></div>`);
-    const orderedItems=[
-      ...stats.items.filter(item=>inventoryStage(item).key==='stock'),
-      ...stats.items.filter(item=>inventoryStage(item).key==='production').sort((a,b)=>String(b.orderDate||'').localeCompare(String(a.orderDate||''))),
-      ...stats.items.filter(item=>inventoryStage(item).key==='sold').sort((a,b)=>String(inventorySoldTime(b)).localeCompare(String(inventorySoldTime(a))))
-    ];
-    stockSection.querySelectorAll('.minmin-stock-card').forEach((card,index)=>{
-      const item=orderedItems[index];
-      if(!item)return;
-      card.dataset.mmStockStage=inventoryStage(item).key;
-      card.dataset.mmStockSearch=cleanSearch([item.code,item.name,item.dimension,productTypeName(item.productType)].join(' '));
-      card.dataset.mmStockName=cleanSearch(item.name||item.code||'');
-      card.dataset.mmStockQty=String(Number(item.quantity||0));
-    });
-    stockSection.insertAdjacentHTML('beforeend',mmDesktopStockAside(stats));
+    stockSection.querySelector(':scope > div')?.classList.add('mm-stock-legacy-root');
+    stockSection.insertAdjacentHTML('afterbegin',`<header class="mm-desktop-hero" data-mm-desktop-hero><div><h1>Kho hàng</h1><p>Quản lý tồn kho, nhập – xuất – kiểm kê và giá vốn sản phẩm.</p></div><div class="mm-desktop-actions"><button class="mm-button" type="button" data-mm-stock-entry>${mmStockDesktopIcon('plus')}Nhập kho</button><button class="mm-button" type="button" data-mm-stock-top-out>${mmStockDesktopIcon('minus')}Xuất kho</button><button class="mm-button" type="button" data-mm-stock-audit>${mmStockDesktopIcon('audit')}Kiểm kê</button><button class="mm-button" type="button" data-mm-stock-more>${mmStockDesktopIcon('more')}Khác</button></div></header><div class="mm-stat-strip"><div class="mm-stat"><span>Tổng kho</span><strong>${stats.qty}</strong><small>${stats.stock.length} sản phẩm tồn</small></div><div class="mm-stat"><span>Giá trị tồn kho</span><strong>${mmDesktopCurrency(stats.value)}</strong><small>Theo giá vốn</small></div><div class="mm-stat"><span>Đang sản xuất</span><strong>${stats.production.length}</strong><small>Sản phẩm</small></div><div class="mm-stat"><span>Hết hàng</span><strong>${stats.sold.length}</strong><small>Sản phẩm</small></div><div class="mm-stat"><span>Cần kiểm tra</span><strong>${stats.review}</strong><small>Thiếu ảnh hoặc dữ liệu</small></div></div>`);
+    stockSection.insertAdjacentHTML('beforeend',mmStockExactDashboard(stats));
   }
+  mmMountStockDesktopModal(stockWrap);
 
   const website=document.querySelector('.minmin-website-desktop-view');
   if(website&&!website.querySelector(':scope > [data-mm-desktop-hero]')){
@@ -17463,16 +17862,98 @@ render=function renderWithMinminDesktopUi(){
 document.addEventListener('click',event=>{
   if(window.innerWidth<768)return;
   if(event.target.closest?.('[data-mm-stock-entry]')){
-    state.ui.desktopStockEntryOpen=!state.ui.desktopStockEntryOpen;
+    state.ui.stockInputCollapsed=false;
+    state.ui.desktopStockModal='entry';
     render({force:true}); return;
   }
-  if(event.target.closest?.('[data-mm-stock-import]')){
-    state.ui.desktopStockEntryOpen=true; render({force:true});
-    setTimeout(()=>document.getElementById('stockImportQuotation')?.click(),0); return;
+  if(event.target.closest?.('[data-mm-stock-top-out]')){
+    state.ui.desktopStockModal='out'; render({force:true}); return;
   }
-  if(event.target.closest?.('[data-mm-stock-sync]')){
-    const existing=document.querySelector('[data-sync-inventory],#syncInventory');
-    if(existing)existing.click(); else if(typeof syncInventoryFromSupabase==='function')syncInventoryFromSupabase();
+  if(event.target.closest?.('[data-mm-stock-audit]')){
+    state.ui.desktopStockModal='audit'; render({force:true}); return;
+  }
+  if(event.target.closest?.('[data-mm-stock-more]')){
+    state.ui.desktopStockModal='more'; render({force:true}); return;
+  }
+  if(event.target.closest?.('[data-mm-stock-modal-close]')||event.target.matches?.('.mm-stock-modal-overlay')){
+    state.ui.desktopStockModal=''; render({force:true}); return;
+  }
+  const stockOpen=event.target.closest?.('[data-mm-stock-open],[data-mm-stock-quick],[data-mm-stock-picker-open]');
+  if(stockOpen){
+    const key=stockOpen.dataset.mmStockOpen||stockOpen.dataset.mmStockQuick||stockOpen.dataset.mmStockPickerOpen;
+    state.ui.desktopStockModal=`item:${key}`;
+    state.ui.openStockItems={[key]:true};
+    render({force:true}); return;
+  }
+  const stockFilter=event.target.closest?.('[data-mm-stock-exact-filter]');
+  if(stockFilter){
+    const ui=mmStockDesktopUi(); ui.filter=stockFilter.dataset.mmStockExactFilter||'all'; ui.page=1;
+    render({force:true}); return;
+  }
+  if(event.target.closest?.('[data-mm-stock-filter-toggle]')){
+    const ui=mmStockDesktopUi(); ui.filterOpen=!ui.filterOpen;
+    render({force:true}); return;
+  }
+  const stockView=event.target.closest?.('[data-mm-stock-view]');
+  if(stockView){
+    const ui=mmStockDesktopUi(); ui.view=stockView.dataset.mmStockView==='list'?'list':'grid'; ui.page=1;
+    render({force:true}); return;
+  }
+  const stockPage=event.target.closest?.('[data-mm-stock-page]');
+  if(stockPage&&!stockPage.disabled){
+    mmStockDesktopUi().page=Math.max(1,Number(stockPage.dataset.mmStockPage||1));
+    render({force:true}); return;
+  }
+  const categoryShortcut=event.target.closest?.('[data-mm-stock-category-shortcut]');
+  if(categoryShortcut){
+    const ui=mmStockDesktopUi(); ui.category=categoryShortcut.dataset.mmStockCategoryShortcut||'all'; ui.filterOpen=true; ui.page=1;
+    render({force:true}); return;
+  }
+  if(event.target.closest?.('[data-mm-stock-filter-reset]')){
+    state.ui.desktopStockDashboard={filter:'all',query:'',sort:'new',view:mmStockDesktopUi().view,page:1,category:'all',review:'all',filterOpen:false};
+    render({force:true}); return;
+  }
+  const moreAction=event.target.closest?.('[data-mm-stock-more-action]');
+  if(moreAction){
+    const action=moreAction.dataset.mmStockMoreAction;
+    state.ui.desktopStockModal='';
+    if(action==='import'){
+      render({force:true});
+      setTimeout(()=>document.getElementById('stockImportQuotation')?.click(),0);
+    }else if(action==='sync'){
+      const existing=document.querySelector('[data-sync-inventory],#syncInventory');
+      if(existing)existing.click(); else if(typeof syncInventoryFromSupabase==='function')syncInventoryFromSupabase();
+    }
+    return;
+  }
+  const stockAdjust=event.target.closest?.('[data-mm-stock-adjust]');
+  if(stockAdjust){
+    const key=stockAdjust.dataset.key, qty=Math.max(1,Number(document.querySelector(`[data-mm-stock-action-qty="${CSS.escape(key)}"]`)?.value||1));
+    state.ui.desktopStockModal='';
+    adjustInventory(key,stockAdjust.dataset.mmStockAdjust==='out'?'Xuất kho':'Nhập kho',qty);
+    return;
+  }
+  const stockFile=event.target.closest?.('[data-mm-stock-file]');
+  if(stockFile){
+    const item=findInventoryItem(stockFile.dataset.mmStockFile);
+    viewInventoryFile(stockFile.dataset.mmStockFile,stockFile.dataset.field,item?.[stockFile.dataset.field]||'Hóa đơn');
+    return;
+  }
+  const stockArrive=event.target.closest?.('[data-mm-stock-arrive]');
+  if(stockArrive){state.ui.desktopStockModal='';markInventoryArrived(stockArrive.dataset.mmStockArrive);return;}
+  const stockExportAdjust=event.target.closest?.('[data-mm-stock-export-adjust]');
+  if(stockExportAdjust){customizeInventoryExport(stockExportAdjust.dataset.mmStockExportAdjust);return;}
+  const stockDelete=event.target.closest?.('[data-mm-stock-delete]');
+  if(stockDelete){deleteInventoryItem(stockDelete.dataset.mmStockDelete);return;}
+  const auditSave=event.target.closest?.('[data-mm-stock-audit-save]');
+  if(auditSave){
+    const key=auditSave.dataset.mmStockAuditSave, item=findInventoryItem(key);
+    const counted=Math.max(0,Number(document.querySelector(`[data-mm-stock-audit-qty="${CSS.escape(key)}"]`)?.value||0));
+    const current=Math.max(0,Number(item?.quantity||0)), delta=counted-current;
+    if(!item)return;
+    if(!delta)return alert('Số lượng kiểm kê đang khớp với hệ thống.');
+    state.ui.desktopStockModal='';
+    adjustInventory(key,delta>0?'Nhập kho':'Xuất kho',Math.abs(delta));
     return;
   }
   if(event.target.closest?.('[data-mm-quote-customer]')){
@@ -17517,6 +17998,24 @@ document.addEventListener('click',event=>{
   }
 });
 document.addEventListener('input',event=>{
+  const stockSearch=event.target.closest?.('[data-mm-stock-exact-search]');
+  if(stockSearch&&window.innerWidth>=768){
+    const ui=mmStockDesktopUi();
+    ui.query=stockSearch.value||'';
+    ui.page=1;
+    clearTimeout(window.mmStockDesktopSearchTimer);
+    window.mmStockDesktopSearchTimer=setTimeout(()=>{
+      render({force:true});
+      requestAnimationFrame(()=>{
+        const next=document.querySelector('[data-mm-stock-exact-search]');
+        if(!next)return;
+        next.focus();
+        const end=next.value.length;
+        next.setSelectionRange?.(end,end);
+      });
+    },180);
+    return;
+  }
   const search=event.target.closest?.('[data-mm-quote-search]');
   if(!search||window.innerWidth<768)return;
   const query=invoiceNorm(search.value||'');
@@ -17525,6 +18024,69 @@ document.addEventListener('input',event=>{
   });
 });
 document.addEventListener('change',event=>{
+  if(window.innerWidth>=768){
+    const stockUpload=event.target.closest?.('[data-mm-stock-upload]');
+    if(stockUpload&&stockUpload.files?.[0]){
+      uploadInventoryItemFile(
+        stockUpload.dataset.mmStockUpload,
+        stockUpload.dataset.field,
+        stockUpload.dataset.nameField,
+        stockUpload.dataset.kind,
+        stockUpload.files[0],
+      );
+      return;
+    }
+    const sort=event.target.closest?.('[data-mm-stock-exact-sort]');
+    if(sort){
+      const ui=mmStockDesktopUi();
+      ui.sort=sort.value||'new';
+      ui.page=1;
+      render({force:true});
+      return;
+    }
+    const category=event.target.closest?.('[data-mm-stock-category]');
+    if(category){
+      const ui=mmStockDesktopUi();
+      ui.category=category.value||'all';
+      ui.page=1;
+      render({force:true});
+      return;
+    }
+    const review=event.target.closest?.('[data-mm-stock-review]');
+    if(review){
+      const ui=mmStockDesktopUi();
+      ui.review=review.value||'all';
+      ui.page=1;
+      render({force:true});
+      return;
+    }
+    const stockField=event.target.closest?.('[data-mm-stock-edit-field]');
+    if(stockField){
+      const item=findInventoryItem(stockField.dataset.key);
+      if(!item)return;
+      const key=stockField.dataset.mmStockEditField;
+      item[key]=['price','purchasePrice'].includes(key)?parseInputMoney(stockField.value):stockField.value;
+      saveInventory();
+      saveInventoryItemRemote(item).catch(error=>{
+        state.inventory.syncStatus='Chưa ghi được Supabase, đã lưu tạm trên máy.';
+        console.warn(error);
+      });
+      return;
+    }
+    const stockAttr=event.target.closest?.('[data-mm-stock-edit-attr]');
+    if(stockAttr){
+      const item=findInventoryItem(stockAttr.dataset.key);
+      if(!item)return;
+      item.attributes=item.attributes||{...ATTRIBUTE_DEFAULTS};
+      item.attributes[stockAttr.dataset.mmStockEditAttr]=stockAttr.value;
+      saveInventory();
+      saveInventoryItemRemote(item).catch(error=>{
+        state.inventory.syncStatus='Chưa ghi được Supabase, đã lưu tạm trên máy.';
+        console.warn(error);
+      });
+      return;
+    }
+  }
   const select=event.target.closest?.('[data-mm-quote-type]');
   if(!select||window.innerWidth<768)return;
   const type=invoiceNorm(select.value||'');

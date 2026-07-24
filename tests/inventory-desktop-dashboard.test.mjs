@@ -1,0 +1,57 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+
+const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+
+test('desktop inventory dashboard is rendered from the real inventory state', () => {
+  for (const marker of [
+    'function mmDesktopInventoryStats()',
+    'function mmStockExactDashboard(stats)',
+    'function mmStockProductCard(item)',
+    'function mmDesktopStockAside(stats)',
+    'normalizeInventoryItem',
+    'isInventoryDeleted',
+    'inventoryStage(item)',
+  ]) assert.ok(html.includes(marker), `missing ${marker}`);
+});
+
+test('desktop inventory keeps every requested workflow connected', () => {
+  for (const marker of [
+    'data-mm-stock-entry',
+    'data-mm-stock-top-out',
+    'data-mm-stock-audit',
+    'data-mm-stock-more',
+    'data-mm-stock-exact-search',
+    'data-mm-stock-exact-filter',
+    'data-mm-stock-exact-sort',
+    'data-mm-stock-view',
+    'data-mm-stock-page',
+    'data-mm-stock-edit-field',
+    'data-mm-stock-file',
+    'data-mm-stock-upload',
+    'data-mm-stock-adjust',
+    'data-mm-stock-audit-save',
+    'upsertInventoryItem',
+    'adjustInventory',
+    'saveInventoryItemRemote',
+  ]) assert.ok(html.includes(marker), `missing ${marker}`);
+});
+
+test('desktop-only inventory redesign does not replace the mobile layout', () => {
+  assert.ok(html.includes("if(window.matchMedia?.('(max-width: 767px)').matches)return;"));
+  assert.match(html, /@media\s*\(min-width:\s*768px\)[\s\S]*?\.mm-stock-toolbar-exact/);
+  assert.ok(html.includes('.minmin-stock-desktop-view .mm-stock-legacy-root { display: none !important; }'));
+});
+
+test('inventory dashboard has exact toolbar, grid/list cards, sidebar and modal styles', () => {
+  for (const marker of [
+    '.mm-stock-toolbar-exact',
+    '.mm-stock-card-grid',
+    '.mm-stock-card-grid.is-list',
+    '.mm-stock-product-card',
+    '.mm-stock-dashboard-side',
+    '.mm-stock-pagination',
+    '.mm-stock-modal-overlay',
+  ]) assert.ok(html.includes(marker), `missing ${marker}`);
+});
