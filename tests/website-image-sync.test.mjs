@@ -3,65 +3,78 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 
 const source=readFileSync(new URL('../index.html',import.meta.url),'utf8');
+const patch=source.slice(source.indexOf('/* MINMIN PATCH 2026-07-25: optimized website images'));
 
-test('mobile product sync always sends the current images',()=>{
-  assert.match(
-    source,
-    /data-website-mobile-sync-one[\s\S]*Đồng bộ toàn bộ nội dung, danh mục và hình ảnh[\s\S]*Đồng bộ sản phẩm[\s\S]*uploadWebsiteProductToWoo\(id,\{includeImages:true,includeCategories:true\}\)/,
-    'single-product mobile sync must include all content, categories and images',
-  );
-  assert.match(
-    source,
-    /data-website-mobile-sync[\s\S]*minminUploadAllWooSuperFast\(\{includeImages:true,forceImages:true\}\)/,
-    'dashboard sync must repair legacy products whose images were never sent',
-  );
+test('website images are optimized client-side without cropping or upscaling',()=>{
+  assert.match(patch,/function minminOptimizeWebsiteImage\(file,options=\{\}\)/);
+  assert.match(patch,/maxEdge\/Math\.max\(sourceWidth,sourceHeight\)/);
+  assert.match(patch,/const scale=Math\.min\(1,/,'small images must not be enlarged');
+  assert.match(patch,/context\.drawImage\(image,0,0,width,height\)/,'normal upload must preserve the full image');
+  assert.match(patch,/type='image\/webp'/);
+  assert.match(patch,/quality=Number\(options\.quality\|\|0\.83\)/);
+  assert.match(patch,/type='image\/jpeg'/);
+  assert.match(patch,/Number\(options\.jpegQuality\|\|0\.82\)/);
+  assert.match(patch,/Đã tối ưu:[\s\S]*before[\s\S]*after/);
 });
 
-test('image edits are tracked independently from text synchronization',()=>{
+test('featured image and gallery expose all requested management actions',()=>{
   for(const marker of [
-    'imageUpdatedAt',
-    'wooImageSyncedAt',
-    'wooImageSignature',
-    'function websiteImagesNeedSync',
-    "wooStatus:p.wooProductId?'Chưa đồng bộ ảnh':''",
-  ]) assert.ok(source.includes(marker),`missing ${marker}`);
-  assert.match(source,/function minminWooNeedsUpload\(p\)[\s\S]*websiteImagesNeedSync\(x\)/);
+    'Cắt lại ảnh đại diện',
+    'data-minmin-featured-remove',
+    'data-minmin-gallery-feature',
+    'data-minmin-gallery-remove',
+    'data-minmin-image-preview',
+    'draggable="true"',
+    'minminReorderGallery',
+    'minminFeatureGallery',
+    'is-removing',
+    '180',
+  ])assert.ok(patch.includes(marker),`missing ${marker}`);
+  assert.match(patch,/Dùng ảnh đầu tiên trong Gallery làm ảnh đại diện/);
+  assert.match(patch,/if\(to===0\)return minminFeatureGallery\(source\)/);
+  assert.match(patch,/@media\(max-width:767px\)[\s\S]*\.minmin-gallery-controls\{opacity:1\}/);
 });
 
-test('WooCommerce response is validated before the app reports image success',()=>{
-  assert.match(source,/const categoryIds=includeCategories&&item\.category\?await websiteWooCategoryIds\(item\.category\):\[\]/);
-  assert.match(source,/minminWooFastPayload\(item, \{includeImages, includeCategories, categoryIds\}\)/);
-  assert.match(
-    source,
-    /includeImages && payload\.images\?\.length[\s\S]*WooCommerce đã nhận dữ liệu chữ nhưng chưa nhận được ảnh/,
-  );
-  assert.match(
-    source,
-    /wooImageSyncedAt:syncedAt,wooImageSignature:websiteImageSignature\(item\)/,
-  );
+test('deleted synchronized images are retained as pending delete until Woo confirms images',()=>{
+  assert.match(patch,/websitePendingDeleteUrls/);
+  assert.match(patch,/function minminPendingDeletes/);
+  assert.match(patch,/websitePendingDeleteUrls:minminPendingDeletes/);
+  assert.match(patch,/JSON\.stringify\(\{images:urls\.map\(src=>\(\{src\}\)\)\}\)/);
+  assert.match(patch,/wooImageSignature:websiteImageSignature\(item\),websitePendingDeleteUrls:\[\]/);
 });
 
-test('mobile synchronization badge cannot report a pending image as synchronized',()=>{
-  assert.match(source,/const pendingImages=websiteImagesNeedSync\(p\)/);
-  assert.match(source,/function websiteProductFullySynced\(product\)/);
-  assert.match(source,/const syncBadge=fullySynced\?/);
-  assert.match(source,/Chưa đồng bộ ảnh/);
-  assert.match(source,/!fullySynced\?'Chưa đồng bộ'/);
+test('single product synchronization is full, step based and retryable',()=>{
+  assert.match(patch,/steps=\[\.\.\.\(content&&item\.category\?\['categories'\]:\[\]\),\.\.\.\(content\?\['content'\]:\[\]\),\.\.\.\(images\?\['images'\]:\[\]\)\]/);
+  assert.match(patch,/websiteSyncRetrySteps:steps\.slice\(index\)/);
+  assert.match(patch,/retryOnly&&item\.websiteSyncRetrySteps\.length/);
+  assert.match(patch,/minminWooFastPayload\(item,\{includeImages:false,includeCategories:true/);
+  assert.match(patch,/body:JSON\.stringify\(\{images:urls\.map/);
+  assert.match(patch,/Đồng bộ đầy đủ nội dung, thuộc tính, giá, ảnh đại diện và Gallery/);
 });
 
-test('phone uploads are cropped and compressed to a 900 square',()=>{
-  assert.match(source,/function cropFeaturedImageToSquare\(dataUrl,size=900,quality=0\.82\)/);
-  assert.match(source,/uploadWebsiteFeatured\(featured\.files\[0\],\{size:900,quality:0\.82\}\)/);
-  assert.match(source,/uploadWebsiteGallery\(gallery\.files,\{square:true,size:900,quality:0\.82\}\)/);
-  assert.match(source,/Ảnh chụp điện thoại được tự động crop vuông và nén còn 900×900/);
+test('every remote synchronization step has a finite timeout and contextual error',()=>{
+  assert.match(patch,/function minminWebsiteWithTimeout/);
+  assert.match(patch,/websiteWooCategoryIds\(item\.category\),30000/);
+  assert.match(patch,/Cập nhật nội dung'\)/);
+  assert.match(patch,/Tải \$\{urls\.length\} ảnh/);
+  assert.match(patch,/Cập nhật nội dung thất bại/);
+  assert.match(patch,/Không thể tải ảnh/);
 });
 
-test('mobile synchronization exposes product and batch percentages',()=>{
-  assert.match(source,/function websiteMobileSyncProgressPanel\(\)/);
-  assert.match(source,/websiteMobileSyncProgress:\s*Math\.max/);
-  assert.match(source,/Đang đồng bộ \$\{progress\}%/);
-  assert.match(source,/minmin-website-product-progress/);
-  assert.match(source,/Đang đồng bộ \$\{overallBefore\}%/);
-  assert.match(source,/const finished=processed>=items\.length, finalProgress=/);
-  assert.match(source,/setWebsiteMobileSyncProgress\(\{active:false,progress:finalProgress/);
+test('batch synchronization is smart, sequential and preserves failures for retry',()=>{
+  assert.match(patch,/filter\(product=>failedOnly\?failedOnly\.has\(String\(product\.id\)\):minminWebsiteNeedsSync\(product\)\)/);
+  assert.match(patch,/for\(let index=0;index<products\.length;index\+\+\)/);
+  assert.match(patch,/await minminSyncProduct\(products\[index\]\.id/);
+  assert.match(patch,/failedIds\.push\(products\[index\]\.id\)/);
+  assert.match(patch,/Thành công: \$\{ok\} · Thất bại: \$\{fail\}/);
+  assert.match(patch,/data-minmin-retry-failed/);
+});
+
+test('product status and progress use completed real steps',()=>{
+  for(const label of ['Chưa đồng bộ','Có thay đổi','Đang cập nhật nội dung','Đang tải ảnh','Hoàn tất','Lỗi']){
+    assert.ok(patch.includes(label),`missing status ${label}`);
+  }
+  assert.match(patch,/wooProgress:Math\.round\(\(completed\/steps\.length\)\*100\)/);
+  assert.match(patch,/Đã đồng bộ lúc \$\{esc\(last\)\}/);
+  assert.match(patch,/button\.disabled=busy/);
 });

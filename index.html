@@ -18861,6 +18861,567 @@ document.addEventListener('change',event=>{
   });
 });
 
+/* MINMIN PATCH 2026-07-25: optimized website images and resilient full Woo sync */
+(function(){
+  const websiteNormalizeImageSyncBase=normalizeWebsiteProduct;
+  normalizeWebsiteProduct=function(value={}){
+    const raw=value||{}, product=websiteNormalizeImageSyncBase(raw);
+    product.websitePendingDeleteUrls=[...new Set((Array.isArray(raw.websitePendingDeleteUrls)?raw.websitePendingDeleteUrls:[]).map(websiteUrlOnly).filter(Boolean))];
+    product.websiteSyncRetrySteps=Array.isArray(raw.websiteSyncRetrySteps)?raw.websiteSyncRetrySteps.map(String).filter(Boolean):[];
+    product.websiteSyncCategoryIds=Array.isArray(raw.websiteSyncCategoryIds)?raw.websiteSyncCategoryIds.map(Number).filter(Boolean):[];
+    product.websiteSyncPhase=String(raw.websiteSyncPhase||'');
+    product.websiteSyncStep=String(raw.websiteSyncStep||'');
+    product.websiteSyncError=String(raw.websiteSyncError||'');
+    product.websiteSyncedContentSignature=String(raw.websiteSyncedContentSignature||'');
+    product.websiteSyncedSignature=String(raw.websiteSyncedSignature||'');
+    product.websiteLastOptimization=raw.websiteLastOptimization&&typeof raw.websiteLastOptimization==='object'?{...raw.websiteLastOptimization}:null;
+    product.websiteImageSizes=raw.websiteImageSizes&&typeof raw.websiteImageSizes==='object'?{...raw.websiteImageSizes}:{};
+    return product;
+  };
+
+  function minminWebsiteHash(value){
+    let hash=2166136261;
+    for(let index=0;index<value.length;index++){
+      hash^=value.charCodeAt(index);
+      hash=Math.imul(hash,16777619);
+    }
+    return (hash>>>0).toString(36);
+  }
+  function minminWebsiteContentSignature(product){
+    const p=normalizeWebsiteProduct(product), content={};
+    WEBSITE_PRODUCT_FIELDS.filter(key=>!['website_product_url','featured_image_url','gallery_image_urls'].includes(key)).forEach(key=>content[key]=p[key]??'');
+    return minminWebsiteHash(JSON.stringify(content));
+  }
+  function minminWebsiteFullSignature(product){
+    const p=normalizeWebsiteProduct(product);
+    return minminWebsiteHash(JSON.stringify({
+      content:minminWebsiteContentSignature(p),
+      images:websiteImageSignature(p),
+      pending:p.websitePendingDeleteUrls||[]
+    }));
+  }
+  function minminWebsiteContentNeedsSync(product){
+    const p=normalizeWebsiteProduct(product);
+    if(!p.wooProductId)return true;
+    if(p.websiteSyncedContentSignature)return p.websiteSyncedContentSignature!==minminWebsiteContentSignature(p);
+    const changed=Date.parse(p.updated_at||0)||0, synced=Date.parse(p.wooUploadedAt||0)||0;
+    return !synced||changed>synced||/chưa đồng bộ sau chỉnh sửa|lỗi/i.test(p.wooStatus||'');
+  }
+  function minminWebsiteImageNeedsSync(product){
+    const p=normalizeWebsiteProduct(product);
+    if(!p.wooProductId)return true;
+    return !!p.websitePendingDeleteUrls.length||p.wooImageSignature!==websiteImageSignature(p)||websiteImagesNeedSync(p);
+  }
+  function minminWebsiteNeedsSync(product){
+    const p=normalizeWebsiteProduct(product);
+    return minminWebsiteContentNeedsSync(p)||minminWebsiteImageNeedsSync(p)||p.websiteSyncPhase==='error';
+  }
+  minminWooNeedsUpload=minminWebsiteNeedsSync;
+
+  function minminWebsiteLive(id){
+    state.website=normalizeWebsiteProducts(state.website||websiteProductsDefaults());
+    return state.website.products.find(item=>String(item.id)===String(id)||String(item.sku)===String(id));
+  }
+  function minminWebsiteBatchProgress(item){
+    const ui=state.ui||{};
+    if(!ui.websiteBatchActive||!ui.websiteBatchTotal)return;
+    const current=Math.max(0,Number(ui.websiteBatchIndex||0));
+    const progress=Math.max(0,Math.min(100,Number(item?.wooProgress||0)));
+    setWebsiteMobileSyncProgress({
+      active:true,
+      progress:Math.round(((current+(progress/100))/ui.websiteBatchTotal)*100),
+      completed:current,
+      total:ui.websiteBatchTotal,
+      failed:Number(ui.websiteBatchFailed||0),
+      label:`Đang đồng bộ sản phẩm ${current+1}/${ui.websiteBatchTotal} · ${item?.sku||item?.product_name_en||''} · ${item?.wooStatus||''}`
+    });
+  }
+  function minminWebsitePatch(id,patch,shouldRender=true){
+    const item=minminWebsiteLive(id);
+    if(!item)return null;
+    Object.assign(item,patch);
+    saveWebsiteProducts();
+    const live=minminWebsiteLive(id);
+    minminWebsiteBatchProgress(live);
+    if(shouldRender)render();
+    return live;
+  }
+  function minminWebsiteWithTimeout(promise,timeoutMs,step){
+    let timer;
+    return Promise.race([
+      Promise.resolve(promise),
+      new Promise((_,reject)=>{
+        timer=setTimeout(()=>{
+          const error=new Error(`${step} quá ${Math.round(timeoutMs/1000)} giây.`);
+          error.syncStep=step;
+          reject(error);
+        },timeoutMs);
+      })
+    ]).finally(()=>clearTimeout(timer));
+  }
+  function minminFormatBytes(bytes){
+    const value=Number(bytes||0);
+    if(!value)return '0 KB';
+    if(value<1024*1024)return `${Math.max(1,Math.round(value/1024))} KB`;
+    return `${(value/1024/1024).toFixed(2)} MB`;
+  }
+  function minminReadImage(file){
+    return new Promise((resolve,reject)=>{
+      const reader=new FileReader();
+      reader.onload=()=>{
+        const image=new Image();
+        image.onload=()=>resolve({image,dataUrl:String(reader.result||'')});
+        image.onerror=()=>reject(new Error('Không đọc được nội dung ảnh.'));
+        image.src=String(reader.result||'');
+      };
+      reader.onerror=()=>reject(new Error('Không đọc được file ảnh.'));
+      reader.readAsDataURL(file);
+    });
+  }
+  function minminCanvasBlob(canvas,type,quality){
+    return new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error('Không tạo được ảnh tối ưu.')),type,quality));
+  }
+  async function minminOptimizeWebsiteImage(file,options={}){
+    if(!file||!String(file.type||'').startsWith('image/'))throw new Error('File đã chọn không phải hình ảnh.');
+    const {image}=await minminWebsiteWithTimeout(minminReadImage(file),30000,'Tối ưu ảnh');
+    const sourceWidth=image.naturalWidth||image.width, sourceHeight=image.naturalHeight||image.height;
+    const maxEdge=Math.max(1,Number(options.maxEdge||900));
+    const scale=Math.min(1,maxEdge/Math.max(sourceWidth,sourceHeight));
+    const width=Math.max(1,Math.round(sourceWidth*scale)),height=Math.max(1,Math.round(sourceHeight*scale));
+    const canvas=document.createElement('canvas');
+    canvas.width=width; canvas.height=height;
+    const context=canvas.getContext('2d');
+    context.imageSmoothingEnabled=true;
+    context.imageSmoothingQuality='high';
+    context.drawImage(image,0,0,width,height);
+    let type='image/webp',extension='webp',quality=Number(options.quality||0.83);
+    let blob=await minminCanvasBlob(canvas,type,quality).catch(()=>null);
+    if(!blob||blob.type!=='image/webp'){
+      type='image/jpeg'; extension='jpg'; quality=Number(options.jpegQuality||0.82);
+      const jpeg=document.createElement('canvas');
+      jpeg.width=width; jpeg.height=height;
+      const jpegContext=jpeg.getContext('2d');
+      jpegContext.fillStyle='#fff'; jpegContext.fillRect(0,0,width,height);
+      jpegContext.imageSmoothingEnabled=true; jpegContext.imageSmoothingQuality='high';
+      jpegContext.drawImage(image,0,0,width,height);
+      blob=await minminCanvasBlob(jpeg,type,quality);
+    }
+    const base=String(file.name||'website-image').replace(/\.[^.]+$/,'').replace(/[^\w-]+/g,'-')||'website-image';
+    const optimized=new File([blob],`${base}.${extension}`,{type,lastModified:Date.now()});
+    return {file:optimized,beforeBytes:Number(file.size||0),afterBytes:Number(blob.size||0),width,height,type};
+  }
+  function minminCurrentImageStatus(patch){
+    websiteSetCurrent(patch);
+    saveWebsiteProducts();
+    render();
+  }
+  function minminPendingDeletes(product,urls){
+    const p=normalizeWebsiteProduct(product);
+    if(!p.wooProductId)return p.websitePendingDeleteUrls||[];
+    return [...new Set([...(p.websitePendingDeleteUrls||[]),...urls.map(websiteUrlOnly).filter(Boolean)])];
+  }
+  function minminOptimizationRecord(result,index,total){
+    return {
+      beforeBytes:result.beforeBytes,
+      afterBytes:result.afterBytes,
+      before:minminFormatBytes(result.beforeBytes),
+      after:minminFormatBytes(result.afterBytes),
+      width:result.width,
+      height:result.height,
+      format:result.type==='image/webp'?'WebP':'JPEG',
+      index,total,
+      at:new Date().toISOString()
+    };
+  }
+
+  uploadWebsiteFeatured=async function(file){
+    if(!file)return;
+    let p=normalizeWebsiteProduct(state.website?.current||{});
+    minminCurrentImageStatus({websiteSyncPhase:'optimizing',websiteSyncStep:'featured',wooStatus:'Đang tối ưu ảnh',wooProgress:0});
+    try{
+      const optimized=await minminOptimizeWebsiteImage(file);
+      const record=minminOptimizationRecord(optimized,1,1);
+      minminCurrentImageStatus({websiteLastOptimization:record,websiteSyncPhase:'uploading',wooStatus:'Đang tải ảnh 1/1',wooProgress:50});
+      const uploaded=await minminWebsiteWithTimeout(uploadFileToSupabaseStorage(optimized.file,'product',p.sku||'website-featured'),60000,'Tải ảnh đại diện');
+      const url=uploaded?.publicUrl||uploaded?.viewUrl||uploaded?.downloadUrl||uploaded?.url||'';
+      if(!url)throw new Error('Storage không trả về URL ảnh đại diện.');
+      p=normalizeWebsiteProduct(state.website?.current||{});
+      const sizes={...(p.websiteImageSizes||{}),[url]:record};
+      websiteSetCurrent({
+        featured_image_url:url,
+        websitePendingDeleteUrls:minminPendingDeletes(p,p.featured_image_url&&p.featured_image_url!==url?[p.featured_image_url]:[]),
+        websiteImageSizes:sizes,
+        websiteLastOptimization:record,
+        imageUpdatedAt:new Date().toISOString(),
+        websiteSyncPhase:'',
+        websiteSyncStep:'',
+        websiteSyncError:'',
+        wooStatus:p.wooProductId?'Có thay đổi':'Chưa đồng bộ',
+        wooProgress:0
+      });
+      saveWebsiteProducts();
+    }catch(error){
+      minminCurrentImageStatus({websiteSyncPhase:'error',websiteSyncStep:'featured',websiteSyncError:String(error?.message||error),wooStatus:'Lỗi',wooProgress:0});
+      throw error;
+    }
+  };
+  uploadWebsiteGallery=async function(files){
+    const selected=[...(files||[])].filter(file=>String(file.type||'').startsWith('image/'));
+    if(!selected.length)return;
+    let p=normalizeWebsiteProduct(state.website?.current||{}), next=[...(p.gallery_image_urls||[])],sizes={...(p.websiteImageSizes||{})};
+    let beforeTotal=0,afterTotal=0;
+    for(let index=0;index<selected.length;index++){
+      minminCurrentImageStatus({websiteSyncPhase:'optimizing',websiteSyncStep:'gallery',wooStatus:`Đang tối ưu ảnh ${index+1}/${selected.length}`,wooProgress:Math.round((index/selected.length)*50)});
+      try{
+        const optimized=await minminOptimizeWebsiteImage(selected[index]);
+        beforeTotal+=optimized.beforeBytes; afterTotal+=optimized.afterBytes;
+        minminCurrentImageStatus({websiteSyncPhase:'uploading',websiteSyncStep:'gallery',wooStatus:`Đang tải ảnh ${index+1}/${selected.length}`,wooProgress:50+Math.round((index/selected.length)*50)});
+        const uploaded=await minminWebsiteWithTimeout(uploadFileToSupabaseStorage(optimized.file,'product',p.sku||'website-gallery'),60000,`Tải ảnh ${index+1}/${selected.length}`);
+        const url=uploaded?.publicUrl||uploaded?.viewUrl||uploaded?.downloadUrl||uploaded?.url||'';
+        if(!url)throw new Error(`Storage không trả về URL ảnh ${index+1}/${selected.length}.`);
+        if(!next.includes(url))next.push(url);
+        sizes[url]=minminOptimizationRecord(optimized,index+1,selected.length);
+      }catch(error){
+        minminCurrentImageStatus({gallery_image_urls:next,websiteImageSizes:sizes,websiteSyncPhase:'error',websiteSyncStep:'gallery',websiteSyncError:String(error?.message||error),wooStatus:'Lỗi',wooProgress:0});
+        throw error;
+      }
+    }
+    const record={beforeBytes:beforeTotal,afterBytes:afterTotal,before:minminFormatBytes(beforeTotal),after:minminFormatBytes(afterTotal),index:selected.length,total:selected.length,at:new Date().toISOString()};
+    websiteSetCurrent({gallery_image_urls:next,websiteImageSizes:sizes,websiteLastOptimization:record,imageUpdatedAt:new Date().toISOString(),websiteSyncPhase:'',websiteSyncStep:'',websiteSyncError:'',wooStatus:p.wooProductId?'Có thay đổi':'Chưa đồng bộ',wooProgress:0});
+    saveWebsiteProducts();
+  };
+
+  recropWebsiteFeatured=async function(){
+    const p=normalizeWebsiteProduct(state.website?.current||{});
+    if(!p.featured_image_url)return alert('Chưa có ảnh đại diện để cắt lại.');
+    const raw=await minminWebsiteWithTimeout(sourceUrlToRawDataUrl(p.featured_image_url),30000,'Đọc ảnh đại diện');
+    const source=fileFromDataUrl(raw,`${storageSafePart(p.sku||'featured')}-recrop.jpg`);
+    const {image}=await minminReadImage(source);
+    const side=Math.min(image.naturalWidth||image.width,image.naturalHeight||image.height,900);
+    const canvas=document.createElement('canvas'); canvas.width=side; canvas.height=side;
+    const context=canvas.getContext('2d'),width=image.naturalWidth||image.width,height=image.naturalHeight||image.height;
+    context.drawImage(image,(width-Math.min(width,height))/2,(height-Math.min(width,height))/2,Math.min(width,height),Math.min(width,height),0,0,side,side);
+    const blob=await minminCanvasBlob(canvas,'image/webp',0.83).catch(()=>minminCanvasBlob(canvas,'image/jpeg',0.82));
+    const file=new File([blob],`${storageSafePart(p.sku||'featured')}-recrop.${blob.type==='image/webp'?'webp':'jpg'}`,{type:blob.type});
+    await uploadWebsiteFeatured(file);
+  };
+
+  function minminImageManager(mobile=false){
+    const p=normalizeWebsiteProduct(state.website?.current||{}),gallery=p.gallery_image_urls||[],optimization=p.websiteLastOptimization;
+    const input=mobile?'data-website-mobile-featured':'id="websiteFeaturedInput"';
+    const galleryInput=mobile?'data-website-mobile-gallery':'id="websiteGalleryInput"';
+    const recrop=mobile?'data-website-mobile-recrop':'id="websiteRecropFeatured"';
+    return `<div class="minmin-website-image-manager ${mobile?'is-mobile':''}">
+      <section class="minmin-image-featured">
+        <div class="minmin-image-heading"><div><strong>Ảnh đại diện</strong><small>Giữ đúng tỷ lệ, cạnh dài tối đa 900px.</small></div></div>
+        <div class="minmin-featured-frame">${p.featured_image_url?`<button data-minmin-image-preview="${esc(p.featured_image_url)}" type="button"><img src="${esc(driveAssetUrl(p.featured_image_url))}" alt="Ảnh đại diện"/></button><button data-minmin-featured-remove type="button" class="minmin-image-remove" title="Xóa ảnh">×</button>`:'<span>Chưa có ảnh đại diện</span>'}</div>
+        <div class="minmin-image-actions"><label class="minmin-image-primary">Chọn ảnh<input ${input} type="file" accept="image/png,image/jpeg,image/webp" hidden/></label>${p.featured_image_url?`<button ${recrop} type="button">Cắt lại ảnh đại diện</button>`:''}</div>
+      </section>
+      <section class="minmin-image-gallery-section">
+        <div class="minmin-image-heading"><div><strong>Gallery</strong><small>Kéo thả để đổi thứ tự. Ảnh kéo lên đầu sẽ thành ảnh đại diện.</small></div><label class="minmin-image-secondary">+ Thêm ảnh<input ${galleryInput} type="file" accept="image/png,image/jpeg,image/webp" multiple hidden/></label></div>
+        <div class="minmin-image-gallery">${gallery.length?gallery.map((url,index)=>`<article class="minmin-gallery-thumb" draggable="true" data-minmin-gallery-url="${esc(url)}" data-minmin-gallery-index="${index}"><button data-minmin-image-preview="${esc(url)}" type="button" class="minmin-gallery-preview"><img src="${esc(driveAssetUrl(url))}" alt="Ảnh gallery ${index+1}"/></button><div class="minmin-gallery-controls"><button data-minmin-gallery-feature="${esc(url)}" type="button" title="Đặt làm ảnh đại diện">★</button><button data-minmin-gallery-remove="${esc(url)}" type="button" title="Xóa ảnh">×</button></div></article>`).join(''):'<div class="minmin-gallery-empty">Chưa có ảnh Gallery.</div>'}</div>
+      </section>
+      ${optimization?`<p class="minmin-image-saving">Đã tối ưu: ${esc(optimization.before||minminFormatBytes(optimization.beforeBytes))} → ${esc(optimization.after||minminFormatBytes(optimization.afterBytes))}${optimization.width?` · ${optimization.width}×${optimization.height}`:''}${optimization.format?` · ${esc(optimization.format)}`:''}</p>`:''}
+      ${p.websiteSyncPhase==='error'&&p.websiteSyncStep==='gallery'?`<p class="minmin-image-error">${esc(p.websiteSyncError)}</p>`:''}
+    </div>`;
+  }
+  websiteImagesPanel=function(){ return minminImageManager(false); };
+  const minminMobileWizardBodyBase=websiteMobileWizardBody;
+  websiteMobileWizardBody=function(){
+    if(Number(state.ui?.websiteMobileStep||1)===2)return `<div class="minmin-website-form">${minminImageManager(true)}</div>`;
+    return minminMobileWizardBodyBase();
+  };
+
+  function minminSetCurrentImages(patch,renderNow=true){
+    const current=normalizeWebsiteProduct(state.website?.current||{});
+    websiteSetCurrent({...patch,imageUpdatedAt:new Date().toISOString(),websiteSyncPhase:'',websiteSyncStep:'',websiteSyncError:'',wooStatus:current.wooProductId?'Có thay đổi':'Chưa đồng bộ',wooProgress:0});
+    saveWebsiteProducts();
+    if(renderNow)render();
+  }
+  websiteRemoveFeatured=function(){
+    const p=normalizeWebsiteProduct(state.website?.current||{});
+    if(!p.featured_image_url)return;
+    let featured='',gallery=[...(p.gallery_image_urls||[])];
+    if(gallery.length&&confirm('Dùng ảnh đầu tiên trong Gallery làm ảnh đại diện?'))featured=gallery.shift();
+    minminSetCurrentImages({featured_image_url:featured,gallery_image_urls:gallery,websitePendingDeleteUrls:minminPendingDeletes(p,[p.featured_image_url])});
+  };
+  removeWebsiteGalleryImage=function(url){
+    const p=normalizeWebsiteProduct(state.website?.current||{});
+    minminSetCurrentImages({gallery_image_urls:(p.gallery_image_urls||[]).filter(item=>item!==url),websitePendingDeleteUrls:minminPendingDeletes(p,[url])});
+  };
+  function minminFeatureGallery(url){
+    const p=normalizeWebsiteProduct(state.website?.current||{}),gallery=(p.gallery_image_urls||[]).filter(item=>item!==url);
+    if(p.featured_image_url&&p.featured_image_url!==url)gallery.unshift(p.featured_image_url);
+    minminSetCurrentImages({featured_image_url:url,gallery_image_urls:[...new Set(gallery)]});
+  }
+  function minminReorderGallery(source,target){
+    const p=normalizeWebsiteProduct(state.website?.current||{}),gallery=[...(p.gallery_image_urls||[])];
+    const from=gallery.indexOf(source),to=gallery.indexOf(target);
+    if(from<0||to<0||from===to)return;
+    gallery.splice(from,1); gallery.splice(to,0,source);
+    if(to===0)return minminFeatureGallery(source);
+    minminSetCurrentImages({gallery_image_urls:gallery});
+  }
+  function minminPreviewImage(url){
+    document.querySelector('.minmin-image-lightbox')?.remove();
+    const modal=document.createElement('div');
+    modal.className='minmin-image-lightbox';
+    modal.innerHTML=`<button type="button" aria-label="Đóng">×</button><img src="${esc(driveAssetUrl(url))}" alt="Xem ảnh lớn"/>`;
+    modal.onclick=event=>{if(event.target===modal||event.target.closest('button'))modal.remove();};
+    document.body.appendChild(modal);
+  }
+
+  async function minminSyncProduct(id,options={}){
+    if(!websiteWooReady())throw new Error('Chưa nhập đủ Website URL, Consumer Key và Consumer Secret.');
+    let item=minminWebsiteLive(id);
+    if(!item)throw new Error('Không tìm thấy sản phẩm Website.');
+    const force=options.force!==false, retryOnly=!!options.retryOnly;
+    let steps;
+    if(retryOnly&&item.websiteSyncRetrySteps.length)steps=[...item.websiteSyncRetrySteps];
+    else{
+      const content=force||minminWebsiteContentNeedsSync(item),images=force||minminWebsiteImageNeedsSync(item);
+      steps=[...(content&&item.category?['categories']:[]),...(content?['content']:[]),...(images?['images']:[])];
+    }
+    if(!steps.length){
+      minminWebsitePatch(item.id,{websiteSyncPhase:'complete',websiteSyncStep:'',websiteSyncError:'',wooStatus:'Hoàn tất',wooProgress:100},true);
+      return item;
+    }
+    const stepLabels={categories:'Đang cập nhật danh mục',content:'Đang cập nhật nội dung',images:'Đang tải ảnh'};
+    let completed=0;
+    minminWebsitePatch(item.id,{websiteSyncPhase:'running',websiteSyncStep:steps[0],websiteSyncError:'',websiteSyncRetrySteps:steps,wooStatus:stepLabels[steps[0]],wooProgress:0},true);
+    for(let index=0;index<steps.length;index++){
+      const step=steps[index];
+      item=minminWebsiteLive(id);
+      minminWebsitePatch(item.id,{websiteSyncPhase:step,websiteSyncStep:step,wooStatus:step==='images'?`Đang tải ảnh ${[item.featured_image_url,...item.gallery_image_urls].filter(Boolean).length} ảnh`:stepLabels[step],wooProgress:Math.round((completed/steps.length)*100)},true);
+      try{
+        if(step==='categories'){
+          const ids=await minminWebsiteWithTimeout(websiteWooCategoryIds(item.category),30000,'Cập nhật danh mục');
+          minminWebsitePatch(item.id,{websiteSyncCategoryIds:ids},false);
+        }else if(step==='content'){
+          item=minminWebsiteLive(id);
+          const payload=minminWooFastPayload(item,{includeImages:false,includeCategories:true,categoryIds:item.websiteSyncCategoryIds||[]});
+          const data=await minminWebsiteWithTimeout(item.wooProductId?wooRequest(`products/${item.wooProductId}`,{method:'PUT',timeoutMs:60000,body:JSON.stringify(payload)}):wooRequest('products',{method:'POST',timeoutMs:60000,body:JSON.stringify(payload)}),65000,'Cập nhật nội dung');
+          if(!data?.id)throw new Error('WooCommerce không trả về mã sản phẩm.');
+          const syncedAt=new Date().toISOString();
+          minminWebsitePatch(item.id,{wooProductId:data.id,wooProductUrl:websiteProductWooUrl(data)||item.wooProductUrl,website_product_url:websiteProductWooUrl(data)||item.website_product_url,wooUploadedAt:syncedAt,website_status:'Đã đăng website'},false);
+          item=minminWebsiteLive(id);
+          minminWebsitePatch(item.id,{websiteSyncedContentSignature:minminWebsiteContentSignature(item)},false);
+        }else if(step==='images'){
+          item=minminWebsiteLive(id);
+          if(!item.wooProductId)throw new Error('Chưa có mã sản phẩm WooCommerce để cập nhật ảnh.');
+          const urls=[...new Set([item.featured_image_url,...(item.gallery_image_urls||[])].map(websiteUrlOnly).filter(Boolean))];
+          const data=await minminWebsiteWithTimeout(wooRequest(`products/${item.wooProductId}`,{method:'PUT',timeoutMs:90000,body:JSON.stringify({images:urls.map(src=>({src}))})}),95000,`Tải ${urls.length} ảnh`);
+          if(urls.length&&(!Array.isArray(data?.images)||data.images.length<urls.length))throw new Error(`WooCommerce chỉ xác nhận ${data?.images?.length||0}/${urls.length} ảnh.`);
+          if(!urls.length&&Array.isArray(data?.images)&&data.images.length)throw new Error('WooCommerce chưa xóa hết ảnh cũ.');
+          const syncedAt=new Date().toISOString();
+          minminWebsitePatch(item.id,{wooImageSyncedAt:syncedAt,wooImageSignature:websiteImageSignature(item),websitePendingDeleteUrls:[]},false);
+        }
+        completed++;
+        minminWebsitePatch(item.id,{websiteSyncRetrySteps:steps.slice(index+1),wooProgress:Math.round((completed/steps.length)*100)},true);
+      }catch(error){
+        item=minminWebsiteLive(id);
+        const base=String(error?.message||error||'Không rõ lỗi');
+        const message=step==='images'?`Không thể tải ảnh: ${base}`:step==='content'?`Cập nhật nội dung thất bại: ${base}`:`Cập nhật danh mục thất bại: ${base}`;
+        minminWebsitePatch(item.id,{websiteSyncPhase:'error',websiteSyncStep:step,websiteSyncError:message,websiteSyncRetrySteps:steps.slice(index),wooStatus:'Lỗi',wooProgress:Math.round((completed/steps.length)*100)},true);
+        const wrapped=new Error(message); wrapped.syncStep=step; throw wrapped;
+      }
+    }
+    item=minminWebsiteLive(id);
+    const syncedAt=new Date().toISOString();
+    const completedProduct={...item,websitePendingDeleteUrls:[],websiteSyncPhase:'complete',websiteSyncStep:'',websiteSyncError:'',websiteSyncRetrySteps:[],wooStatus:'Hoàn tất',wooProgress:100,wooUploadedAt:syncedAt};
+    completedProduct.websiteSyncedContentSignature=minminWebsiteContentSignature(completedProduct);
+    completedProduct.websiteSyncedSignature=minminWebsiteFullSignature(completedProduct);
+    minminWebsitePatch(item.id,completedProduct,true);
+    state.website.lastWooSyncAt=syncedAt;
+    saveWebsiteProducts();
+    return minminWebsiteLive(id);
+  }
+
+  async function minminSyncAll(options={}){
+    if(__minminWooSyncRunning)throw new Error('Đang có một lượt đồng bộ Website chạy.');
+    __minminWooSyncRunning=true;
+    try{
+      state.website=normalizeWebsiteProducts(state.website||websiteProductsDefaults());
+      const failedOnly=Array.isArray(options.failedIds)?new Set(options.failedIds.map(String)):null;
+      const products=websiteProductsForExport(state.website.products||[]).filter(product=>failedOnly?failedOnly.has(String(product.id)):minminWebsiteNeedsSync(product));
+      if(!products.length){
+        state.ui.websiteBatchSummary={ok:0,fail:0,failedIds:[],message:'Không có sản phẩm cần đồng bộ.'};
+        setWebsiteMobileSyncProgress({active:false,progress:100,completed:0,total:0,failed:0,label:'Không có sản phẩm cần đồng bộ'});
+        render();
+        return state.ui.websiteBatchSummary;
+      }
+      if(options.ask!==false&&!failedOnly&&!confirm(`Đồng bộ ${products.length} sản phẩm có thay đổi lên Website?`))return null;
+      state.ui.websiteBatchActive=true;
+      state.ui.websiteBatchTotal=products.length;
+      state.ui.websiteBatchFailed=0;
+      state.ui.websiteBatchSummary=null;
+      let ok=0,fail=0;
+      const failedIds=[];
+      for(let index=0;index<products.length;index++){
+        state.ui.websiteBatchIndex=index;
+        setWebsiteMobileSyncProgress({active:true,progress:Math.round((index/products.length)*100),completed:index,total:products.length,failed:fail,label:`Đang đồng bộ sản phẩm ${index+1}/${products.length} · ${products[index].sku}`});
+        render();
+        try{
+          await minminSyncProduct(products[index].id,{force:false,retryOnly:!!failedOnly});
+          ok++;
+        }catch(error){
+          fail++;
+          failedIds.push(products[index].id);
+          state.ui.websiteBatchFailed=fail;
+          console.warn(error);
+        }
+      }
+      state.ui.websiteBatchActive=false;
+      state.ui.websiteBatchSummary={ok,fail,failedIds,message:`Thành công: ${ok} · Thất bại: ${fail}`};
+      setWebsiteMobileSyncProgress({active:false,progress:100,completed:products.length,total:products.length,failed:fail,label:`Hoàn tất · Thành công ${ok} · Thất bại ${fail}`});
+      render();
+      return state.ui.websiteBatchSummary;
+    }finally{
+      state.ui.websiteBatchActive=false;
+      __minminWooSyncRunning=false;
+    }
+  }
+  uploadWebsiteProductToWoo=function(id,options={}){
+    const item=minminWebsiteLive(id);
+    return minminSyncProduct(id,{force:options.force!==false,retryOnly:item?.websiteSyncPhase==='error'||!!options.retryOnly});
+  };
+  minminUploadOneWooFast=function(id,options={}){ return uploadWebsiteProductToWoo(id,{force:options.force!==false,retryOnly:options.retryOnly}); };
+  uploadAllWebsiteProductsToWoo=function(options={}){ return minminSyncAll(options); };
+  minminUploadAllWooSuperFast=function(options={}){ return minminSyncAll(options); };
+
+  function minminSyncStatus(product){
+    const p=normalizeWebsiteProduct(product);
+    if(p.websiteSyncPhase==='error')return {label:'Lỗi',tone:'error',busy:false};
+    if(['running','categories','content','images'].includes(p.websiteSyncPhase))return {label:p.wooStatus||'Đang đồng bộ',tone:'running',busy:true};
+    if(!p.wooProductId)return {label:'Chưa đồng bộ',tone:'idle',busy:false};
+    if(minminWebsiteNeedsSync(p))return {label:'Có thay đổi',tone:'dirty',busy:false};
+    return {label:'Hoàn tất',tone:'done',busy:false};
+  }
+  websiteWooSyncBadge=function(product){
+    const p=normalizeWebsiteProduct(product),status=minminSyncStatus(p),last=p.wooUploadedAt?new Date(p.wooUploadedAt).toLocaleString('vi-VN'):'';
+    return `<div class="minmin-sync-badge is-${status.tone}"><span>${esc(status.label)}</span>${status.busy||p.websiteSyncPhase==='error'?`<small>${esc(p.websiteSyncError||p.wooStatus||'')}</small>`:''}${status.busy?`<i><b style="width:${Math.max(0,Math.min(100,p.wooProgress||0))}%"></b></i>`:''}${last&&status.tone==='done'?`<small>Đã đồng bộ lúc ${esc(last)}</small>`:''}</div>`;
+  };
+  websiteProductFullySynced=function(product){ return minminSyncStatus(product).tone==='done'; };
+  websiteProductSyncing=function(product){ return minminSyncStatus(product).busy; };
+
+  const minminMobileSyncPanelBase=websiteMobileSyncProgressPanel;
+  websiteMobileSyncProgressPanel=function(){
+    const progress=minminMobileSyncPanelBase();
+    const summary=state.ui?.websiteBatchSummary;
+    return `${progress}${summary?`<div class="minmin-batch-summary"><strong>${esc(summary.message)}</strong>${summary.fail?`<button data-minmin-retry-failed type="button">Thử lại các sản phẩm lỗi</button>`:''}</div>`:''}`;
+  };
+  const minminWooConfigBase=renderWebsiteWooConfig;
+  renderWebsiteWooConfig=function(){
+    const summary=state.ui?.websiteBatchSummary;
+    return `${minminWooConfigBase()}${summary?`<div class="minmin-batch-summary minmin-batch-summary-desktop"><strong>${esc(summary.message)}</strong>${summary.fail?`<button data-minmin-retry-failed type="button">Thử lại các sản phẩm lỗi</button>`:''}</div>`:''}`;
+  };
+
+  function minminEnhanceSyncButtons(){
+    document.querySelectorAll('[data-website-upload-woo],[data-website-mobile-sync-one]').forEach(button=>{
+      const id=button.dataset.websiteUploadWoo||button.dataset.websiteMobileSyncOne;
+      const product=minminWebsiteLive(id);
+      if(!product)return;
+      const status=minminSyncStatus(product);
+      const busy=status.busy||!!state.ui?.websiteBatchActive;
+      button.disabled=busy;
+      button.classList.toggle('is-syncing',busy);
+      button.textContent=status.tone==='error'?'Thử lại':product.wooProductId?'Đồng bộ lại':'Đồng bộ';
+      button.title=status.tone==='error'?product.websiteSyncError:'Đồng bộ đầy đủ nội dung, thuộc tính, giá, ảnh đại diện và Gallery';
+    });
+    document.querySelectorAll('.minmin-website-product-row').forEach(row=>{
+      const detail=row.querySelector('[data-website-mobile-detail]');
+      const product=detail?minminWebsiteLive(detail.dataset.websiteMobileDetail):null;
+      if(!product)return;
+      const status=minminSyncStatus(product);
+      let note=row.querySelector('.minmin-website-product-status');
+      if(status.tone!=='done'){
+        if(!note){
+          note=document.createElement('span');
+          note.className='minmin-website-product-status';
+          row.querySelector('.minmin-website-product-title')?.after(note);
+        }
+        note.textContent=status.label;
+      }
+      if(status.tone==='error'&&note)note.title=product.websiteSyncError||'';
+    });
+  }
+  const minminRenderImageSyncBase=render;
+  render=function(...args){
+    const result=minminRenderImageSyncBase(...args);
+    queueMicrotask(minminEnhanceSyncButtons);
+    return result;
+  };
+
+  function minminInstallImageSyncStyles(){
+    if(document.getElementById('minmin-website-image-sync-style'))return;
+    const style=document.createElement('style');
+    style.id='minmin-website-image-sync-style';
+    style.textContent=`
+      .minmin-website-image-manager{display:grid;grid-template-columns:minmax(190px,240px) minmax(0,1fr);gap:20px;padding:16px;border:1px solid #ececec;border-radius:16px;background:#fff}
+      .minmin-image-featured,.minmin-image-gallery-section{display:grid;align-content:start;gap:12px;min-width:0}
+      .minmin-image-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}.minmin-image-heading strong{display:block;font-size:14px}.minmin-image-heading small{display:block;margin-top:3px;color:#777;font-size:11px;font-weight:600}
+      .minmin-featured-frame{position:relative;display:flex;aspect-ratio:1;align-items:center;justify-content:center;overflow:hidden;border:1px solid #ececec;border-radius:12px;background:#fafaf8;color:#999;font-size:12px;font-weight:700}
+      .minmin-featured-frame>button:first-child{width:100%;height:100%}.minmin-featured-frame img{width:100%;height:100%;object-fit:contain}
+      .minmin-image-remove{position:absolute;right:8px;top:8px;display:grid;width:30px;height:30px;place-items:center;border-radius:50%;background:#111820;color:#fff;font-size:19px;line-height:1}
+      .minmin-image-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.minmin-image-actions>*{display:flex;min-height:42px;cursor:pointer;align-items:center;justify-content:center;border:1px solid #dedede;border-radius:9px;padding:7px;text-align:center;font-size:12px;font-weight:800}
+      .minmin-image-actions .minmin-image-primary{border-color:#111820;background:#111820;color:#fff}.minmin-image-secondary{display:flex;min-height:38px;cursor:pointer;align-items:center;border:1px solid #dedede;border-radius:9px;padding:0 12px;font-size:12px;font-weight:800}
+      .minmin-image-gallery{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.minmin-gallery-thumb{position:relative;aspect-ratio:1;overflow:hidden;border:1px solid #ececec;border-radius:10px;background:#fafaf8;transition:opacity 180ms ease,transform 180ms ease}.minmin-gallery-thumb.is-removing{opacity:0;transform:scale(.94)}.minmin-gallery-thumb.is-dragging{opacity:.45}.minmin-gallery-preview{width:100%;height:100%}.minmin-gallery-preview img{width:100%;height:100%;object-fit:contain}
+      .minmin-gallery-controls{position:absolute;right:6px;top:6px;display:flex;gap:5px;opacity:0;transition:opacity 150ms ease}.minmin-gallery-thumb:hover .minmin-gallery-controls{opacity:1}.minmin-gallery-controls button{display:grid;width:28px;height:28px;place-items:center;border-radius:50%;background:rgba(17,24,32,.9);color:#fff;font-size:15px}.minmin-gallery-empty{grid-column:1/-1;padding:32px;border:1px dashed #ddd;border-radius:10px;text-align:center;color:#999;font-size:12px;font-weight:700}
+      .minmin-image-saving{grid-column:1/-1;margin:0;padding:9px 11px;border-radius:8px;background:#edf8f4;color:#28755f;font-size:11px;font-weight:800}.minmin-image-error{grid-column:1/-1;color:#c6382f;font-size:12px;font-weight:800}
+      .minmin-image-lightbox{position:fixed;inset:0;z-index:99999;display:grid;place-items:center;padding:24px;background:rgba(0,0,0,.82)}.minmin-image-lightbox img{max-width:min(1100px,94vw);max-height:88vh;object-fit:contain}.minmin-image-lightbox button{position:absolute;right:20px;top:20px;width:44px;height:44px;border-radius:50%;background:#fff;font-size:28px}
+      .minmin-sync-badge{display:grid;gap:4px;margin-top:6px;font-size:10px;font-weight:800}.minmin-sync-badge.is-done{color:#28755f}.minmin-sync-badge.is-dirty{color:#a46c00}.minmin-sync-badge.is-error{color:#c6382f}.minmin-sync-badge.is-running{color:#28755f}.minmin-sync-badge small{line-height:1.25}.minmin-sync-badge i{height:4px;overflow:hidden;border-radius:9px;background:#e5e7e7}.minmin-sync-badge i b{display:block;height:100%;background:#3d8b74;transition:width 180ms ease}
+      [data-website-upload-woo]:disabled,[data-website-mobile-sync-one]:disabled{cursor:wait;opacity:.55}.minmin-batch-summary{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:12px 0;padding:12px 14px;border:1px solid #d9ebe5;border-radius:12px;background:#f3faf7;color:#245f4e;font-size:12px}.minmin-batch-summary button{min-height:38px;border-radius:8px;background:#111820;padding:0 12px;color:#fff;font-weight:800}.minmin-batch-summary-desktop{margin:0}
+      @media(max-width:767px){.minmin-website-image-manager{grid-template-columns:1fr;padding:0;border:0}.minmin-image-gallery{grid-template-columns:repeat(3,minmax(0,1fr))}.minmin-gallery-controls{opacity:1}.minmin-featured-frame{max-height:300px}.minmin-image-heading{align-items:flex-start}.minmin-batch-summary{align-items:stretch;flex-direction:column}.minmin-batch-summary button{width:100%}}
+    `;
+    document.head.appendChild(style);
+  }
+  minminInstallImageSyncStyles();
+
+  let minminDraggedGalleryUrl='';
+  document.addEventListener('dragstart',event=>{
+    const thumb=event.target.closest?.('[data-minmin-gallery-url]');
+    if(!thumb)return;
+    minminDraggedGalleryUrl=thumb.dataset.minminGalleryUrl||'';
+    thumb.classList.add('is-dragging');
+    event.dataTransfer.effectAllowed='move';
+  });
+  document.addEventListener('dragend',event=>event.target.closest?.('[data-minmin-gallery-url]')?.classList.remove('is-dragging'));
+  document.addEventListener('dragover',event=>{if(event.target.closest?.('[data-minmin-gallery-url]'))event.preventDefault();});
+  document.addEventListener('drop',event=>{
+    const target=event.target.closest?.('[data-minmin-gallery-url]');
+    if(!target||!minminDraggedGalleryUrl)return;
+    event.preventDefault();
+    minminReorderGallery(minminDraggedGalleryUrl,target.dataset.minminGalleryUrl);
+    minminDraggedGalleryUrl='';
+  });
+  document.addEventListener('click',event=>{
+    const preview=event.target.closest?.('[data-minmin-image-preview]');
+    if(preview){event.preventDefault();minminPreviewImage(preview.dataset.minminImagePreview);return;}
+    const removeFeatured=event.target.closest?.('[data-minmin-featured-remove]');
+    if(removeFeatured){event.preventDefault();websiteRemoveFeatured();return;}
+    const feature=event.target.closest?.('[data-minmin-gallery-feature]');
+    if(feature){event.preventDefault();minminFeatureGallery(feature.dataset.minminGalleryFeature);return;}
+    const remove=event.target.closest?.('[data-minmin-gallery-remove]');
+    if(remove){
+      event.preventDefault();
+      const url=remove.dataset.minminGalleryRemove,thumb=remove.closest('.minmin-gallery-thumb');
+      thumb?.classList.add('is-removing');
+      setTimeout(()=>{
+        const p=normalizeWebsiteProduct(state.website?.current||{});
+        minminSetCurrentImages({gallery_image_urls:(p.gallery_image_urls||[]).filter(item=>item!==url),websitePendingDeleteUrls:minminPendingDeletes(p,[url])},false);
+        thumb?.remove();
+      },180);
+      return;
+    }
+    const retry=event.target.closest?.('[data-minmin-retry-failed]');
+    if(retry){
+      event.preventDefault();
+      const ids=state.ui?.websiteBatchSummary?.failedIds||[];
+      minminSyncAll({failedIds:ids,ask:false}).catch(error=>alert(error.message||error));
+    }
+  });
+})();
+
 initApp();
     </script>
   </body>
