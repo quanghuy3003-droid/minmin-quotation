@@ -3013,6 +3013,7 @@
         --mm-radius: 16px;
         --mm-shadow: 0 8px 30px rgba(17, 24, 32, .045);
       }
+      .minmin-nav-logo { display: none; }
       @media (min-width: 768px) {
         body { background: var(--mm-canvas); color: var(--mm-ink); }
         .minmin-topbar, .minmin-main-nav { position: relative; z-index: 45; }
@@ -3689,6 +3690,61 @@
         .minmin-website-desktop-view tbody td { border-top: 0 !important; border-bottom: 0 !important; }
         .minmin-website-desktop-view tbody td:first-child { padding-left: 12px !important; border-radius: 12px 0 0 12px; }
         .minmin-website-desktop-view tbody td:last-child { padding-right: 12px !important; border-radius: 0 12px 12px 0; }
+
+        /* Shared desktop navigation: one black brand bar for every module. */
+        body .minmin-topbar { display: none !important; }
+        body .minmin-main-nav {
+          display: flex !important;
+          min-height: 66px;
+          flex-wrap: nowrap !important;
+          align-items: center;
+          justify-content: flex-start !important;
+          gap: 6px !important;
+          overflow: hidden;
+          border: 0;
+          background: linear-gradient(100deg,#080b0f 0%,#10151b 100%) !important;
+          padding: 0 max(14px,calc((100% - 1480px)/2 + 24px)) !important;
+          box-shadow: 0 1px 0 rgba(255,255,255,.05),0 7px 22px rgba(8,11,15,.16);
+        }
+        .minmin-nav-logo {
+          display: flex;
+          width: clamp(112px,10vw,150px);
+          height: 48px;
+          flex: 0 0 auto;
+          align-items: center;
+          justify-content: flex-start;
+          margin-right: clamp(12px,2.6vw,40px);
+        }
+        .minmin-nav-logo img {
+          display: block;
+          width: 100%;
+          height: auto;
+          max-height: 38px;
+          object-fit: contain;
+          filter: brightness(0) invert(1);
+        }
+        body .minmin-main-nav .minmin-tab-button {
+          min-width: 0 !important;
+          min-height: 48px;
+          flex: 0 0 auto;
+          border: 1px solid transparent;
+          border-radius: 10px !important;
+          padding: 0 clamp(8px,1vw,14px) !important;
+          color: rgba(255,255,255,.78);
+          font-size: 12px;
+          font-weight: 850;
+        }
+        body .minmin-main-nav .minmin-tab-button:hover {
+          border-color: rgba(255,255,255,.06);
+          background: rgba(255,255,255,.045);
+          color: #fff;
+        }
+        body .minmin-main-nav .minmin-tab-button.bg-white\/10 {
+          border-color: rgba(15,138,75,.24);
+          background: rgba(26,45,42,.54) !important;
+          color: #fff;
+          box-shadow: inset 0 -2px 0 #0f8a4b;
+        }
       }
       @media (min-width: 1024px) {
         .mm-stat-strip { grid-template-columns: repeat(5,minmax(0,1fr)); }
@@ -5694,7 +5750,7 @@ function tabNav(){
     tools:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14.7 6.3a4 4 0 0 0-5 5L3 18l3 3 6.7-6.7a4 4 0 0 0 5-5l-2.4 2.4-3-3 2.4-2.4Z"/></svg>'
   };
   const btn=(id,label,active)=>{const selected=active!==undefined?active:state.activeTab===id;return `<button data-tab="${id}" type="button" class="minmin-tab-button relative flex h-12 items-center justify-center gap-2 rounded-md px-4 text-sm font-extrabold transition ${selected?'bg-white/10 text-white ring-1 ring-mint/70 after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:bg-mint':'text-white/70 hover:bg-white/5 hover:text-white'}"><span class="h-[18px] w-[18px] shrink-0 [&>svg]:h-full [&>svg]:w-full [&>svg]:stroke-[1.8]">${icons[id]}</span><span>${label}</span></button>`;};
-  return `<nav class="minmin-main-nav flex w-full flex-wrap items-center gap-1 bg-[#111315] px-4 py-2 shadow-md sm:px-6 lg:px-8">${btn('quote','Báo giá')}${btn('stock','Kho hàng')}${btn('accounting','Kế toán')}${btn('documents','Hồ sơ')}${btn('website','Website')}${btn('tools','Công cụ',isTools)}</nav>`;
+  return `<nav class="minmin-main-nav flex w-full flex-wrap items-center gap-1 bg-[#111315] px-4 py-2 shadow-md sm:px-6 lg:px-8"><span class="minmin-nav-logo"><img src="${UI_LOGO_DATA_URL}" alt="MINMIN Lifestyle"/></span>${btn('quote','Báo giá')}${btn('stock','Kho hàng')}${btn('accounting','Kế toán')}${btn('documents','Hồ sơ')}${btn('website','Website')}${btn('tools','Công cụ',isTools)}</nav>`;
 }
 function imagePicker(label,key,square=false){ const v=state.info[key]; return `<div class="grid gap-2"><span class="text-xs font-semibold uppercase tracking-wide text-black/50">${label}</span><div class="grid gap-3 sm:grid-cols-[96px_minmax(0,1fr)] sm:items-center"><div class="flex aspect-square h-24 items-center justify-center overflow-hidden rounded-md border border-black/10 bg-[#F7F7F2]">${v?`<img src="${v}" class="h-full w-full ${square?'object-cover':'object-contain'}"/>`:'<span class="px-3 text-center text-sm font-medium text-black/45">Chưa có ảnh</span>'}</div><div class="grid min-w-0 gap-2"><input data-asset="${key}" data-square="${square?'1':'0'}" type="file" accept="image/png,image/jpeg" class="block min-w-0 w-full rounded-md border border-black/15 bg-white px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-ink file:px-3 file:py-2 file:text-sm file:font-bold file:text-white" />${v?`<button data-clear-asset="${key}" type="button" class="h-10 rounded-md border border-black/10 px-4 text-sm font-bold text-coral hover:border-coral hover:bg-coral hover:text-white">Bỏ ảnh</button>`:''}</div></div></div>`; }
 function linePricingInput(label,key,line,suffix=''){ const value=line[key]??(key==='profitPercent'?120:''), step=key==='weight'?'0.1':'1'; return `<label class="grid min-w-0 gap-1"><span class="truncate text-[11px] font-semibold uppercase tracking-wide text-mint">${label}</span><div class="flex h-10 overflow-hidden rounded-md border border-mint/30 bg-mint/10 focus-within:border-mint focus-within:ring-4 focus-within:ring-mint/10"><input data-line-field="${key}" type="number" step="${step}" value="${esc(value)}" class="min-w-0 flex-1 bg-white/80 px-2 text-sm font-semibold outline-none" />${suffix?`<span class="flex items-center bg-mint/10 px-2 text-[11px] font-bold text-mint">${suffix}</span>`:''}</div></label>`; }
