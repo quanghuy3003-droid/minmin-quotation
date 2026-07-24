@@ -1597,6 +1597,36 @@
           color: #239177;
           font-size: 0.82rem;
         }
+        .minmin-website-sync-progress {
+          display: grid;
+          gap: 0.5rem;
+          padding: 0.8rem;
+        }
+        .minmin-website-sync-progress-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 0.75rem;
+          font-size: 0.75rem;
+          font-weight: 850;
+        }
+        .minmin-website-progress-track,
+        .minmin-website-product-progress {
+          overflow: hidden;
+          border-radius: 999px;
+          background: rgba(17, 19, 21, 0.09);
+        }
+        .minmin-website-progress-track {
+          height: 8px;
+        }
+        .minmin-website-progress-track i,
+        .minmin-website-product-progress i {
+          display: block;
+          height: 100%;
+          border-radius: inherit;
+          background: #239177;
+          transition: width 150ms ease;
+        }
         .minmin-website-list-heading {
           display: grid;
           grid-template-columns: 44px minmax(0, 1fr);
@@ -1751,6 +1781,12 @@
           font-size: 0.62rem;
           font-weight: 850;
           white-space: nowrap;
+        }
+        .minmin-website-product-progress {
+          display: block;
+          width: min(150px, 100%);
+          height: 5px;
+          margin-top: 0.3rem;
         }
         .minmin-website-sync-check {
           display: inline-flex !important;
@@ -4397,13 +4433,13 @@ async function importWooProductsToWebsite(){
   return imported.length;
 }
 function sourceUrlToRawDataUrl(source){ return fetch(driveAssetUrl(source)).then(r=>{ if(!r.ok)throw new Error('Không tải được ảnh để crop.'); return r.blob(); }).then(blob=>new Promise((resolve,reject)=>{ const reader=new FileReader(); reader.onload=()=>resolve(reader.result); reader.onerror=reject; reader.readAsDataURL(blob); })); }
-function cropFeaturedImageToSquare(dataUrl,size=1200,quality=0.88){ return new Promise((resolve,reject)=>{ const img=new Image(); img.crossOrigin='anonymous'; img.onload=()=>{ const w=img.naturalWidth||img.width,h=img.naturalHeight||img.height,side=Math.min(w,h),sx=Math.max(0,(w-side)/2),sy=Math.max(0,(h-side)/2),c=document.createElement('canvas'); c.width=size; c.height=size; const x=c.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,size,size); x.imageSmoothingEnabled=true; x.imageSmoothingQuality='high'; x.drawImage(img,sx,sy,side,side,0,0,size,size); resolve(c.toDataURL('image/jpeg',quality)); }; img.onerror=reject; img.src=dataUrl; }); }
+function cropFeaturedImageToSquare(dataUrl,size=900,quality=0.82){ return new Promise((resolve,reject)=>{ const img=new Image(); img.crossOrigin='anonymous'; img.onload=()=>{ const w=img.naturalWidth||img.width,h=img.naturalHeight||img.height,side=Math.min(w,h),sx=Math.max(0,(w-side)/2),sy=Math.max(0,(h-side)/2),c=document.createElement('canvas'); c.width=size; c.height=size; const x=c.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,size,size); x.imageSmoothingEnabled=true; x.imageSmoothingQuality='high'; x.drawImage(img,sx,sy,side,side,0,0,size,size); resolve(c.toDataURL('image/jpeg',quality)); }; img.onerror=reject; img.src=dataUrl; }); }
 function compressWebsiteGalleryDataUrl(dataUrl,max=1800,quality=0.84){ return compressImageDataUrl(dataUrl,max,quality); }
-async function uploadWebsiteFeatured(file){
+async function uploadWebsiteFeatured(file,options={}){
   if(!file||!String(file.type||'').startsWith('image/'))return;
   const p=normalizeWebsiteProduct(state.website?.current||{});
   const raw=await readImageFileRaw(file);
-  const cropped=await cropFeaturedImageToSquare(raw,1200,0.88);
+  const cropped=await cropFeaturedImageToSquare(raw,Number(options.size||900),Number(options.quality||0.82));
   const uploadFile=fileFromDataUrl(cropped,`${storageSafePart(p.sku||'featured')}-featured.jpg`);
   const uploaded=await uploadFileToSupabaseStorage(uploadFile,'product',p.sku||'website-featured');
   const url=uploaded?.publicUrl||uploaded?.viewUrl||uploaded?.downloadUrl||uploaded?.url||'';
@@ -4414,18 +4450,22 @@ async function recropWebsiteFeatured(){
   const p=normalizeWebsiteProduct(state.website?.current||{});
   if(!p.featured_image_url)return alert('Chưa có ảnh đại diện để crop.');
   const raw=await sourceUrlToRawDataUrl(p.featured_image_url);
-  const cropped=await cropFeaturedImageToSquare(raw,1200,0.88);
+  const cropped=await cropFeaturedImageToSquare(raw,900,0.82);
   const uploadFile=fileFromDataUrl(cropped,`${storageSafePart(p.sku||'featured')}-featured.jpg`);
   const uploaded=await uploadFileToSupabaseStorage(uploadFile,'product',p.sku||'website-featured');
   const url=uploaded?.publicUrl||uploaded?.viewUrl||uploaded?.downloadUrl||uploaded?.url||'';
   websiteSetCurrent({featured_image_url:url,imageUpdatedAt:new Date().toISOString(),wooStatus:p.wooProductId?'Chưa đồng bộ ảnh':''});
   saveWebsiteProducts();
 }
-async function uploadWebsiteGallery(files){
+async function uploadWebsiteGallery(files,options={}){
   const p=normalizeWebsiteProduct(state.website?.current||{}), next=[...(p.gallery_image_urls||[])];
   for(const file of [...(files||[])].filter(f=>String(f.type||'').startsWith('image/'))){
     let uploadFile=file;
-    if(file.size>1500*1024){
+    if(options.square){
+      const raw=await readImageFileRaw(file);
+      const cropped=await cropFeaturedImageToSquare(raw,Number(options.size||900),Number(options.quality||0.82));
+      uploadFile=fileFromDataUrl(cropped,`${storageSafePart(p.sku||'gallery')}-${storageSafePart(file.name||'gallery')}.jpg`)||file;
+    }else if(file.size>1500*1024){
       const raw=await readImageFileRaw(file);
       const compressed=await compressWebsiteGalleryDataUrl(raw,1800,0.84);
       uploadFile=fileFromDataUrl(compressed,`${storageSafePart(p.sku||'gallery')}-${storageSafePart(file.name||'gallery')}.jpg`)||file;
@@ -7331,7 +7371,7 @@ function websiteTextarea(label,key,rows=3){ const p=normalizeWebsiteProduct(stat
 function websiteStatusSelect(){ const p=normalizeWebsiteProduct(state.website?.current||{}), values=['Nháp','Sẵn sàng CSV','Đã đăng website','Tạm ẩn']; return `<label class="grid gap-1"><span class="text-[11px] font-extrabold uppercase tracking-wide text-black/45">Trạng thái</span><select data-website-field="website_status" class="h-10 rounded-md border border-black/15 bg-white px-3 text-sm font-bold outline-none focus:border-mint">${values.map(v=>`<option value="${esc(v)}" ${p.website_status===v?'selected':''}>${esc(v)}</option>`).join('')}</select></label>`; }
 function websiteImagesPanel(){
   const p=normalizeWebsiteProduct(state.website?.current||{}), gallery=p.gallery_image_urls||[];
-  return `<div class="rounded-lg border border-black/10 bg-white p-3 shadow-sm"><h2 class="text-base font-extrabold">Ảnh sản phẩm</h2><div class="mt-3 grid gap-3 lg:grid-cols-[220px_minmax(0,1fr)]"><div class="grid gap-2"><div class="flex aspect-square items-center justify-center overflow-hidden rounded-md border border-dashed border-black/20 bg-[#F7F7F2]">${p.featured_image_url?`<img src="${esc(driveAssetUrl(p.featured_image_url))}" class="h-full w-full object-cover" loading="lazy"/>`:'<span class="px-3 text-center text-sm font-bold text-black/35">Chưa có ảnh đại diện</span>'}</div><label class="flex h-10 cursor-pointer items-center justify-center rounded-md bg-ink px-3 text-sm font-extrabold text-white hover:bg-black">Upload ảnh đại diện<input id="websiteFeaturedInput" type="file" accept="image/png,image/jpeg,image/webp" class="hidden"/></label><div class="grid grid-cols-2 gap-2"><button id="websiteRecropFeatured" type="button" class="h-9 rounded-md border border-mint/30 bg-mint/10 px-2 text-xs font-extrabold text-mint">Crop 1:1</button><button id="websiteRemoveFeatured" type="button" class="h-9 rounded-md border border-coral/25 bg-white px-2 text-xs font-extrabold text-coral">Bỏ ảnh</button></div><p class="text-[11px] font-semibold text-black/45">Ảnh đại diện bắt buộc crop vuông 1200x1200, dùng làm ảnh chính WooCommerce.</p></div><div class="grid content-start gap-2"><label class="flex h-10 w-fit cursor-pointer items-center justify-center rounded-md border border-black/10 bg-white px-3 text-sm font-extrabold text-ink hover:border-mint">Upload ảnh gallery<input id="websiteGalleryInput" type="file" accept="image/png,image/jpeg,image/webp" multiple class="hidden"/></label><div class="grid gap-2 sm:grid-cols-3 lg:grid-cols-5">${gallery.length?gallery.map(url=>`<div class="relative aspect-square overflow-hidden rounded-md border border-black/10 bg-[#F7F7F2]"><img src="${esc(driveAssetUrl(url))}" class="h-full w-full object-contain" loading="lazy"/><button data-website-gallery-remove data-url="${esc(url)}" type="button" class="absolute right-1 top-1 rounded bg-coral px-1.5 py-0.5 text-[10px] font-extrabold text-white">Xóa</button></div>`).join(''):'<p class="text-sm font-semibold text-black/40">Chưa có gallery.</p>'}</div><p class="text-[11px] font-semibold text-black/45">Gallery giữ tỷ lệ gốc, chỉ nén nhẹ khi ảnh quá nặng.</p></div></div></div>`;
+  return `<div class="rounded-lg border border-black/10 bg-white p-3 shadow-sm"><h2 class="text-base font-extrabold">Ảnh sản phẩm</h2><div class="mt-3 grid gap-3 lg:grid-cols-[220px_minmax(0,1fr)]"><div class="grid gap-2"><div class="flex aspect-square items-center justify-center overflow-hidden rounded-md border border-dashed border-black/20 bg-[#F7F7F2]">${p.featured_image_url?`<img src="${esc(driveAssetUrl(p.featured_image_url))}" class="h-full w-full object-cover" loading="lazy"/>`:'<span class="px-3 text-center text-sm font-bold text-black/35">Chưa có ảnh đại diện</span>'}</div><label class="flex h-10 cursor-pointer items-center justify-center rounded-md bg-ink px-3 text-sm font-extrabold text-white hover:bg-black">Upload ảnh đại diện<input id="websiteFeaturedInput" type="file" accept="image/png,image/jpeg,image/webp" class="hidden"/></label><div class="grid grid-cols-2 gap-2"><button id="websiteRecropFeatured" type="button" class="h-9 rounded-md border border-mint/30 bg-mint/10 px-2 text-xs font-extrabold text-mint">Crop 1:1</button><button id="websiteRemoveFeatured" type="button" class="h-9 rounded-md border border-coral/25 bg-white px-2 text-xs font-extrabold text-coral">Bỏ ảnh</button></div><p class="text-[11px] font-semibold text-black/45">Ảnh đại diện tự crop vuông và nén còn 900x900, dùng làm ảnh chính WooCommerce.</p></div><div class="grid content-start gap-2"><label class="flex h-10 w-fit cursor-pointer items-center justify-center rounded-md border border-black/10 bg-white px-3 text-sm font-extrabold text-ink hover:border-mint">Upload ảnh gallery<input id="websiteGalleryInput" type="file" accept="image/png,image/jpeg,image/webp" multiple class="hidden"/></label><div class="grid gap-2 sm:grid-cols-3 lg:grid-cols-5">${gallery.length?gallery.map(url=>`<div class="relative aspect-square overflow-hidden rounded-md border border-black/10 bg-[#F7F7F2]"><img src="${esc(driveAssetUrl(url))}" class="h-full w-full object-contain" loading="lazy"/><button data-website-gallery-remove data-url="${esc(url)}" type="button" class="absolute right-1 top-1 rounded bg-coral px-1.5 py-0.5 text-[10px] font-extrabold text-white">Xóa</button></div>`).join(''):'<p class="text-sm font-semibold text-black/40">Chưa có gallery.</p>'}</div><p class="text-[11px] font-semibold text-black/45">Trên điện thoại, ảnh gallery cũng được crop vuông và nén còn 900x900 trước khi tải lên.</p></div></div></div>`;
 }
 function websitePreviewPanel(){
   const p=normalizeWebsiteProduct(state.website?.current||{}), stock=websiteLinkedStock(p.stock_code), m=websiteMissingFields(p), specs=[['SKU',p.sku],['Stock',p.stock_code],['Tồn kho',stock?Number(stock.quantity||0):''],['Danh mục',websiteCategoryLabel(p.category)],...websiteSimpleAttributePairs(p)].filter(x=>x[1]!==''&&x[1]!==undefined);
@@ -8859,17 +8899,18 @@ async function minminUploadOneWooFast(id, opts={}){
   const includeImages = !!opts.includeImages;
   const includeCategories = !!opts.includeCategories;
   const bulk = !!opts.bulk;
+  const showLiveProgress = !bulk || (!!state.ui?.websiteMobileSyncActive && window.innerWidth<=767);
   item.wooStatus = includeImages&&includeCategories ? 'Đang đồng bộ đầy đủ nội dung và ảnh' : (includeImages ? 'Đang gửi WooCommerce kèm ảnh' : 'Đang gửi WooCommerce nhanh');
   item.wooProgress = Math.max(Number(item.wooProgress||0), 10);
-  if(!bulk) { saveWebsiteProducts(); render(); }
+  if(showLiveProgress) { saveWebsiteProducts(); render(); }
   try{
     const categoryIds=includeCategories&&item.category?await websiteWooCategoryIds(item.category):[];
     item.wooProgress=includeCategories?35:25;
-    if(!bulk){ saveWebsiteProducts(); render(); }
+    if(showLiveProgress){ saveWebsiteProducts(); render(); }
     const payload = minminWooFastPayload(item, {includeImages, includeCategories, categoryIds});
     if(includeImages && (!payload.images || !payload.images.length)) throw new Error('Sản phẩm chưa có ảnh để gửi kèm.');
     item.wooProgress = 50;
-    if(!bulk){ saveWebsiteProducts(); render(); }
+    if(showLiveProgress){ saveWebsiteProducts(); render(); }
     const data = item.wooProductId
       ? await wooRequest(`products/${item.wooProductId}`, {method:'PUT', timeoutMs: includeImages ? 90000 : MINMIN_WOO_FAST_TIMEOUT_MS, body:JSON.stringify(payload)})
       : await wooRequest('products', {method:'POST', timeoutMs: includeImages ? 90000 : MINMIN_WOO_FAST_TIMEOUT_MS, body:JSON.stringify(payload)});
@@ -8890,14 +8931,14 @@ async function minminUploadOneWooFast(id, opts={}){
       updated_at: syncedAt
     });
     saveWebsiteProducts();
-    if(!bulk) render();
+    if(showLiveProgress) render();
     return data;
   }catch(e){
     const msg = String(e?.message || e || 'Không rõ lỗi');
     item.wooStatus = 'Lỗi: ' + msg;
     item.wooProgress = 1;
     saveWebsiteProducts();
-    if(!bulk) render();
+    if(showLiveProgress) render();
     throw new Error(msg);
   }
 }
@@ -8913,14 +8954,16 @@ async function minminUploadAllWooSuperFast(options={}){
     if(!websiteWooReady()) throw new Error('Chưa nhập đủ Website URL, Consumer Key và Consumer Secret.');
     minminClearStuckWooSync(true);
     const includeImages = !!options.includeImages;
+    const includeCategories = !!options.includeCategories || includeImages;
     const forceImages = includeImages && !!options.forceImages;
     const items = websiteProductsForExport(state.website.products || []).filter(item=>{
       if(!forceImages)return minminWooNeedsUpload(item);
       if(!item.sku||(!item.product_name_en&&!item.product_name_vi))return false;
       const currentSignature=websiteImageSignature(item);
-      return !!currentSignature&&(minminWooNeedsUpload(item)||!item.wooImageSignature||item.wooImageSignature!==currentSignature);
+      return minminWooNeedsUpload(item)||!!currentSignature&&(!item.wooImageSignature||item.wooImageSignature!==currentSignature);
     });
     if(!items.length){
+      setWebsiteMobileSyncProgress({active:false,progress:100,completed:0,total:0,failed:0,label:'Không có sản phẩm cần đồng bộ'});
       minminWooSetStatusText('Không có sản phẩm mới hoặc sản phẩm vừa chỉnh sửa cần đồng bộ.');
       saveWebsiteProducts(); render();
       alert('Không có sản phẩm mới hoặc sản phẩm vừa chỉnh sửa cần đồng bộ. Các dòng kẹt 10% đã được xóa trạng thái.');
@@ -8932,18 +8975,22 @@ async function minminUploadAllWooSuperFast(options={}){
         : `Có ${items.length} sản phẩm cần đồng bộ SIÊU NHANH. App sẽ KHÔNG gửi ảnh và KHÔNG quét danh mục trước, nên không còn kẹt ở 10%. Tiếp tục?`;
       if(!confirm(msg)) return;
     }
-    let ok=0, fail=0, last='';
+    setWebsiteMobileSyncProgress({active:true,progress:0,completed:0,total:items.length,failed:0,label:'Đang chuẩn bị dữ liệu và hình ảnh'});
+    saveWebsiteProducts(); render();
+    let ok=0, fail=0, last='', processed=0;
     const chunkSize = includeImages ? 1 : 20;
     for(let start=0; start<items.length; start+=chunkSize){
       const chunk = items.slice(start,start+chunkSize);
-      minminWooSetStatusText(`Đang đồng bộ ${start+1}-${Math.min(start+chunk.length,items.length)}/${items.length}${includeImages?' kèm ảnh':' siêu nhanh'}...`);
+      const overallBefore=Math.round((start/items.length)*100);
+      setWebsiteMobileSyncProgress({active:true,progress:overallBefore,completed:start,total:items.length,failed:fail,label:`Đang xử lý ${chunk[0]?.sku||'sản phẩm'}`});
+      minminWooSetStatusText(`Đang đồng bộ ${overallBefore}% · ${start+1}-${Math.min(start+chunk.length,items.length)}/${items.length}${includeImages?' kèm ảnh':' siêu nhanh'}...`);
       chunk.forEach((it,idx)=>{
         const live = state.website.products.find(x=>String(x.id)===String(it.id));
-        if(live){ live.wooStatus = includeImages ? 'Đang gửi WooCommerce kèm ảnh' : 'Đang gửi WooCommerce nhanh'; live.wooProgress = Math.max(10, Math.round(((start+idx)/items.length)*100)); }
+        if(live){ live.wooStatus = includeImages ? 'Đang đồng bộ đầy đủ nội dung và ảnh' : 'Đang gửi WooCommerce nhanh'; live.wooProgress = 10; }
       });
       saveWebsiteProducts(); render();
       if(includeImages){
-        try{ await minminUploadOneWooFast(chunk[0].id,{includeImages:true,bulk:true}); ok++; }
+        try{ await minminUploadOneWooFast(chunk[0].id,{includeImages:true,includeCategories,bulk:true}); ok++; }
         catch(e){ fail++; last=e.message||String(e); }
       }else{
         const create=[], update=[], createRefs=[], updateRefs=[];
@@ -8972,14 +9019,23 @@ async function minminUploadAllWooSuperFast(options={}){
           chunk.forEach(item=>{ const live=state.website.products.find(x=>String(x.id)===String(item.id)); if(live){ live.wooStatus='Lỗi: '+last; live.wooProgress=1; } });
         }
       }
-      minminWooSetStatusText(`Đã xử lý ${Math.min(start+chunk.length,items.length)}/${items.length}. Thành công ${ok}, lỗi ${fail}.`);
+      const completed=Math.min(start+chunk.length,items.length), overall=Math.round((completed/items.length)*100);
+      processed=completed;
+      setWebsiteMobileSyncProgress({active:completed<items.length,progress:overall,completed,total:items.length,failed:fail,label:completed<items.length?'Đang chuyển sang sản phẩm tiếp theo':`Hoàn tất ${ok} sản phẩm`});
+      minminWooSetStatusText(`Đã xử lý ${overall}% · ${completed}/${items.length}. Thành công ${ok}, lỗi ${fail}.`);
       saveWebsiteProducts(); render();
       if(fail && /quá \d+ giây|timed out|timeout/i.test(last)) break;
     }
     state.website.lastWooSyncAt=minminWooNow();
-    minminWooSetStatusText(`Xong WooCommerce: ${ok} thành công, ${fail} lỗi${last?'. Lỗi cuối: '+last:''}${includeImages?' · Đã kiểm tra và gửi kèm ảnh.':' · Không gửi ảnh/không quét danh mục.'}`);
+    const finished=processed>=items.length, finalProgress=items.length?Math.round((processed/items.length)*100):100;
+    setWebsiteMobileSyncProgress({active:false,progress:finalProgress,completed:processed,total:items.length,failed:fail,label:`${finished?'Hoàn tất':'Đã dừng'}: ${ok} thành công${fail?`, ${fail} lỗi`:''}`});
+    minminWooSetStatusText(`${finished?'Xong':'Đã dừng'} WooCommerce ở ${finalProgress}%: ${ok} thành công, ${fail} lỗi${last?'. Lỗi cuối: '+last:''}${includeImages?' · Đã kiểm tra và gửi kèm ảnh.':' · Không gửi ảnh/không quét danh mục.'}`);
     saveWebsiteProducts(); render(); alert(state.websiteWoo.status);
   }finally{
+    if(state.ui?.websiteMobileSyncActive){
+      setWebsiteMobileSyncProgress({active:false,progress:Number(state.ui.websiteMobileSyncProgress||0),completed:Number(state.ui.websiteMobileSyncCompleted||0),total:Number(state.ui.websiteMobileSyncTotal||0),failed:Number(state.ui.websiteMobileSyncFailed||0),label:'Đồng bộ đã dừng trước khi hoàn tất'});
+      render();
+    }
     __minminWooSyncRunning = false;
   }
 }
@@ -17124,7 +17180,37 @@ function ensureWebsiteMobileState(){
   if(typeof state.ui.websiteMobileAdvanced!=='boolean')state.ui.websiteMobileAdvanced=false;
   if(typeof state.ui.websiteMobileShowKey!=='boolean')state.ui.websiteMobileShowKey=false;
   if(typeof state.ui.websiteMobileShowSecret!=='boolean')state.ui.websiteMobileShowSecret=false;
+  if(typeof state.ui.websiteMobileSyncActive!=='boolean')state.ui.websiteMobileSyncActive=false;
+  state.ui.websiteMobileSyncProgress=Math.max(0,Math.min(100,Number(state.ui.websiteMobileSyncProgress||0)));
+  state.ui.websiteMobileSyncCompleted=Math.max(0,Number(state.ui.websiteMobileSyncCompleted||0));
+  state.ui.websiteMobileSyncTotal=Math.max(0,Number(state.ui.websiteMobileSyncTotal||0));
+  state.ui.websiteMobileSyncFailed=Math.max(0,Number(state.ui.websiteMobileSyncFailed||0));
+  state.ui.websiteMobileSyncLabel=state.ui.websiteMobileSyncLabel||'';
   state.website=normalizeWebsiteProducts(state.website||websiteProductsDefaults());
+}
+function websiteProductFullySynced(product){
+  const p=normalizeWebsiteProduct(product||{}), status=String(p.wooStatus||'');
+  if(!p.wooProductId||websiteImagesNeedSync(p))return false;
+  return status==='Đã đồng bộ WooCommerce'||status==='Đã tải từ WooCommerce';
+}
+function websiteProductSyncing(product){return String(product?.wooStatus||'').startsWith('Đang ');}
+function setWebsiteMobileSyncProgress(update={}){
+  state.ui=state.ui||{};
+  Object.assign(state.ui,{
+    websiteMobileSyncActive:!!update.active,
+    websiteMobileSyncProgress:Math.max(0,Math.min(100,Number(update.progress||0))),
+    websiteMobileSyncCompleted:Math.max(0,Number(update.completed||0)),
+    websiteMobileSyncTotal:Math.max(0,Number(update.total||0)),
+    websiteMobileSyncFailed:Math.max(0,Number(update.failed||0)),
+    websiteMobileSyncLabel:String(update.label||'')
+  });
+}
+function websiteMobileSyncProgressPanel(){
+  const ui=state.ui||{}, progress=Math.max(0,Math.min(100,Number(ui.websiteMobileSyncProgress||0)));
+  if(!ui.websiteMobileSyncActive&&progress<=0)return'';
+  const total=Number(ui.websiteMobileSyncTotal||0), completed=Number(ui.websiteMobileSyncCompleted||0), failed=Number(ui.websiteMobileSyncFailed||0);
+  const title=ui.websiteMobileSyncActive?'Đang đồng bộ nội dung và hình ảnh':'Đã hoàn tất đồng bộ';
+  return `<div class="minmin-website-card minmin-website-sync-progress" role="status" aria-live="polite"><div class="minmin-website-sync-progress-head"><span>${esc(title)}</span><strong>${progress}%</strong></div><div class="minmin-website-progress-track"><i style="width:${progress}%"></i></div><span class="text-[10px] font-bold text-black/45">${total?`${completed}/${total} sản phẩm${failed?` · ${failed} lỗi`:''}`:''}${ui.websiteMobileSyncLabel?` · ${esc(ui.websiteMobileSyncLabel)}`:''}</span></div>`;
 }
 function websiteMobileNav(){
   const items=[['quote','Báo giá','quote'],['stock','Kho hàng','stock'],['website','Website','website'],['accounting','Kế toán','accounting'],['documents','Hồ sơ','document']];
@@ -17145,6 +17231,7 @@ function websiteMobileDashboard(){
   const lastSync=state.website.lastWooSyncAt?new Date(state.website.lastWooSyncAt).toLocaleString('vi-VN'):'Chưa đồng bộ';
   return `<section class="minmin-website-mobile-view">${websiteMobileMainHeader()}<div class="minmin-website-mobile-content">
     <div class="minmin-website-mobile-title"><h1>Website</h1><p>Quản lý sản phẩm WooCommerce</p></div>
+    ${websiteMobileSyncProgressPanel()}
     <div class="minmin-mobile-summary-dark minmin-website-summary-dark"><div class="minmin-website-stats">
       <div class="minmin-website-stat"><strong>${products.length}</strong><span>Tổng sản phẩm</span></div>
       <div class="minmin-website-stat"><strong>${published}</strong><span>Đã đăng</span></div>
@@ -17185,10 +17272,11 @@ function websiteMobileProductRows(){
     const pendingImages=websiteImagesNeedSync(p)||String(p.wooStatus||'')==='Chưa đồng bộ ảnh';
     const error=/lỗi|error/i.test(String(p.wooStatus||''));
     const missing=websiteMissingFields(p).length>0;
-    const status=error?'Lỗi':pendingImages?'Chờ đồng bộ ảnh':missing?'Thiếu dữ liệu':published?'Đã đăng':'Chưa đăng';
+    const syncing=websiteProductSyncing(p), fullySynced=websiteProductFullySynced(p), progress=Math.max(0,Math.min(100,Number(p.wooProgress||0)));
+    const status=syncing?`Đang đồng bộ ${progress}%`:error?'Đồng bộ lỗi':pendingImages?'Chưa đồng bộ ảnh':!fullySynced?'Chưa đồng bộ':missing?'Thiếu dữ liệu':'';
     const productUrl=p.wooProductUrl||p.website_product_url||'';
-    const syncBadge=published&&!pendingImages&&!error?`<span class="minmin-website-sync-check" title="Đã đồng bộ đầy đủ dữ liệu và ảnh lên WooCommerce">${websiteMobileIcon('check')}<span>Đã đồng bộ</span></span>`:'';
-    const statusNote=status==='Đã đăng'?'':`<span class="minmin-website-product-status">${esc(status)}</span>`;
+    const syncBadge=fullySynced?`<span class="minmin-website-sync-check" title="Đã đồng bộ đầy đủ dữ liệu và ảnh lên WooCommerce">${websiteMobileIcon('check')}<span>Đã đồng bộ</span></span>`:'';
+    const statusNote=status?`<span class="minmin-website-product-status">${esc(status)}</span>${syncing?`<span class="minmin-website-product-progress" aria-label="Tiến độ đồng bộ ${progress}%"><i style="width:${progress}%"></i></span>`:''}`:'';
     return `<div class="minmin-website-product-row text-left">
       <button data-website-mobile-detail="${esc(p.id)}" type="button" class="contents text-left">
         <span class="minmin-website-product-photo">${image?`<img src="${esc(image)}" alt="${esc(p.product_name_en||p.sku)}" loading="lazy"/>`:'<span class="text-[9px] font-bold text-black/30">Chưa có ảnh</span>'}</span>
@@ -17216,6 +17304,7 @@ function websiteMobileList(){
     <div class="minmin-website-toolbar"><label class="minmin-website-search">${websiteMobileIcon('search')}<input data-website-mobile-search type="search" value="${esc(state.ui.websiteMobileSearch)}" placeholder="Tìm SKU, tên, danh mục..."/></label><button data-website-mobile-filter-toggle type="button" class="minmin-website-filter-button" aria-label="Lọc danh mục">⌘</button></div>
     <div class="minmin-mobile-filter-chips">${statuses.map(([key,label])=>`<button data-website-mobile-status="${key}" type="button" class="${state.ui.websiteMobileStatus===key?'is-active':''}">${label}</button>`).join('')}</div>
     ${state.ui.websiteMobileFilterOpen?`<label class="minmin-website-card p-2 text-[11px] font-bold text-black/50">Danh mục<select data-website-mobile-category class="mt-1 h-10 w-full rounded-md border border-black/10 bg-white px-2 text-xs font-bold"><option value="">Tất cả danh mục</option>${categories.map(value=>`<option value="${esc(value)}" ${state.ui.websiteMobileCategory===value?'selected':''}>${esc(websiteCategoryLabel(value))}</option>`).join('')}</select></label>`:''}
+    ${websiteMobileSyncProgressPanel()}
     <div class="flex items-center justify-between"><span class="text-xs font-black">${websiteMobileFilteredProducts().length} sản phẩm</span><button data-website-mobile-view="wizard" type="button" class="text-xs font-black text-mint">+ Tạo mới</button></div>
     <div class="minmin-website-card">${websiteMobileProductRows()}</div>
   </div></section>`;
@@ -17274,7 +17363,7 @@ function websiteMobileWizardBody(){
   }
   if(step===2){
     const gallery=p.gallery_image_urls||[];
-    return `<div class="minmin-website-form"><strong class="text-base">Ảnh đại diện</strong><div class="minmin-website-upload-grid"><label class="minmin-website-upload">${p.featured_image_url?`<img src="${esc(p.featured_image_url)}" alt="Ảnh đại diện"/>`:`<span>${websiteMobileIcon('upload')}<small class="mt-2 block">Chọn ảnh đại diện</small></span>`}<input data-website-mobile-featured type="file" accept="image/*" class="hidden"/></label><div class="minmin-website-upload">${p.featured_image_url?`<img src="${esc(p.featured_image_url)}" alt="Xem trước"/>`:'<span class="text-xs font-bold text-black/35">Ảnh xem trước</span>'}</div></div>${p.featured_image_url?'<button data-website-mobile-recrop type="button" class="minmin-website-secondary">Cắt lại ảnh đại diện</button>':''}<strong class="mt-2 text-base">Gallery sản phẩm</strong><div class="minmin-website-gallery">${gallery.map(url=>`<img src="${esc(url)}" alt="Ảnh gallery"/>`).join('')}<label class="flex aspect-square cursor-pointer items-center justify-center rounded-md border border-dashed border-black/20 bg-white text-2xl">+<input data-website-mobile-gallery type="file" accept="image/*" multiple class="hidden"/></label></div></div>`;
+    return `<div class="minmin-website-form"><strong class="text-base">Ảnh đại diện</strong><p class="text-[11px] font-bold text-black/45">Ảnh chụp điện thoại được tự động crop vuông và nén còn 900×900 trước khi tải lên.</p><div class="minmin-website-upload-grid"><label class="minmin-website-upload">${p.featured_image_url?`<img src="${esc(p.featured_image_url)}" alt="Ảnh đại diện"/>`:`<span>${websiteMobileIcon('upload')}<small class="mt-2 block">Chọn ảnh đại diện</small></span>`}<input data-website-mobile-featured type="file" accept="image/*" class="hidden"/></label><div class="minmin-website-upload">${p.featured_image_url?`<img src="${esc(p.featured_image_url)}" alt="Xem trước"/>`:'<span class="text-xs font-bold text-black/35">Ảnh xem trước</span>'}</div></div>${p.featured_image_url?'<button data-website-mobile-recrop type="button" class="minmin-website-secondary">Cắt lại ảnh đại diện</button>':''}<strong class="mt-2 text-base">Gallery sản phẩm</strong><div class="minmin-website-gallery">${gallery.map(url=>`<img src="${esc(url)}" alt="Ảnh gallery"/>`).join('')}<label class="flex aspect-square cursor-pointer items-center justify-center rounded-md border border-dashed border-black/20 bg-white text-2xl">+<input data-website-mobile-gallery type="file" accept="image/*" multiple class="hidden"/></label></div></div>`;
   }
   if(step===3){
     return `<div class="minmin-website-form">${WEBSITE_SIMPLE_ATTRIBUTES.map(([label,key])=>websiteMobileField(label,key)).join('')}<label>Mô tả ngắn<textarea data-website-mobile-field="short_description" placeholder="Mô tả sản phẩm">${esc(p.short_description||'')}</textarea></label></div>`;
@@ -17357,13 +17446,13 @@ document.addEventListener('change',async event=>{
   }
   const featured=event.target.closest?.('[data-website-mobile-featured]');
   if(featured?.files?.[0]){
-    try{await uploadWebsiteFeatured(featured.files[0]);render({force:true});}
+    try{await uploadWebsiteFeatured(featured.files[0],{size:900,quality:0.82});render({force:true});}
     catch(error){alert('Chưa tải được ảnh đại diện: '+(error.message||error));}
     return;
   }
   const gallery=event.target.closest?.('[data-website-mobile-gallery]');
   if(gallery?.files?.length){
-    try{await uploadWebsiteGallery(gallery.files);render({force:true});}
+    try{await uploadWebsiteGallery(gallery.files,{square:true,size:900,quality:0.82});render({force:true});}
     catch(error){alert('Chưa tải được gallery: '+(error.message||error));}
   }
 });

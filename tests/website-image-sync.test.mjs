@@ -43,6 +43,25 @@ test('WooCommerce response is validated before the app reports image success',()
 
 test('mobile synchronization badge cannot report a pending image as synchronized',()=>{
   assert.match(source,/const pendingImages=websiteImagesNeedSync\(p\)/);
-  assert.match(source,/const syncBadge=published&&!pendingImages&&!error/);
-  assert.match(source,/Chờ đồng bộ ảnh/);
+  assert.match(source,/function websiteProductFullySynced\(product\)/);
+  assert.match(source,/const syncBadge=fullySynced\?/);
+  assert.match(source,/Chưa đồng bộ ảnh/);
+  assert.match(source,/!fullySynced\?'Chưa đồng bộ'/);
+});
+
+test('phone uploads are cropped and compressed to a 900 square',()=>{
+  assert.match(source,/function cropFeaturedImageToSquare\(dataUrl,size=900,quality=0\.82\)/);
+  assert.match(source,/uploadWebsiteFeatured\(featured\.files\[0\],\{size:900,quality:0\.82\}\)/);
+  assert.match(source,/uploadWebsiteGallery\(gallery\.files,\{square:true,size:900,quality:0\.82\}\)/);
+  assert.match(source,/Ảnh chụp điện thoại được tự động crop vuông và nén còn 900×900/);
+});
+
+test('mobile synchronization exposes product and batch percentages',()=>{
+  assert.match(source,/function websiteMobileSyncProgressPanel\(\)/);
+  assert.match(source,/websiteMobileSyncProgress:\s*Math\.max/);
+  assert.match(source,/Đang đồng bộ \$\{progress\}%/);
+  assert.match(source,/minmin-website-product-progress/);
+  assert.match(source,/Đang đồng bộ \$\{overallBefore\}%/);
+  assert.match(source,/const finished=processed>=items\.length, finalProgress=/);
+  assert.match(source,/setWebsiteMobileSyncProgress\(\{active:false,progress:finalProgress/);
 });
