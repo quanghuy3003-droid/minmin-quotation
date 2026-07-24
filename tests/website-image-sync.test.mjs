@@ -7,8 +7,8 @@ const source=readFileSync(new URL('../index.html',import.meta.url),'utf8');
 test('mobile product sync always sends the current images',()=>{
   assert.match(
     source,
-    /data-website-mobile-sync-one[\s\S]*uploadWebsiteProductToWoo\(id,\{includeImages:true\}\)/,
-    'single-product mobile sync must include images',
+    /data-website-mobile-sync-one[\s\S]*Đồng bộ toàn bộ nội dung, danh mục và hình ảnh[\s\S]*Đồng bộ sản phẩm[\s\S]*uploadWebsiteProductToWoo\(id,\{includeImages:true,includeCategories:true\}\)/,
+    'single-product mobile sync must include all content, categories and images',
   );
   assert.match(
     source,
@@ -29,6 +29,8 @@ test('image edits are tracked independently from text synchronization',()=>{
 });
 
 test('WooCommerce response is validated before the app reports image success',()=>{
+  assert.match(source,/const categoryIds=includeCategories&&item\.category\?await websiteWooCategoryIds\(item\.category\):\[\]/);
+  assert.match(source,/minminWooFastPayload\(item, \{includeImages, includeCategories, categoryIds\}\)/);
   assert.match(
     source,
     /includeImages && payload\.images\?\.length[\s\S]*WooCommerce đã nhận dữ liệu chữ nhưng chưa nhận được ảnh/,
@@ -44,4 +46,3 @@ test('mobile synchronization badge cannot report a pending image as synchronized
   assert.match(source,/const syncBadge=published&&!pendingImages&&!error/);
   assert.match(source,/Chờ đồng bộ ảnh/);
 });
-

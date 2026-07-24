@@ -8857,12 +8857,16 @@ async function minminUploadOneWooFast(id, opts={}){
   const item = state.website.products.find(x=>String(x.id)===String(id)||String(x.sku)===String(id));
   if(!item) throw new Error('Không tìm thấy sản phẩm website.');
   const includeImages = !!opts.includeImages;
+  const includeCategories = !!opts.includeCategories;
   const bulk = !!opts.bulk;
-  item.wooStatus = includeImages ? 'Đang gửi WooCommerce kèm ảnh' : 'Đang gửi WooCommerce nhanh';
+  item.wooStatus = includeImages&&includeCategories ? 'Đang đồng bộ đầy đủ nội dung và ảnh' : (includeImages ? 'Đang gửi WooCommerce kèm ảnh' : 'Đang gửi WooCommerce nhanh');
   item.wooProgress = Math.max(Number(item.wooProgress||0), 10);
   if(!bulk) { saveWebsiteProducts(); render(); }
   try{
-    const payload = minminWooFastPayload(item, {includeImages, includeCategories:false});
+    const categoryIds=includeCategories&&item.category?await websiteWooCategoryIds(item.category):[];
+    item.wooProgress=includeCategories?35:25;
+    if(!bulk){ saveWebsiteProducts(); render(); }
+    const payload = minminWooFastPayload(item, {includeImages, includeCategories, categoryIds});
     if(includeImages && (!payload.images || !payload.images.length)) throw new Error('Sản phẩm chưa có ảnh để gửi kèm.');
     item.wooProgress = 50;
     if(!bulk){ saveWebsiteProducts(); render(); }
@@ -8898,7 +8902,7 @@ async function minminUploadOneWooFast(id, opts={}){
   }
 }
 uploadWebsiteProductToWoo = function(id, options={}){
-  return minminUploadOneWooFast(id, {includeImages: !!options.includeImages, bulk: !!options.bulk});
+  return minminUploadOneWooFast(id, {includeImages: !!options.includeImages, includeCategories:!!options.includeCategories, bulk: !!options.bulk});
 };
 
 async function minminUploadAllWooSuperFast(options={}){
@@ -17195,7 +17199,7 @@ function websiteMobileProductRows(){
         ${String(state.ui?.websiteMobileProductMenuId||'')===String(p.id)?`<span class="minmin-overflow-popover">
           <button data-website-mobile-detail="${esc(p.id)}" type="button">Xem chi tiết</button>
           <button data-website-mobile-edit="${esc(p.id)}" type="button">Chỉnh sửa</button>
-          <button data-website-mobile-sync-one="${esc(p.id)}" type="button">Đồng bộ sản phẩm</button>
+          <button data-website-mobile-sync-one="${esc(p.id)}" type="button" title="Đồng bộ toàn bộ nội dung, danh mục và hình ảnh">Đồng bộ sản phẩm</button>
           <button data-website-mobile-to-quote="${esc(p.id)}" type="button">Đưa vào báo giá</button>
           ${productUrl?`<a href="${esc(productUrl)}" target="_blank" rel="noopener">Xem trên website</a>`:''}
           <button data-website-mobile-delete="${esc(p.id)}" type="button" class="is-danger">Xóa sản phẩm</button>
@@ -17388,7 +17392,7 @@ document.addEventListener('click',event=>{
   if(syncOne){
     const id=syncOne.dataset.websiteMobileSyncOne;
     state.ui.websiteMobileProductMenuId='';
-    uploadWebsiteProductToWoo(id,{includeImages:true}).then(()=>render({force:true})).catch(error=>{alert('Chưa đồng bộ được sản phẩm kèm ảnh: '+(error.message||error));render({force:true});});
+    uploadWebsiteProductToWoo(id,{includeImages:true,includeCategories:true}).then(()=>render({force:true})).catch(error=>{alert('Chưa đồng bộ đầy đủ nội dung và ảnh của sản phẩm: '+(error.message||error));render({force:true});});
     return;
   }
   const toQuote=event.target.closest?.('[data-website-mobile-to-quote]');
