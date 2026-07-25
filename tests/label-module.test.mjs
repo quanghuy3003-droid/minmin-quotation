@@ -55,6 +55,12 @@ test('the carton label preserves the fixed template wording',()=>{
   ])assert.ok(label.includes(text),`Missing fixed label text: ${text}`);
 });
 
+test('fixed label branding and handling symbols stay faithful to the supplied model',()=>{
+  assert.match(label,/src="\$\{UI_LOGO_DATA_URL\}" alt="MINMIN LIFESTYLE"/);
+  assert.match(label,/assets\/label\/fragile-reference\.png/);
+  assert.match(label,/font-family:'Century Gothic','Futura','Trebuchet MS',Arial,sans-serif/);
+});
+
 test('variable data is editable in both fields and the live preview',()=>{
   for(const field of ['productName','model','material','dimension','manufacturer']){
     assert.ok(label.includes(`data-label-field="${field}"`)||label.includes('data-label-field="${key}"'));

@@ -2,7 +2,7 @@
 
 App bao gia Minmin dang chay dang static site, chi can file `index.html`.
 
-Ban trien khai chinh: https://test-june-17.vercel.app
+Ban trien khai chinh: https://minmin-quotation-s74k.vercel.app/
 
 Tinh nang chinh:
 
