@@ -760,6 +760,81 @@
           gap: 1rem;
           padding: 1rem 0.9rem;
         }
+        .minmin-stock-mobile-edit-note {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 0.75rem;
+          color: rgba(17, 19, 21, 0.48);
+          font-size: 0.7rem;
+          font-weight: 800;
+        }
+        .minmin-stock-mobile-edit-note [data-stock-mobile-edit-status] {
+          color: #1f8d73;
+        }
+        .minmin-stock-mobile-direct-head {
+          display: grid;
+          min-width: 0;
+          gap: 0.25rem;
+        }
+        .minmin-stock-mobile-direct-head span,
+        .minmin-stock-mobile-direct-row > span {
+          color: rgba(17, 19, 21, 0.48);
+          font-size: 0.7rem;
+          font-weight: 800;
+        }
+        .minmin-stock-mobile-direct-head input {
+          width: 100%;
+          min-width: 0;
+          border: 0;
+          border-bottom: 1px solid transparent;
+          background: transparent;
+          outline: 0;
+          font-weight: 900;
+        }
+        .minmin-stock-mobile-direct-head.is-name input {
+          font-size: 1.45rem;
+          line-height: 1.2;
+        }
+        .minmin-stock-mobile-direct-head.is-price input {
+          color: #1f8d73;
+          font-size: 1.2rem;
+          text-align: right;
+        }
+        .minmin-stock-mobile-direct-head.is-price {
+          width: 132px;
+        }
+        .minmin-stock-mobile-direct-head input:focus,
+        .minmin-stock-mobile-direct-row input:focus,
+        .minmin-stock-mobile-direct-row select:focus {
+          border-color: #1f8d73;
+          background: #f2faf7;
+        }
+        .minmin-stock-mobile-direct-row {
+          display: grid;
+          grid-template-columns: 112px minmax(0, 1fr);
+          align-items: center;
+          gap: 0.75rem;
+          border-bottom: 1px solid rgba(17, 19, 21, 0.06);
+          padding: 0.35rem 0;
+        }
+        .minmin-stock-mobile-direct-row:last-child {
+          border-bottom: 0;
+        }
+        .minmin-stock-mobile-direct-row input,
+        .minmin-stock-mobile-direct-row select {
+          width: 100%;
+          min-width: 0;
+          height: 38px;
+          border: 1px solid transparent;
+          border-radius: 0.45rem;
+          background: transparent;
+          padding: 0 0.5rem;
+          outline: 0;
+          text-align: right;
+          font-size: 0.82rem;
+          font-weight: 800;
+        }
         .minmin-stock-mobile-detail-actions {
           position: sticky;
           bottom: 0;
@@ -7557,7 +7632,9 @@ function inventoryMobileListItem(item,filterNeedle=''){
 }
 function inventoryMobileDetailView(item){
   const key=item.barcodeId||item.code, stage=inventoryStage(item), finance=inventoryFinance(item), attrs=item.attributes||{};
-  const specs=[['Kích thước',item.dimension],['ĐVT',item.unit],...ATTRIBUTE_FIELDS.map(field=>[field.label,attrs[field.key]||item?.[field.key]])].filter(([,value])=>String(value||'').trim());
+  const directField=(label,field,value,type='text')=>`<label class="minmin-stock-mobile-direct-row"><span>${esc(label)}</span><input data-stock-mobile-edit-field="${esc(field)}" data-key="${esc(key)}" type="${type}" ${['price','purchasePrice'].includes(field)?'inputmode="numeric"':''} value="${esc(['price','purchasePrice'].includes(field)?moneyPlain(value||0):(value||''))}"/></label>`;
+  const directAttribute=field=>`<label class="minmin-stock-mobile-direct-row"><span>${esc(field.label)}</span><input data-stock-mobile-edit-attr="${esc(field.key)}" data-key="${esc(key)}" value="${esc(attrs[field.key]||item?.[field.key]||'')}"/></label>`;
+  const productOptions=PRODUCT_TYPES.map(type=>`<option value="${esc(type.value)}" ${item.productType===type.value?'selected':''}>${esc(type.label)}</option>`).join('');
   const action=stage.key==='stock'
     ? `<div class="minmin-stock-mobile-detail-actions"><input data-stock-qty="${esc(key)}" type="number" value="1" min="1" aria-label="Số lượng xuất"/><button data-stock-out="${esc(key)}" type="button" class="minmin-stock-mobile-primary">Xuất kho</button><button data-stock-quote="${esc(key)}" type="button" class="minmin-stock-mobile-primary col-span-2 bg-ink">Đưa vào báo giá</button></div>`
     : stage.key==='production'
@@ -7571,14 +7648,21 @@ function inventoryMobileDetailView(item){
     </div>
     <div class="minmin-stock-mobile-hero">${item.photoDataUrl?`<img src="${esc(driveAssetUrl(item.photoDataUrl))}" alt="${esc(item.name||item.code||'Sản phẩm')}"/>`:'<span class="text-sm font-bold text-black/35">Chưa có ảnh sản phẩm</span>'}</div>
     <div class="minmin-stock-mobile-detail-body">
+      <div class="minmin-stock-mobile-edit-note"><span>Chạm vào từng ô để chỉnh sửa trực tiếp</span><span data-stock-mobile-edit-status>Tự động lưu</span></div>
       <div class="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
-        <div class="min-w-0"><h2 class="break-words text-2xl font-black leading-tight">${esc(item.name||productTypeName(item.productType))}</h2><p class="mt-1 break-all text-sm font-extrabold text-black/45">${esc(item.code||'Chưa có mã')}</p></div>
-        <div class="text-right"><div class="text-xl font-black text-mint">${money(finance.sell)}</div><div class="mt-1 text-xs font-bold text-black/45">Giá bán</div></div>
+        <div class="min-w-0"><label class="minmin-stock-mobile-direct-head is-name"><span>Tên sản phẩm</span><input data-stock-mobile-edit-field="name" data-key="${esc(key)}" value="${esc(item.name||productTypeName(item.productType))}"/></label><p class="mt-1 break-all text-sm font-extrabold text-black/45">${esc(item.code||'Chưa có mã')}</p></div>
+        <label class="minmin-stock-mobile-direct-head is-price"><span>Giá bán</span><input data-stock-mobile-edit-field="price" data-key="${esc(key)}" inputmode="numeric" value="${esc(moneyPlain(finance.sell))}"/></label>
       </div>
       <div class="flex flex-wrap gap-2"><span class="rounded-md ${stage.chip} px-2 py-1 text-xs font-extrabold">${esc(stage.detail)}</span>${inventoryTotalDaysBadge(item)}${inventoryKindBadge(item)}</div>
       <div class="rounded-md border border-black/10 bg-white p-3">
         <h3 class="text-sm font-black">Thông tin sản phẩm</h3>
-        <div class="mt-2 grid gap-0">${specs.length?specs.map(([label,value])=>`<div class="grid grid-cols-[112px_minmax(0,1fr)] gap-3 border-b border-black/5 py-2 last:border-b-0"><span class="text-xs font-bold text-black/45">${esc(label)}</span><span class="break-words text-right text-sm font-extrabold">${esc(value)}</span></div>`).join(''):'<p class="py-2 text-sm font-semibold text-black/40">Chưa có thông số sản phẩm.</p>'}</div>
+        <div class="mt-2 grid gap-0">
+          <label class="minmin-stock-mobile-direct-row"><span>Loại đèn</span><select data-stock-mobile-edit-field="productType" data-key="${esc(key)}">${productOptions}</select></label>
+          ${directField('Kích thước','dimension',item.dimension)}
+          ${directField('ĐVT','unit',item.unit)}
+          ${directField('Giá mua','purchasePrice',item.purchasePrice)}
+          ${ATTRIBUTE_FIELDS.map(directAttribute).join('')}
+        </div>
       </div>
       ${inventoryCompactDates(item)}
       <div class="grid gap-2 rounded-md border border-black/10 bg-[#F7F7F2] p-3">
@@ -7834,6 +7918,39 @@ function applyInventoryMobileFilters(value=state.ui.stockSearch||''){
     empty.textContent=needle?'Không tìm thấy sản phẩm phù hợp.':'Nhóm này chưa có sản phẩm.';
   }
 }
+document.addEventListener('change',event=>{
+  const field=event.target.closest?.('[data-stock-mobile-edit-field]');
+  const attribute=event.target.closest?.('[data-stock-mobile-edit-attr]');
+  if(!field&&!attribute)return;
+  const control=field||attribute, item=findInventoryItem(control.dataset.key);
+  if(!item)return;
+  if(field){
+    const key=field.dataset.stockMobileEditField;
+    item[key]=['price','purchasePrice'].includes(key)?parseInputMoney(field.value):field.value;
+  }else{
+    item.attributes=item.attributes||{...ATTRIBUTE_DEFAULTS};
+    item.attributes[attribute.dataset.stockMobileEditAttr]=attribute.value;
+  }
+  item.updated_at=new Date().toISOString();
+  state.ui.stockMobileEditVersion=Number(state.ui.stockMobileEditVersion||0)+1;
+  const version=state.ui.stockMobileEditVersion;
+  const status=document.querySelector('[data-stock-mobile-edit-status]');
+  if(status){status.textContent='Đang lưu...';status.style.color='#8a5a00';}
+  saveInventory();
+  saveInventoryItemRemote(item).then(()=>{
+    if(version!==state.ui.stockMobileEditVersion)return;
+    state.inventory.syncStatus='Đã cập nhật sản phẩm và đồng bộ Supabase.';
+    const liveStatus=document.querySelector('[data-stock-mobile-edit-status]');
+    if(liveStatus){liveStatus.textContent='Đã lưu';liveStatus.style.color='#1f8d73';}
+    saveInventory();
+  }).catch(error=>{
+    console.warn(error);
+    state.inventory.syncStatus='Đã lưu trên máy, chưa đồng bộ được Supabase.';
+    const liveStatus=document.querySelector('[data-stock-mobile-edit-status]');
+    if(liveStatus){liveStatus.textContent='Chưa đồng bộ';liveStatus.style.color='#d6534d';}
+    saveInventory();
+  });
+});
 
 function websiteNewProduct(){ state.website=normalizeWebsiteProducts(state.website||websiteProductsDefaults()); state.website.editingId=''; state.website.current=websiteProductDefaults(); saveWebsiteProducts(); render(); }
 function websiteSaveProduct(){

@@ -27,5 +27,8 @@ assert.match(source,/matches\.find\(el=>el\.offsetParent!==null\)\|\|matches\[0\
 assert.match(source,/data-stock-mobile-filter-row[\s\S]*?data-stock-mobile-stage[\s\S]*?data-stock-mobile-search/,'Mobile inventory rows must expose searchable stage metadata');
 assert.match(source,/document\.addEventListener\('input',event=>\{[\s\S]*?data-stock-mobile-search[\s\S]*?applyInventoryMobileFilters\(search\.value\)/,'Typing must apply the mobile inventory filter immediately');
 assert.match(source,/function applyInventoryMobileFilters\([\s\S]*?row\.hidden=!show[\s\S]*?data-stock-mobile-filter-empty/,'Live mobile filtering must hide nonmatches and show a proper empty state');
+assert.match(source,/function inventoryMobileDetailView\(item\)[\s\S]*?data-stock-mobile-edit-field="name"[\s\S]*?data-stock-mobile-edit-field="price"[\s\S]*?data-stock-mobile-edit-field="productType"/,'Mobile product detail must allow direct editing of primary product content');
+assert.match(source,/function inventoryMobileDetailView\(item\)[\s\S]*?directField\('Kích thước','dimension'[\s\S]*?directField\('ĐVT','unit'[\s\S]*?ATTRIBUTE_FIELDS\.map\(directAttribute\)/,'Mobile product detail must allow direct editing of dimensions, unit and lamp attributes');
+assert.match(source,/document\.addEventListener\('change',event=>\{[\s\S]*?data-stock-mobile-edit-field[\s\S]*?saveInventoryItemRemote\(item\)[\s\S]*?Đã lưu/,'Direct mobile edits must save locally and synchronize through the existing Supabase writer');
 
 console.log('Inventory mobile menu and product detail checks passed.');
