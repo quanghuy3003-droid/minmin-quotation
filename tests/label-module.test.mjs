@@ -111,6 +111,18 @@ test('every selected label can keep its original background or remove it non-des
   assert.match(label,/draft\.photoUrl=draft\.originalPhotoUrl\|\|draft\.photoUrl/);
 });
 
+test('label images preserve their source aspect ratio in preview, background removal, and PDF export',()=>{
+  assert.match(label,/async function labelImageSourceToDataUrl/);
+  const start=label.indexOf('async function labelImageSourceToDataUrl');
+  const end=label.indexOf('function labelLoadImage',start);
+  const converter=label.slice(start,end);
+  assert.doesNotMatch(converter,/cropImageToSquare/);
+  assert.match(label,/const embedded=await labelImageSourceToDataUrl\(source\)/);
+  assert.match(label,/cache\.set\(draft\.photoUrl,labelImageSourceToDataUrl\(draft\.photoUrl\)\)/);
+  assert.match(label,/\.minmin-label-product-photo img\{display:block;width:auto;height:auto;max-width:100%;max-height:100%;object-fit:contain\}/);
+  assert.match(label,/\.minmin-label-export-host\{[^}]*width:1123px;height:794px/);
+});
+
 test('PDF image loading has a finite wait and product labels can be exported or printed',()=>{
   assert.match(label,/Promise\.race\(\[pending,new Promise\(resolve=>setTimeout\(resolve,15000\)\)\]\)/);
   assert.match(label,/data-label-export-pdf/);
