@@ -7758,8 +7758,9 @@ const renderInventoryTabDesktop = renderInventoryTab;
 function inventoryMobileEntryField(label,key,type='text'){
   const d=state.inventory.draft||inventoryDraftDefaults();
   const isMoney=['price','purchasePrice'].includes(key);
+  const replaceOnFocus=['quantity','price','purchasePrice'].includes(key);
   const value=isMoney?moneyPlain(d[key]||0):(d[key]??'');
-  return `<label class="minmin-stock-entry-field"><span>${label}</span><input data-inventory-draft="${key}" type="${isMoney?'text':type}" ${isMoney?'inputmode="numeric"':''} value="${esc(value)}"/></label>`;
+  return `<label class="minmin-stock-entry-field"><span>${label}</span><input data-inventory-draft="${key}" type="${replaceOnFocus?'text':type}" ${replaceOnFocus?'inputmode="numeric" data-inventory-replace-value':''} value="${esc(value)}"/></label>`;
 }
 function inventoryMobileEntryKind(){
   const d=state.inventory.draft||inventoryDraftDefaults();
@@ -7842,6 +7843,13 @@ function renderInventoryMobileEntry(){
     </footer>
   </div>`;
 }
+function selectInventoryReplaceValue(event){
+  const input=event.target.closest?.('[data-inventory-replace-value]');
+  if(!input)return;
+  requestAnimationFrame(()=>input.select());
+}
+document.addEventListener('focusin',selectInventoryReplaceValue);
+document.addEventListener('pointerup',selectInventoryReplaceValue);
 renderInventoryTab = function renderInventoryTabResponsive(){
   if(window.matchMedia?.('(max-width: 767px)').matches&&state.ui.stockMobileEntry)return renderInventoryMobileEntry();
   return `<div class="minmin-stock-desktop-view">${renderInventoryTabDesktop()}</div>${renderInventoryMobileView()}`;
