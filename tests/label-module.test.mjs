@@ -100,6 +100,16 @@ test('each A4 sheet supports four independent product slots and more sheets can 
   assert.match(label,/window\.print\(\)/);
 });
 
+test('products can be removed from individual labels and empty labels reopen the inventory picker',()=>{
+  assert.match(label,/function removeProductFromLabel\(sheetIndex,slotIndex\)/);
+  assert.match(label,/label\.sheets\[targetSheet\]\.slots\[targetSlot\]=labelSlotDefaults\(\)/);
+  assert.match(label,/data-label-remove-product/);
+  assert.match(label,/assets\/label\/empty-product-picker\.jpg/);
+  assert.match(label,/class="minmin-label-empty-picker" data-label-open-picker/);
+  assert.match(label,/Chọn sản phẩm từ Kho hàng/);
+  assert.match(label,/sản phẩm vẫn còn trong Kho hàng/);
+});
+
 test('every selected label can keep its original background or remove it non-destructively',()=>{
   assert.match(label,/originalPhotoUrl/);
   assert.match(label,/backgroundRemoved/);
