@@ -15,6 +15,16 @@ assert.match(
 );
 assert.match(
   source,
+  /minmin-quote-mobile-image-row[\s\S]*?Tự động crop vuông[\s\S]*?Resize tối đa 900×900px/,
+  'The quick image section must align the preview with concise processing states'
+);
+assert.match(
+  source,
+  /quoteMobileIcon\('clipboard'\)[\s\S]*?Dán ảnh[\s\S]*?quoteMobileIcon\('camera'\)[\s\S]*?Chọn ảnh/,
+  'The quick image actions must use appropriately scaled visual icons'
+);
+assert.match(
+  source,
   /function quoteMobileLineEditor\(line\)[\s\S]*?Tên sản phẩm \*[\s\S]*?Mã hàng \(tự sinh\)[\s\S]*?SL \*[\s\S]*?Đơn giá \(VND\) \*[\s\S]*?ĐVT \*[\s\S]*?Kích thước/,
   'The basic section must expose the compact two-column essential fields'
 );
