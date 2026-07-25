@@ -3181,22 +3181,6 @@
           color: var(--minmin-ink);
           font-size: 1.25rem;
         }
-        .minmin-stock-mobile-quick-add {
-          position: absolute;
-          right: 0.7rem;
-          bottom: 0.7rem;
-          display: inline-flex;
-          width: 38px;
-          height: 38px;
-          align-items: center;
-          justify-content: center;
-          border-radius: 50%;
-          background: var(--minmin-accent);
-          color: #fff;
-          font-size: 1.35rem;
-          font-weight: 900;
-          box-shadow: 0 4px 12px rgba(35, 145, 119, 0.2);
-        }
         .minmin-stock-mobile-detail {
           margin: -0.75rem;
         }
@@ -7869,7 +7853,6 @@ function inventoryMobileListItem(item,filterNeedle=''){
         <button data-stock-delete="${esc(key)}" type="button" class="is-danger">Xóa sản phẩm</button>
       </div>`:''}
     </div>
-    ${stage.key==='stock'?`<button data-stock-mobile-quick-quote="${esc(key)}" type="button" class="minmin-stock-mobile-quick-add" aria-label="Đưa ${esc(item.code||'sản phẩm')} vào báo giá">+</button>`:''}
   </div>`;
 }
 function inventoryMobileDetailView(item){
