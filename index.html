@@ -20220,21 +20220,51 @@ document.addEventListener('change',event=>{
    A4 landscape, four box labels per sheet, linked read-only to Inventory. */
 const LABEL_STORAGE_KEY='minmin-label-state-v1';
 function labelDraftDefaults(){
-  return {productName:'',model:'',material:'',dimension:'',manufacturer:'Fashion Designer Store',photoUrl:'',photoOptions:[],sourceUpdatedAt:''};
+  return {productName:'',model:'',material:'',dimension:'',manufacturer:'Fashion Designer Store',photoUrl:'',originalPhotoUrl:'',photoOptions:[],backgroundRemoved:false,sourceUpdatedAt:''};
 }
 function normalizeLabelDraft(value={}){
   const draft={...labelDraftDefaults(),...(value||{})};
-  draft.photoOptions=[...new Set([...(Array.isArray(draft.photoOptions)?draft.photoOptions:[]),draft.photoUrl].filter(Boolean))];
+  if(!draft.originalPhotoUrl&&!draft.backgroundRemoved)draft.originalPhotoUrl=draft.photoUrl||'';
+  draft.photoOptions=[...new Set([...(Array.isArray(draft.photoOptions)?draft.photoOptions:[]),draft.originalPhotoUrl,draft.backgroundRemoved?'':draft.photoUrl].filter(Boolean))];
+  draft.backgroundRemoved=!!draft.backgroundRemoved;
   return draft;
 }
+function labelSlotDefaults(){
+  return {selectedCode:'',draft:labelDraftDefaults()};
+}
+function normalizeLabelSlot(value={}){
+  return {selectedCode:String(value?.selectedCode||''),draft:normalizeLabelDraft(value?.draft||{})};
+}
+function labelSheetDefaults(){
+  return {id:uid(),slots:Array.from({length:4},()=>labelSlotDefaults())};
+}
+function normalizeLabelSheet(value={}){
+  const slots=Array.from({length:4},(_,index)=>normalizeLabelSlot(value?.slots?.[index]||{}));
+  return {id:String(value?.id||uid()),slots};
+}
 function labelStateDefaults(){
-  return {selectedCode:'',draft:labelDraftDefaults(),savedByProduct:{},copies:4,pickerOpen:false,search:'',status:''};
+  return {sheets:[labelSheetDefaults()],activeSheetIndex:0,activeSlotIndex:0,selectedCode:'',draft:labelDraftDefaults(),savedByProduct:{},copies:4,pickerOpen:false,search:'',status:'',backgroundBusy:false};
 }
 function normalizeLabelState(value={}){
-  const next={...labelStateDefaults(),...(value||{})};
-  next.draft=normalizeLabelDraft(next.draft);
+  const raw=value||{},defaults=labelStateDefaults();
+  let sheets;
+  if(Array.isArray(raw.sheets)&&raw.sheets.length)sheets=raw.sheets.map(normalizeLabelSheet);
+  else{
+    const legacyCount=[1,2,4].includes(Number(raw.copies))?Number(raw.copies):4;
+    const legacySlot=normalizeLabelSlot({selectedCode:raw.selectedCode||'',draft:raw.draft||{}});
+    const first=labelSheetDefaults();
+    first.slots=Array.from({length:4},(_,index)=>index<legacyCount?normalizeLabelSlot(legacySlot):labelSlotDefaults());
+    sheets=[first];
+  }
+  const next={...defaults,...raw,sheets};
   next.savedByProduct=Object.fromEntries(Object.entries(next.savedByProduct||{}).map(([key,draft])=>[key,normalizeLabelDraft(draft)]));
-  next.copies=[1,2,4].includes(Number(next.copies))?Number(next.copies):4;
+  next.activeSheetIndex=Math.max(0,Math.min(next.sheets.length-1,Number(next.activeSheetIndex)||0));
+  next.activeSlotIndex=Math.max(0,Math.min(3,Number(next.activeSlotIndex)||0));
+  next.copies=4;
+  next.backgroundBusy=!!next.backgroundBusy;
+  const active=next.sheets[next.activeSheetIndex].slots[next.activeSlotIndex];
+  next.selectedCode=active.selectedCode;
+  next.draft=active.draft;
   return next;
 }
 function ensureLabelState(){
@@ -20246,7 +20276,7 @@ function ensureLabelState(){
 }
 function labelStateSnapshot(){
   const label=ensureLabelState();
-  return safeJsonClone({...label,pickerOpen:false,search:''});
+  return safeJsonClone({...label,pickerOpen:false,search:'',backgroundBusy:false});
 }
 function saveLabelState(message=''){
   const label=ensureLabelState();
@@ -20257,6 +20287,46 @@ function saveLabelState(message=''){
 function renderLabelView(){
   state.activeTab='label';
   render({force:true});
+}
+function labelActiveSheet(label=ensureLabelState()){
+  return label.sheets[label.activeSheetIndex];
+}
+function labelActiveSlot(label=ensureLabelState()){
+  return labelActiveSheet(label).slots[label.activeSlotIndex];
+}
+function labelSyncActiveAliases(label=ensureLabelState()){
+  const slot=labelActiveSlot(label);
+  label.selectedCode=slot.selectedCode;
+  label.draft=slot.draft;
+  return slot;
+}
+function selectLabelSlot(sheetIndex,slotIndex,openPicker=false){
+  const label=ensureLabelState();
+  label.activeSheetIndex=Math.max(0,Math.min(label.sheets.length-1,Number(sheetIndex)||0));
+  label.activeSlotIndex=Math.max(0,Math.min(3,Number(slotIndex)||0));
+  labelSyncActiveAliases(label);
+  if(openPicker)label.pickerOpen=true;
+  renderLabelView();
+}
+function addLabelSheet(){
+  const label=ensureLabelState();
+  label.sheets.push(labelSheetDefaults());
+  label.activeSheetIndex=label.sheets.length-1;
+  label.activeSlotIndex=0;
+  labelSyncActiveAliases(label);
+  saveLabelState(`Đã thêm tờ ${label.sheets.length}.`);
+  renderLabelView();
+}
+function removeLabelSheet(sheetIndex){
+  const label=ensureLabelState(),index=Number(sheetIndex);
+  if(label.sheets.length<=1)return;
+  if(!confirm(`Xóa tờ ${index+1}?`))return;
+  label.sheets.splice(index,1);
+  label.activeSheetIndex=Math.max(0,Math.min(label.sheets.length-1,label.activeSheetIndex>index?label.activeSheetIndex-1:label.activeSheetIndex));
+  label.activeSlotIndex=0;
+  labelSyncActiveAliases(label);
+  saveLabelState('Đã xóa tờ Label.');
+  renderLabelView();
 }
 function labelInventoryItems(){
   return (state.inventory?.items||[]).filter(item=>!isInventoryDeleted(item));
@@ -20294,7 +20364,9 @@ function labelDraftFromInventory(item,existing=null,refreshValues=true){
     dimension:item?.dimension||old.dimension,
     manufacturer:item?.attributes?._manufacturer||old.manufacturer||'Fashion Designer Store',
     photoUrl:photos.includes(old.photoUrl)?old.photoUrl:(photos[0]||old.photoUrl),
+    originalPhotoUrl:photos.includes(old.originalPhotoUrl)?old.originalPhotoUrl:(photos[0]||old.originalPhotoUrl||old.photoUrl),
     photoOptions:photos,
+    backgroundRemoved:false,
     sourceUpdatedAt:item?.updated_at||item?.created_at||new Date().toISOString()
   });
   if(!existing||refreshValues)return inventoryDraft;
@@ -20303,52 +20375,133 @@ function labelDraftFromInventory(item,existing=null,refreshValues=true){
     ...inventoryDraft,
     ...old,
     photoUrl:photoOptions.includes(old.photoUrl)?old.photoUrl:(photoOptions[0]||''),
+    originalPhotoUrl:photoOptions.includes(old.originalPhotoUrl)?old.originalPhotoUrl:(photoOptions[0]||''),
     photoOptions
   });
 }
 function pickInventoryForLabel(code){
   const item=labelInventoryItem(code);
   if(!item)return;
-  const label=ensureLabelState(),key=String(item.barcodeId||item.code||code),saved=label.savedByProduct[key];
-  label.selectedCode=key;
-  label.draft=saved?labelDraftFromInventory(item,saved,false):labelDraftFromInventory(item);
+  const label=ensureLabelState(),slot=labelActiveSlot(label),key=String(item.barcodeId||item.code||code),saved=label.savedByProduct[key];
+  slot.selectedCode=key;
+  slot.draft=saved?labelDraftFromInventory(item,saved,false):labelDraftFromInventory(item);
+  labelSyncActiveAliases(label);
   label.pickerOpen=false;
   label.search='';
   saveLabelState(saved?'Đã mở mẫu Label đã lưu.':'Đã lấy ảnh và thông tin từ Kho hàng.');
   renderLabelView();
 }
 function updateLabelFromInventory(){
-  const label=ensureLabelState(),item=labelInventoryItem(label.selectedCode);
+  const label=ensureLabelState(),slot=labelActiveSlot(label),item=labelInventoryItem(slot.selectedCode);
   if(!item)return alert('Sản phẩm này không còn trong Kho hàng.');
-  label.draft=labelDraftFromInventory(item,label.draft);
+  slot.draft=labelDraftFromInventory(item,slot.draft);
+  labelSyncActiveAliases(label);
   saveLabelState('Đã cập nhật ảnh và thông tin mới nhất từ Kho hàng.');
   renderLabelView();
 }
 function saveCurrentLabelTemplate(){
-  const label=ensureLabelState(),key=label.selectedCode||String(label.draft.model||'').trim();
+  const label=ensureLabelState(),slot=labelActiveSlot(label),key=slot.selectedCode||String(slot.draft.model||'').trim();
   if(!key)return alert('Chọn sản phẩm từ Kho hoặc nhập Model trước khi lưu mẫu.');
-  label.savedByProduct[key]=normalizeLabelDraft(label.draft);
+  label.savedByProduct[key]=normalizeLabelDraft(slot.draft);
   saveLabelState('Đã lưu mẫu Label cho sản phẩm này.');
+  renderLabelView();
+}
+function labelLoadImage(source){
+  return new Promise((resolve,reject)=>{
+    const image=new Image();
+    image.onload=()=>resolve(image);
+    image.onerror=()=>reject(new Error('Không đọc được ảnh để xóa nền.'));
+    image.src=source;
+  });
+}
+function labelMedian(values){
+  const sorted=values.sort((a,b)=>a-b);
+  return sorted[Math.floor(sorted.length/2)]||255;
+}
+async function labelRemoveBackgroundDataUrl(source){
+  const embedded=String(source||'').startsWith('data:image/')?source:await imageSourceToDataUrl(source);
+  const image=await labelLoadImage(embedded);
+  const maxEdge=1200,scale=Math.min(1,maxEdge/Math.max(image.naturalWidth||image.width,image.naturalHeight||image.height));
+  const width=Math.max(1,Math.round((image.naturalWidth||image.width)*scale)),height=Math.max(1,Math.round((image.naturalHeight||image.height)*scale));
+  const canvas=document.createElement('canvas');
+  canvas.width=width;canvas.height=height;
+  const context=canvas.getContext('2d',{willReadFrequently:true});
+  context.drawImage(image,0,0,width,height);
+  const frame=context.getImageData(0,0,width,height),pixels=frame.data,borderR=[],borderG=[],borderB=[],step=Math.max(1,Math.floor(Math.min(width,height)/160));
+  const sample=(x,y)=>{const offset=(y*width+x)*4;borderR.push(pixels[offset]);borderG.push(pixels[offset+1]);borderB.push(pixels[offset+2]);};
+  for(let x=0;x<width;x+=step){sample(x,0);sample(x,height-1);}
+  for(let y=0;y<height;y+=step){sample(0,y);sample(width-1,y);}
+  const background=[labelMedian(borderR),labelMedian(borderG),labelMedian(borderB)],limit=78,softStart=34,total=width*height,visited=new Uint8Array(total),queue=new Int32Array(total);
+  let head=0,tail=0;
+  const distance=index=>{
+    const offset=index*4,dr=pixels[offset]-background[0],dg=pixels[offset+1]-background[1],db=pixels[offset+2]-background[2];
+    return Math.sqrt(dr*dr+dg*dg+db*db);
+  };
+  const enqueue=index=>{if(!visited[index]&&distance(index)<=limit){visited[index]=1;queue[tail++]=index;}};
+  for(let x=0;x<width;x++){enqueue(x);enqueue((height-1)*width+x);}
+  for(let y=0;y<height;y++){enqueue(y*width);enqueue(y*width+width-1);}
+  while(head<tail){
+    const index=queue[head++],x=index%width,y=Math.floor(index/width),offset=index*4,d=distance(index);
+    pixels[offset+3]=d<=softStart?0:Math.round(255*(d-softStart)/(limit-softStart));
+    if(x>0)enqueue(index-1);
+    if(x+1<width)enqueue(index+1);
+    if(y>0)enqueue(index-width);
+    if(y+1<height)enqueue(index+width);
+  }
+  context.putImageData(frame,0,0);
+  return canvas.toDataURL('image/png');
+}
+async function setLabelBackgroundMode(mode){
+  const label=ensureLabelState(),sheetIndex=label.activeSheetIndex,slotIndex=label.activeSlotIndex,slot=labelActiveSlot(label),draft=slot.draft;
+  if(mode==='keep'){
+    draft.photoUrl=draft.originalPhotoUrl||draft.photoUrl;
+    draft.backgroundRemoved=false;
+    label.backgroundBusy=false;
+    saveLabelState('Đã giữ nền ảnh gốc.');
+    renderLabelView();
+    return;
+  }
+  const source=draft.originalPhotoUrl||draft.photoUrl;
+  if(!source)return alert('Nhãn này chưa có ảnh để xóa nền.');
+  label.backgroundBusy=true;
+  label.status='Đang lọc và xóa nền ảnh...';
+  renderLabelView();
+  try{
+    const removed=await labelRemoveBackgroundDataUrl(source),current=ensureLabelState(),target=current.sheets[sheetIndex]?.slots[slotIndex];
+    if(!target)return;
+    target.draft.originalPhotoUrl=source;
+    target.draft.photoUrl=removed;
+    target.draft.backgroundRemoved=true;
+    current.backgroundBusy=false;
+    labelSyncActiveAliases(current);
+    saveLabelState('Đã xóa nền ảnh. Có thể bấm “Giữ nền” để quay lại ảnh gốc.');
+  }catch(error){
+    const current=ensureLabelState();
+    current.backgroundBusy=false;
+    current.status='Không xóa được nền ảnh này.';
+    alert('Không xóa được nền ảnh: '+(error.message||error));
+    saveLabelState();
+  }
   renderLabelView();
 }
 function labelFragileIcons(){
   return `<img src="assets/label/fragile-reference.png" alt="FRAGILE - PLEASE HANDLE WITH CARE"/>`;
 }
-function labelEditableValue(field,value,editable=false){
-  const attrs=editable?` contenteditable="true" spellcheck="false" data-label-inline="${field}"`:'';
+function labelEditableValue(field,value,editable=false,sheetIndex=0,slotIndex=0){
+  const attrs=editable?` contenteditable="true" spellcheck="false" data-label-inline="${field}" data-label-sheet="${sheetIndex}" data-label-slot="${slotIndex}"`:'';
   return `<span data-label-preview-value="${field}"${attrs}>${esc(value||'')}</span>`;
 }
-function labelInfoFace(draft,editable=false){
+function labelInfoFace(draft,editable=false,sheetIndex=0,slotIndex=0){
   return `<div class="minmin-label-info-face">
     <div class="minmin-label-info-copy">
-      <p><b>TÊN HÀNG</b>${labelEditableValue('productName',draft.productName,editable)}</p>
-      <p><b>MODEL</b><u>${labelEditableValue('model',draft.model,editable)}</u></p>
+      <p><b>TÊN HÀNG</b>${labelEditableValue('productName',draft.productName,editable,sheetIndex,slotIndex)}</p>
+      <p><b>MODEL</b><u>${labelEditableValue('model',draft.model,editable,sheetIndex,slotIndex)}</u></p>
       <p><b>THÔNG SỐ KỸ THUẬT</b></p>
-      <p>Chất liệu: ${labelEditableValue('material',draft.material,editable)}</p>
-      <p>Kích thước: ${labelEditableValue('dimension',draft.dimension,editable)}</p>
+      <p>Chất liệu: ${labelEditableValue('material',draft.material,editable,sheetIndex,slotIndex)}</p>
+      <p>Kích thước: ${labelEditableValue('dimension',draft.dimension,editable,sheetIndex,slotIndex)}</p>
       <p><b>XUẤT XỨ</b><span>Trung Quốc</span></p>
       <p><b>NHÀ SẢN XUẤT</b></p>
-      <p>${labelEditableValue('manufacturer',draft.manufacturer,editable)}</p>
+      <p>${labelEditableValue('manufacturer',draft.manufacturer,editable,sheetIndex,slotIndex)}</p>
       <p><b>ĐƠN VỊ NHẬP KHẨU &amp; PHÂN PHỐI</b></p>
       <p>Công ty TNHH Minmin Lifestyle</p>
       <p>Địa chỉ 27/32 Nguyễn Công Hoan,</p>
@@ -20361,23 +20514,35 @@ function labelInfoFace(draft,editable=false){
     <div class="minmin-label-fragile">${labelFragileIcons()}</div>
   </div>`;
 }
-function labelImageFace(draft,editable=false){
+function labelImageFace(draft,editable=false,sheetIndex=0,slotIndex=0){
   return `<div class="minmin-label-image-face">
     <div class="minmin-label-thanks">THANKS FOR CHOOSING</div>
-    <button type="button" class="minmin-label-product-photo" ${editable?'data-label-change-photo':''} aria-label="Đổi ảnh sản phẩm">${draft.photoUrl?`<img src="${esc(draft.photoUrl)}" alt="${esc(draft.productName||draft.model||'Sản phẩm')}"/>`:'<span>CHƯA CÓ ẢNH</span>'}</button>
+    <button type="button" class="minmin-label-product-photo" ${editable?`data-label-change-photo data-label-sheet="${sheetIndex}" data-label-slot="${slotIndex}"`:''} aria-label="Đổi ảnh sản phẩm">${draft.photoUrl?`<img src="${esc(draft.photoUrl)}" alt="${esc(draft.productName||draft.model||'Sản phẩm')}"/>`:'<span>CHƯA CÓ ẢNH</span>'}</button>
     <img class="minmin-label-wordmark" src="${UI_LOGO_DATA_URL}" alt="MINMIN LIFESTYLE"/>
   </div>`;
 }
-function labelPairHtml(draft,editable=false){
-  return `<article class="minmin-label-pair">${labelImageFace(draft,editable)}${labelInfoFace(draft,editable)}</article>`;
+function labelSlotHasContent(slot){
+  const draft=slot?.draft||{};
+  return !!(slot?.selectedCode||draft.productName||draft.model||draft.photoUrl);
 }
-function labelSheetHtml(draft,copies=4,editable=false){
-  const count=Math.max(1,Math.min(4,Number(copies||4)));
-  return `<div class="minmin-label-sheet">${Array.from({length:4},(_,index)=>index<count?labelPairHtml(draft,editable):'<article class="minmin-label-pair is-empty"></article>').join('')}</div>`;
+function labelPairHtml(slot,editable=false,sheetIndex=0,slotIndex=0,active=false){
+  const classes=`minmin-label-pair${active?' is-active':''}`;
+  if(!labelSlotHasContent(slot)){
+    return editable?`<article class="${classes} is-empty"><button type="button" data-label-open-picker data-label-sheet="${sheetIndex}" data-label-slot="${slotIndex}"><b>＋ Chọn sản phẩm</b><span>Tờ ${sheetIndex+1} · Nhãn ${slotIndex+1}</span></button></article>`:'<article class="minmin-label-pair is-empty"></article>';
+  }
+  return `<article class="${classes}" ${editable?`data-label-select-slot data-label-sheet="${sheetIndex}" data-label-slot="${slotIndex}"`:''}>${labelImageFace(slot.draft,editable,sheetIndex,slotIndex)}${labelInfoFace(slot.draft,editable,sheetIndex,slotIndex)}</article>`;
+}
+function labelSheetHtml(sheet,editable=false,sheetIndex=0){
+  const label=editable?ensureLabelState():null;
+  return `<div class="minmin-label-sheet">${Array.from({length:4},(_,slotIndex)=>labelPairHtml(sheet.slots[slotIndex],editable,sheetIndex,slotIndex,!!label&&label.activeSheetIndex===sheetIndex&&label.activeSlotIndex===slotIndex)).join('')}</div>`;
 }
 function labelField(label,key){
-  const value=ensureLabelState().draft[key]||'';
+  const value=labelActiveSlot().draft[key]||'';
   return `<label class="minmin-label-field"><span>${label}</span><input data-label-field="${key}" value="${esc(value)}"/></label>`;
+}
+function labelSlotNavigator(){
+  const label=ensureLabelState(),sheet=labelActiveSheet(label);
+  return `<div class="minmin-label-slot-nav"><span>4 nhãn trên tờ ${label.activeSheetIndex+1}</span><div>${sheet.slots.map((slot,index)=>`<button type="button" data-label-select-slot data-label-sheet="${label.activeSheetIndex}" data-label-slot="${index}" class="${index===label.activeSlotIndex?'is-active':''}"><small>Nhãn ${index+1}</small><b>${esc(slot.selectedCode||slot.draft.model||'Chưa chọn')}</b></button>`).join('')}</div></div>`;
 }
 function labelPickerHtml(){
   const label=ensureLabelState();
@@ -20386,22 +20551,23 @@ function labelPickerHtml(){
     const key=String(item.barcodeId||item.code||''),photo=labelInventoryImages(item)[0]||'',search=cleanSearch([key,item.name,item.dimension,productTypeName(item.productType)].join(' '));
     return `<button type="button" data-label-pick-code="${esc(key)}" data-label-picker-row data-search="${esc(search)}" class="minmin-label-picker-row">${photo?`<img src="${esc(photo)}" alt=""/>`:'<span class="minmin-label-no-photo">No image</span>'}<span><strong>${esc(key)}</strong><b>${esc(item.name||productTypeName(item.productType)||'Sản phẩm')}</b><small>${esc(item.dimension||'Chưa có kích thước')} · SL ${Number(item.quantity||0)}</small></span><i>Chọn</i></button>`;
   }).join('');
-  return `<div class="minmin-label-modal" role="dialog" aria-modal="true" aria-label="Chọn sản phẩm từ Kho hàng"><div class="minmin-label-picker"><header><div><h2>Pick sản phẩm từ Kho hàng</h2><p>Tự lấy ảnh chính và các thông tin hiện có.</p></div><button type="button" data-label-close-picker aria-label="Đóng">×</button></header><input data-label-picker-search value="${esc(label.search||'')}" placeholder="Tìm mã, tên, kích thước..."/><div class="minmin-label-picker-list">${rows||'<p class="minmin-label-picker-empty">Kho hàng chưa có sản phẩm.</p>'}</div></div></div>`;
+  return `<div class="minmin-label-modal" role="dialog" aria-modal="true" aria-label="Chọn sản phẩm từ Kho hàng"><div class="minmin-label-picker"><header><div><h2>Pick sản phẩm từ Kho hàng</h2><p>Đang chọn cho Tờ ${label.activeSheetIndex+1} · Nhãn ${label.activeSlotIndex+1}.</p></div><button type="button" data-label-close-picker aria-label="Đóng">×</button></header><input data-label-picker-search value="${esc(label.search||'')}" placeholder="Tìm mã, tên, kích thước..."/><div class="minmin-label-picker-list">${rows||'<p class="minmin-label-picker-empty">Kho hàng chưa có sản phẩm.</p>'}</div></div></div>`;
 }
 function renderLabelTab(){
-  const label=ensureLabelState(),draft=label.draft,photos=draft.photoOptions||[],selected=label.selectedCode;
+  const label=ensureLabelState(),slot=labelActiveSlot(label),draft=slot.draft,photos=draft.photoOptions||[],selected=slot.selectedCode,selectedPhoto=draft.originalPhotoUrl||draft.photoUrl;
   return `<section class="minmin-label-module">
-    <header class="minmin-label-page-head"><div><span>LABEL</span><h1>Tạo nhãn dán thùng sản phẩm</h1><p>Chọn sản phẩm từ Kho, chỉnh trực tiếp và xuất đúng tờ A4 ngang.</p></div><button type="button" data-label-open-picker>Pick sản phẩm từ Kho hàng</button></header>
+    <header class="minmin-label-page-head"><div><span>LABEL</span><h1>Tạo nhãn dán thùng sản phẩm</h1><p>Mỗi tờ chọn tối đa 4 sản phẩm khác nhau, chỉnh trực tiếp và xuất A4 ngang.</p></div><button type="button" data-label-open-picker data-label-sheet="${label.activeSheetIndex}" data-label-slot="${label.activeSlotIndex}">Pick sản phẩm cho nhãn đang chọn</button></header>
     <div class="minmin-label-workspace">
       <aside class="minmin-label-editor">
-        <div class="minmin-label-editor-head"><div><span>Sản phẩm đang chọn</span><strong>${esc(selected||'Chưa chọn sản phẩm')}</strong></div><button type="button" data-label-open-picker>Đổi</button></div>
+        <div class="minmin-label-editor-head"><div><span>Tờ ${label.activeSheetIndex+1} · Nhãn ${label.activeSlotIndex+1}</span><strong>${esc(selected||'Chưa chọn sản phẩm')}</strong></div><button type="button" data-label-open-picker data-label-sheet="${label.activeSheetIndex}" data-label-slot="${label.activeSlotIndex}">Đổi</button></div>
+        ${labelSlotNavigator()}
         <div class="minmin-label-fields">${labelField('Tên hàng','productName')}${labelField('Model','model')}${labelField('Chất liệu','material')}${labelField('Kích thước','dimension')}${labelField('Nhà sản xuất','manufacturer')}</div>
-        <div class="minmin-label-photo-options"><div><strong>Ảnh dùng cho Label</strong><small>${photos.length>1?'Chọn một ảnh có sẵn của sản phẩm.':'Mặc định lấy ảnh chính từ Kho.'}</small></div><div class="minmin-label-photo-list">${photos.map((photo,index)=>`<button type="button" data-label-photo-option="${esc(photo)}" class="${photo===draft.photoUrl?'is-selected':''}"><img src="${esc(photo)}" alt="Ảnh ${index+1}"/><span>${photo===draft.photoUrl?'✓':''}</span></button>`).join('')}<button type="button" data-label-change-photo class="minmin-label-upload-photo">+<span>Ảnh khác</span></button></div><input id="minminLabelPhotoInput" type="file" accept="image/png,image/jpeg,image/webp" hidden/></div>
-        <label class="minmin-label-copies"><span>Số bản trên một tờ</span><select data-label-copies><option value="1" ${label.copies===1?'selected':''}>1 bản</option><option value="2" ${label.copies===2?'selected':''}>2 bản</option><option value="4" ${label.copies===4?'selected':''}>4 bản</option></select></label>
+        <div class="minmin-label-photo-options"><div><strong>Ảnh dùng cho Label</strong><small>${photos.length>1?'Chọn một ảnh có sẵn của sản phẩm.':'Mặc định lấy ảnh chính từ Kho.'}</small></div><div class="minmin-label-photo-list">${photos.map((photo,index)=>`<button type="button" data-label-photo-option="${esc(photo)}" class="${photo===selectedPhoto?'is-selected':''}"><img src="${esc(photo)}" alt="Ảnh ${index+1}"/><span>${photo===selectedPhoto?'✓':''}</span></button>`).join('')}<button type="button" data-label-change-photo data-label-sheet="${label.activeSheetIndex}" data-label-slot="${label.activeSlotIndex}" class="minmin-label-upload-photo">+<span>Ảnh khác</span></button></div><input id="minminLabelPhotoInput" type="file" accept="image/png,image/jpeg,image/webp" hidden/></div>
+        <div class="minmin-label-background"><span>Nền ảnh</span><div><button type="button" data-label-background-mode="keep" class="${draft.backgroundRemoved?'':'is-active'}">Giữ nền</button><button type="button" data-label-background-mode="remove" class="${draft.backgroundRemoved?'is-active':''}" ${label.backgroundBusy?'disabled':''}>${label.backgroundBusy?'Đang xóa...':'Xóa nền'}</button></div><small>Xóa nền tự động theo màu ở viền ảnh; có thể quay lại ảnh gốc bất cứ lúc nào.</small></div>
         <div class="minmin-label-editor-actions"><button type="button" data-label-refresh ${selected?'':'disabled'}>Cập nhật từ Kho hàng</button><button type="button" data-label-save-template>Lưu mẫu theo sản phẩm</button></div>
         ${label.status?`<p class="minmin-label-status">${esc(label.status)}</p>`:''}
       </aside>
-      <main class="minmin-label-preview-panel"><div class="minmin-label-preview-head"><div><span>PREVIEW A4 NGANG</span><strong>Sửa trực tiếp chữ ngay trên bản xem trước</strong></div><div><button type="button" data-label-print>In trực tiếp</button><button type="button" data-label-export-pdf>Xuất PDF</button></div></div><div class="minmin-label-sheet-scroll">${labelSheetHtml(draft,label.copies,true)}</div></main>
+      <main class="minmin-label-preview-panel"><div class="minmin-label-preview-head"><div><span>PREVIEW A4 NGANG · ${label.sheets.length} TỜ</span><strong>Bấm từng nhãn để chọn sản phẩm và chỉnh nội dung riêng</strong></div><div><button type="button" data-label-print>In trực tiếp</button><button type="button" data-label-export-pdf>Xuất PDF</button></div></div><div class="minmin-label-sheets">${label.sheets.map((sheet,sheetIndex)=>`<section class="minmin-label-sheet-card"><header><b>Tờ ${sheetIndex+1}</b>${label.sheets.length>1?`<button type="button" data-label-remove-sheet="${sheetIndex}">Xóa tờ</button>`:''}</header><div class="minmin-label-sheet-scroll">${labelSheetHtml(sheet,true,sheetIndex)}</div></section>`).join('')}<button type="button" class="minmin-label-add-sheet" data-label-add-sheet>＋ Thêm tờ</button></div></main>
     </div>
     ${labelPickerHtml()}
   </section>`;
@@ -20411,45 +20577,63 @@ function labelWaitForImages(rootNode){
   const pending=Promise.all(images.map(img=>img.complete?Promise.resolve():new Promise(resolve=>{img.onload=img.onerror=resolve;})));
   return Promise.race([pending,new Promise(resolve=>setTimeout(resolve,15000))]);
 }
-async function labelDraftForOutput(){
-  const draft=normalizeLabelDraft(ensureLabelState().draft);
+async function labelDraftForOutput(sourceDraft,cache=new Map()){
+  const draft=normalizeLabelDraft(sourceDraft);
   if(draft.photoUrl&&!String(draft.photoUrl).startsWith('data:image/')){
-    try{draft.photoUrl=await imageSourceToDataUrl(draft.photoUrl);}catch(e){console.warn('Không nhúng được ảnh Label, tiếp tục dùng URL gốc:',e);}
+    try{
+      if(!cache.has(draft.photoUrl))cache.set(draft.photoUrl,imageSourceToDataUrl(draft.photoUrl));
+      draft.photoUrl=await cache.get(draft.photoUrl);
+    }catch(e){console.warn('Không nhúng được ảnh Label, tiếp tục dùng URL gốc:',e);}
   }
   return draft;
 }
+async function labelSheetsForOutput(){
+  const label=ensureLabelState(),cache=new Map();
+  return Promise.all(label.sheets.map(async sourceSheet=>({
+    id:sourceSheet.id,
+    slots:await Promise.all(sourceSheet.slots.map(async sourceSlot=>({selectedCode:sourceSlot.selectedCode,draft:await labelDraftForOutput(sourceSlot.draft,cache)})))
+  })));
+}
 async function exportLabelPdf(){
-  const label=ensureLabelState(),draft=await labelDraftForOutput();
-  label.status='Đang tạo PDF Label...';renderLabelView();
+  let current=ensureLabelState();
+  current.status='Đang tạo PDF Label...';renderLabelView();
+  let host=null;
   try{
+    const sheets=await labelSheetsForOutput();
     await loadAnyScript(['vendor/html2canvas.min.js','https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js'],()=>window.html2canvas);
     await loadAnyScript(['vendor/jspdf.umd.min.js','https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js'],()=>window.jspdf);
-    const host=document.createElement('div');
+    host=document.createElement('div');
     host.className='minmin-label-export-host';
-    host.innerHTML=labelSheetHtml(draft,label.copies,false);
     document.body.appendChild(host);
-    const sheet=host.firstElementChild;
-    await labelWaitForImages(sheet);
-    const canvas=await html2canvas(sheet,{scale:2,useCORS:true,allowTaint:false,backgroundColor:'#fff',logging:false});
-    host.remove();
     const {jsPDF}=window.jspdf,pdf=new jsPDF({orientation:'landscape',unit:'mm',format:'a4',compress:true});
-    pdf.addImage(canvas.toDataURL('image/jpeg',0.96),'JPEG',0,0,297,210,undefined,'FAST');
-    const name=String(draft.model||label.selectedCode||'san-pham').replace(/[\\/:*?"<>|]+/g,'-');
-    pdf.save(`Label-${name}.pdf`);
-    label.status='Đã xuất PDF Label đúng khổ A4 ngang.';
+    for(let sheetIndex=0;sheetIndex<sheets.length;sheetIndex++){
+      host.innerHTML=labelSheetHtml(sheets[sheetIndex],false,sheetIndex);
+      const sheetNode=host.firstElementChild;
+      await labelWaitForImages(sheetNode);
+      const canvas=await html2canvas(sheetNode,{scale:2,useCORS:true,allowTaint:false,backgroundColor:'#fff',logging:false});
+      if(sheetIndex>0)pdf.addPage('a4','landscape');
+      pdf.addImage(canvas.toDataURL('image/jpeg',0.96),'JPEG',0,0,297,210,undefined,'FAST');
+    }
+    const first=sheets.flatMap(sheet=>sheet.slots).find(labelSlotHasContent),name=String(first?.draft?.model||first?.selectedCode||'san-pham').replace(/[\\/:*?"<>|]+/g,'-');
+    pdf.save(`Label-${name}-${sheets.length}-to.pdf`);
+    current=ensureLabelState();
+    current.status=`Đã xuất PDF Label ${sheets.length} tờ A4 ngang.`;
   }catch(e){
-    label.status='Chưa xuất được PDF.';
+    current=ensureLabelState();
+    current.status='Chưa xuất được PDF.';
     alert('Chưa xuất được PDF Label: '+(e.message||e));
+  }finally{
+    host?.remove();
   }
   saveLabelState();
   renderLabelView();
 }
 async function printLabelDirect(){
-  const label=ensureLabelState(),draft=await labelDraftForOutput();
+  const sheets=await labelSheetsForOutput();
   document.getElementById('minminLabelPrintRoot')?.remove();
   const rootNode=document.createElement('div');
   rootNode.id='minminLabelPrintRoot';
-  rootNode.innerHTML=labelSheetHtml(draft,label.copies,false);
+  rootNode.innerHTML=sheets.map((sheet,index)=>labelSheetHtml(sheet,false,index)).join('');
   document.body.appendChild(rootNode);
   await labelWaitForImages(rootNode);
   document.body.classList.add('minmin-label-printing');
@@ -20499,17 +20683,19 @@ async function printLabelDirect(){
     .minmin-label-module{max-width:1440px;margin:0 auto;padding:24px;background:#fafaf8;color:#111820}
     .minmin-label-page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:20px}.minmin-label-page-head span,.minmin-label-preview-head span{font-size:10px;font-weight:900;letter-spacing:.12em;color:#3d8b74}.minmin-label-page-head h1{margin:3px 0 0;font-size:24px;line-height:1.15}.minmin-label-page-head p{margin:7px 0 0;color:#737373;font-size:13px}.minmin-label-page-head>button{min-height:48px;border-radius:10px;background:#111820;padding:0 18px;color:#fff;font-size:13px;font-weight:850}
     .minmin-label-workspace{display:grid;grid-template-columns:330px minmax(0,1fr);gap:20px;align-items:start}.minmin-label-editor,.minmin-label-preview-panel{border:1px solid #ececec;border-radius:16px;background:#fff;box-shadow:0 4px 20px rgba(0,0,0,.04)}.minmin-label-editor{position:sticky;top:18px;padding:18px}.minmin-label-editor-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-bottom:14px;border-bottom:1px solid #ececec}.minmin-label-editor-head span{display:block;font-size:10px;font-weight:800;text-transform:uppercase;color:#999}.minmin-label-editor-head strong{display:block;margin-top:3px;font-size:13px}.minmin-label-editor-head button{height:34px;border:1px solid #ddd;border-radius:8px;padding:0 12px;font-size:11px;font-weight:800}
+    .minmin-label-slot-nav{display:grid;gap:7px;margin-top:14px}.minmin-label-slot-nav>span{font-size:10px;font-weight:850;text-transform:uppercase;color:#737373}.minmin-label-slot-nav>div{display:grid;grid-template-columns:1fr 1fr;gap:7px}.minmin-label-slot-nav button{display:grid;min-width:0;gap:2px;border:1px solid #dedede;border-radius:8px;background:#fafaf8;padding:8px;text-align:left}.minmin-label-slot-nav button.is-active{border-color:#3d8b74;background:#edf7f3;box-shadow:0 0 0 2px rgba(61,139,116,.08)}.minmin-label-slot-nav small{color:#888;font-size:8px;font-weight:800;text-transform:uppercase}.minmin-label-slot-nav b{overflow:hidden;font-size:10px;text-overflow:ellipsis;white-space:nowrap}
     .minmin-label-fields{display:grid;gap:11px;margin-top:14px}.minmin-label-field{display:grid;gap:5px}.minmin-label-field span,.minmin-label-copies>span{font-size:10px;font-weight:850;text-transform:uppercase;color:#737373}.minmin-label-field input,.minmin-label-copies select{width:100%;height:44px;border:1px solid #dedede;border-radius:9px;background:#fff;padding:0 12px;font-size:13px;font-weight:650;outline:none}.minmin-label-field input:focus,.minmin-label-copies select:focus{border-color:#3d8b74;box-shadow:0 0 0 3px rgba(61,139,116,.1)}
     .minmin-label-photo-options{display:grid;gap:10px;margin-top:16px;padding-top:15px;border-top:1px solid #ececec}.minmin-label-photo-options strong{display:block;font-size:12px}.minmin-label-photo-options small{display:block;margin-top:3px;color:#888;font-size:10px}.minmin-label-photo-list{display:flex;gap:8px;overflow-x:auto;padding-bottom:3px}.minmin-label-photo-list>button{position:relative;width:58px;height:58px;flex:0 0 58px;overflow:hidden;border:1px solid #ddd;border-radius:9px;background:#fafaf8}.minmin-label-photo-list>button.is-selected{border:2px solid #3d8b74}.minmin-label-photo-list img{width:100%;height:100%;object-fit:contain}.minmin-label-photo-list button>span{position:absolute;right:3px;top:3px;display:grid;min-width:17px;height:17px;place-items:center;border-radius:50%;background:#3d8b74;color:#fff;font-size:10px}.minmin-label-upload-photo{display:grid!important;place-items:center;color:#3d8b74;font-size:20px!important;font-weight:400!important}.minmin-label-upload-photo span{position:static!important;width:auto!important;background:transparent!important;color:#777!important;font-size:8px!important}
+    .minmin-label-background{display:grid;gap:7px;margin-top:14px}.minmin-label-background>span{font-size:10px;font-weight:850;text-transform:uppercase;color:#737373}.minmin-label-background>div{display:grid;grid-template-columns:1fr 1fr;border:1px solid #dedede;border-radius:9px;background:#f5f5f3;padding:3px}.minmin-label-background button{min-height:36px;border-radius:6px;font-size:10px;font-weight:850}.minmin-label-background button.is-active{background:#111820;color:#fff;box-shadow:0 1px 4px rgba(0,0,0,.14)}.minmin-label-background button:disabled{opacity:.55}.minmin-label-background small{color:#888;font-size:9px;line-height:1.4}
     .minmin-label-copies{display:grid;gap:5px;margin-top:14px}.minmin-label-editor-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}.minmin-label-editor-actions button{min-height:42px;border:1px solid #d8d8d8;border-radius:9px;padding:7px;font-size:10px;font-weight:850}.minmin-label-editor-actions button:last-child{border-color:#111820;background:#111820;color:#fff}.minmin-label-editor-actions button:disabled{opacity:.35}.minmin-label-status{margin:12px 0 0;border-radius:8px;background:#edf7f3;padding:9px;color:#28755f;font-size:10px;font-weight:800;line-height:1.4}
-    .minmin-label-preview-panel{min-width:0;padding:16px}.minmin-label-preview-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}.minmin-label-preview-head strong{display:block;margin-top:3px;font-size:12px}.minmin-label-preview-head>div:last-child{display:flex;gap:8px}.minmin-label-preview-head button{height:40px;border:1px solid #d9d9d9;border-radius:9px;padding:0 14px;font-size:11px;font-weight:850}.minmin-label-preview-head button:last-child{border-color:#111820;background:#111820;color:#fff}
-    .minmin-label-sheet-scroll{max-width:100%;overflow:auto;border-radius:4px;background:#e8e8e8}.minmin-label-sheet{display:grid;width:100%;min-width:760px;aspect-ratio:297/210;grid-template-columns:repeat(2,1fr);grid-template-rows:repeat(2,1fr);overflow:hidden;background:#fff;container-type:inline-size}.minmin-label-pair{display:grid;min-width:0;min-height:0;grid-template-columns:60.3% 39.7%;border-right:1.6px solid #111;border-bottom:1.6px solid #111}.minmin-label-pair:nth-child(2n){border-right:0}.minmin-label-pair:nth-child(n+3){border-bottom:0}.minmin-label-pair.is-empty{grid-template-columns:1fr}.minmin-label-image-face,.minmin-label-info-face{position:relative;min-width:0;min-height:0;background:#fff;font-family:'Century Gothic','Futura','Trebuchet MS',Arial,sans-serif}.minmin-label-image-face{padding:0}.minmin-label-info-face{border-left:1.3px solid #111;padding:4.25cqw 1.5cqw 1.1cqw}.minmin-label-thanks{position:absolute;top:13.8%;left:50%;transform:translateX(-50%);font-size:1.32cqw;font-weight:400;letter-spacing:.19em;white-space:nowrap}.minmin-label-product-photo{position:absolute;left:50%;top:24.7%;display:flex;width:43%;height:45.4%;transform:translateX(-50%);align-items:center;justify-content:center;border:0;background:transparent;padding:0}.minmin-label-product-photo img{width:100%;height:100%;object-fit:contain}.minmin-label-product-photo span{color:#aaa;font-size:.8cqw;font-weight:700}.minmin-label-wordmark{position:absolute;left:50%;bottom:11%;display:block;width:72%;height:auto;transform:translateX(-50%);object-fit:contain}
+    .minmin-label-preview-panel{min-width:0;padding:16px}.minmin-label-preview-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}.minmin-label-preview-head strong{display:block;margin-top:3px;font-size:12px}.minmin-label-preview-head>div:last-child{display:flex;gap:8px}.minmin-label-preview-head button{height:40px;border:1px solid #d9d9d9;border-radius:9px;padding:0 14px;font-size:11px;font-weight:850}.minmin-label-preview-head button:last-child{border-color:#111820;background:#111820;color:#fff}.minmin-label-sheets{display:grid;gap:18px}.minmin-label-sheet-card{display:grid;gap:7px}.minmin-label-sheet-card>header{display:flex;align-items:center;justify-content:space-between}.minmin-label-sheet-card>header b{font-size:11px}.minmin-label-sheet-card>header button{border:0;background:transparent;color:#a34242;font-size:10px;font-weight:800}.minmin-label-add-sheet{min-height:48px;border:1.5px dashed #9fbeb4;border-radius:11px;background:#f4faf8;color:#28755f;font-size:12px;font-weight:900}
+    .minmin-label-sheet-scroll{max-width:100%;overflow:auto;border-radius:4px;background:#e8e8e8}.minmin-label-sheet{display:grid;width:100%;min-width:760px;aspect-ratio:297/210;grid-template-columns:repeat(2,1fr);grid-template-rows:repeat(2,1fr);overflow:hidden;background:#fff;container-type:inline-size}.minmin-label-pair{position:relative;display:grid;min-width:0;min-height:0;grid-template-columns:60.3% 39.7%;border-right:1.6px solid #111;border-bottom:1.6px solid #111}.minmin-label-pair:nth-child(2n){border-right:0}.minmin-label-pair:nth-child(n+3){border-bottom:0}.minmin-label-pair.is-active{box-shadow:inset 0 0 0 3px #3d8b74}.minmin-label-pair.is-empty{grid-template-columns:1fr;background:#fbfbfa}.minmin-label-pair.is-empty>button{display:grid;place-content:center;justify-items:center;gap:.5cqw;color:#777}.minmin-label-pair.is-empty>button b{font-size:1cqw}.minmin-label-pair.is-empty>button span{font-size:.65cqw}.minmin-label-image-face,.minmin-label-info-face{position:relative;min-width:0;min-height:0;background:#fff;font-family:'Century Gothic','Futura','Trebuchet MS',Arial,sans-serif}.minmin-label-image-face{padding:0}.minmin-label-info-face{border-left:1.3px solid #111;padding:4.25cqw 1.5cqw 1.1cqw}.minmin-label-thanks{position:absolute;top:13.8%;left:50%;transform:translateX(-50%);font-size:1.32cqw;font-weight:400;letter-spacing:.19em;white-space:nowrap}.minmin-label-product-photo{position:absolute;left:50%;top:24.7%;display:flex;width:43%;height:45.4%;transform:translateX(-50%);align-items:center;justify-content:center;border:0;background:transparent;padding:0}.minmin-label-product-photo img{width:100%;height:100%;object-fit:contain}.minmin-label-product-photo span{color:#aaa;font-size:.8cqw;font-weight:700}.minmin-label-wordmark{position:absolute;left:50%;bottom:11%;display:block;width:72%;height:auto;transform:translateX(-50%);object-fit:contain}
     .minmin-label-info-copy{font-size:.75cqw;line-height:1.23}.minmin-label-info-copy p{display:flex;gap:.25cqw;margin:0 0 .12cqw;white-space:normal}.minmin-label-info-copy b{font-weight:700}.minmin-label-info-copy [contenteditable]{min-width:1cqw;border-radius:2px;outline:none}.minmin-label-info-copy [contenteditable]:focus{background:#e8f4ef;box-shadow:0 0 0 1px #3d8b74}.minmin-label-fragile{position:absolute;right:4.3cqw;bottom:.5cqw;width:9.5cqw}.minmin-label-fragile img{display:block;width:100%;height:auto}
     .minmin-label-modal{position:fixed;inset:0;z-index:9998;display:grid;place-items:center;padding:18px;background:rgba(17,24,32,.58);backdrop-filter:blur(3px)}.minmin-label-picker{display:grid;width:min(620px,100%);max-height:min(760px,92vh);grid-template-rows:auto auto minmax(0,1fr);gap:12px;border-radius:16px;background:#fafaf8;padding:18px;box-shadow:0 24px 80px rgba(0,0,0,.22)}.minmin-label-picker header{display:flex;align-items:start;justify-content:space-between;gap:14px}.minmin-label-picker h2{margin:0;font-size:18px}.minmin-label-picker p{margin:4px 0 0;color:#777;font-size:11px}.minmin-label-picker header button{width:36px;height:36px;border-radius:50%;background:#111820;color:#fff;font-size:22px}.minmin-label-picker>input{height:46px;border:1px solid #ddd;border-radius:10px;background:#fff;padding:0 14px;font-size:13px;outline:none}.minmin-label-picker-list{display:grid;gap:8px;overflow:auto}.minmin-label-picker-row{display:grid;grid-template-columns:64px minmax(0,1fr) auto;gap:12px;align-items:center;border:1px solid #e5e5e5;border-radius:11px;background:#fff;padding:8px;text-align:left}.minmin-label-picker-row img,.minmin-label-no-photo{display:grid;width:64px;height:64px;place-items:center;border-radius:8px;background:#f5f5f3;object-fit:contain;color:#aaa;font-size:9px}.minmin-label-picker-row strong,.minmin-label-picker-row b,.minmin-label-picker-row small{display:block}.minmin-label-picker-row strong{font-size:12px}.minmin-label-picker-row b{margin-top:4px;font-size:11px}.minmin-label-picker-row small{margin-top:3px;color:#888;font-size:9px}.minmin-label-picker-row i{border-radius:7px;background:#edf7f3;padding:7px 9px;color:#28755f;font-size:10px;font-style:normal;font-weight:850}.minmin-label-picker-empty{padding:40px;text-align:center;color:#888;font-size:12px}
     #minminLabelPrintRoot{display:none}.minmin-label-export-host{position:fixed;left:-20000px;top:0;width:1122px;height:794px;background:#fff}.minmin-label-export-host .minmin-label-sheet{width:1122px;height:794px;min-width:1122px}
     @media(max-width:767px){.minmin-main-nav{grid-template-columns:repeat(7,minmax(0,1fr))!important}.minmin-label-module{padding:14px}.minmin-label-page-head{align-items:stretch;flex-direction:column}.minmin-label-page-head h1{font-size:20px}.minmin-label-page-head>button{width:100%}.minmin-label-workspace{grid-template-columns:1fr}.minmin-label-editor{position:static;order:1}.minmin-label-preview-panel{order:2;padding:10px}.minmin-label-preview-head{align-items:stretch;flex-direction:column}.minmin-label-preview-head>div:last-child{display:grid;grid-template-columns:1fr 1fr}.minmin-label-sheet-scroll{margin-inline:-1px}.minmin-label-picker{padding:14px}.minmin-label-picker-row{grid-template-columns:54px minmax(0,1fr) auto}.minmin-label-picker-row img,.minmin-label-no-photo{width:54px;height:54px}}
     @media(min-width:768px) and (max-width:1050px){body .minmin-main-nav .minmin-tab-button{width:84px!important;min-width:84px!important;max-width:84px!important}}
-    @media print{@page{size:A4 landscape;margin:0}html,body{width:297mm!important;height:210mm!important;margin:0!important;background:#fff!important}body.minmin-label-printing #root{display:none!important}body.minmin-label-printing #minminLabelPrintRoot{display:block!important;width:297mm;height:210mm;margin:0}#minminLabelPrintRoot .minmin-label-sheet{width:297mm;height:210mm;min-width:0}}
+    @media print{@page{size:A4 landscape;margin:0}html,body{width:297mm!important;min-height:210mm!important;height:auto!important;margin:0!important;background:#fff!important}body.minmin-label-printing #root{display:none!important}body.minmin-label-printing #minminLabelPrintRoot{display:block!important;width:297mm;margin:0}#minminLabelPrintRoot .minmin-label-sheet{width:297mm;height:210mm;min-width:0;break-after:page;page-break-after:always}#minminLabelPrintRoot .minmin-label-sheet:last-child{break-after:auto;page-break-after:auto}}
   `;
   document.head.appendChild(style);
   document.addEventListener('click',event=>{
@@ -20522,31 +20708,37 @@ async function printLabelDirect(){
     renderLabelView();
   },true);
   document.addEventListener('click',event=>{
-    const open=event.target.closest?.('[data-label-open-picker]');if(open){ensureLabelState().pickerOpen=true;renderLabelView();return;}
+    const open=event.target.closest?.('[data-label-open-picker]');if(open){const label=ensureLabelState();label.activeSheetIndex=Math.max(0,Math.min(label.sheets.length-1,Number(open.dataset.labelSheet)||0));label.activeSlotIndex=Math.max(0,Math.min(3,Number(open.dataset.labelSlot)||0));labelSyncActiveAliases(label);label.pickerOpen=true;renderLabelView();return;}
     const close=event.target.closest?.('[data-label-close-picker]');if(close){ensureLabelState().pickerOpen=false;renderLabelView();return;}
     const pick=event.target.closest?.('[data-label-pick-code]');if(pick){pickInventoryForLabel(pick.dataset.labelPickCode);return;}
-    const photo=event.target.closest?.('[data-label-photo-option]');if(photo){ensureLabelState().draft.photoUrl=photo.dataset.labelPhotoOption;saveLabelState('Đã đổi ảnh dùng cho Label.');renderLabelView();return;}
-    const changePhoto=event.target.closest?.('[data-label-change-photo]');if(changePhoto){document.getElementById('minminLabelPhotoInput')?.click();return;}
+    const photo=event.target.closest?.('[data-label-photo-option]');if(photo){const draft=labelActiveSlot().draft,url=photo.dataset.labelPhotoOption;draft.photoUrl=url;draft.originalPhotoUrl=url;draft.backgroundRemoved=false;saveLabelState('Đã đổi ảnh dùng cho Label.');renderLabelView();return;}
+    const changePhoto=event.target.closest?.('[data-label-change-photo]');if(changePhoto){const label=ensureLabelState();label.activeSheetIndex=Math.max(0,Math.min(label.sheets.length-1,Number(changePhoto.dataset.labelSheet)||0));label.activeSlotIndex=Math.max(0,Math.min(3,Number(changePhoto.dataset.labelSlot)||0));labelSyncActiveAliases(label);document.getElementById('minminLabelPhotoInput')?.click();return;}
+    const background=event.target.closest?.('[data-label-background-mode]');if(background){setLabelBackgroundMode(background.dataset.labelBackgroundMode);return;}
+    const addSheet=event.target.closest?.('[data-label-add-sheet]');if(addSheet){addLabelSheet();return;}
+    const removeSheet=event.target.closest?.('[data-label-remove-sheet]');if(removeSheet){removeLabelSheet(removeSheet.dataset.labelRemoveSheet);return;}
     if(event.target.closest?.('[data-label-refresh]')){updateLabelFromInventory();return;}
     if(event.target.closest?.('[data-label-save-template]')){saveCurrentLabelTemplate();return;}
     if(event.target.closest?.('[data-label-export-pdf]')){exportLabelPdf();return;}
     if(event.target.closest?.('[data-label-print]')){printLabelDirect();return;}
+    const select=event.target.closest?.('[data-label-select-slot]');if(select&&!event.target.closest?.('[contenteditable]')){selectLabelSlot(select.dataset.labelSheet,select.dataset.labelSlot);return;}
   });
   document.addEventListener('input',event=>{
     const field=event.target.closest?.('[data-label-field]');
     if(field){
-      const key=field.dataset.labelField,value=field.value;
-      ensureLabelState().draft[key]=value;
-      document.querySelectorAll(`[data-label-preview-value="${key}"]`).forEach(node=>node.textContent=value);
+      const label=ensureLabelState(),key=field.dataset.labelField,value=field.value,sheetIndex=label.activeSheetIndex,slotIndex=label.activeSlotIndex;
+      labelActiveSlot(label).draft[key]=value;
+      labelSyncActiveAliases(label);
+      document.querySelectorAll(`[data-label-preview-value="${key}"][data-label-sheet="${sheetIndex}"][data-label-slot="${slotIndex}"]`).forEach(node=>node.textContent=value);
       saveLabelState();
       return;
     }
     const inline=event.target.closest?.('[data-label-inline]');
     if(inline){
-      const key=inline.dataset.labelInline,value=inline.textContent.replace(/\\s+/g,' ').trim();
-      ensureLabelState().draft[key]=value;
-      const input=document.querySelector(`[data-label-field="${key}"]`);if(input)input.value=value;
-      document.querySelectorAll(`[data-label-preview-value="${key}"]`).forEach(node=>{if(node!==inline)node.textContent=value;});
+      const label=ensureLabelState(),key=inline.dataset.labelInline,value=inline.textContent.replace(/\\s+/g,' ').trim(),sheetIndex=Number(inline.dataset.labelSheet)||0,slotIndex=Number(inline.dataset.labelSlot)||0,target=label.sheets[sheetIndex]?.slots[slotIndex];
+      if(!target)return;
+      target.draft[key]=value;
+      if(label.activeSheetIndex===sheetIndex&&label.activeSlotIndex===slotIndex){labelSyncActiveAliases(label);const input=document.querySelector(`[data-label-field="${key}"]`);if(input)input.value=value;}
+      document.querySelectorAll(`[data-label-preview-value="${key}"][data-label-sheet="${sheetIndex}"][data-label-slot="${slotIndex}"]`).forEach(node=>{if(node!==inline)node.textContent=value;});
       saveLabelState();
       return;
     }
@@ -20558,10 +20750,9 @@ async function printLabelDirect(){
     }
   });
   document.addEventListener('change',event=>{
-    if(event.target.matches?.('[data-label-copies]')){ensureLabelState().copies=Number(event.target.value||4);saveLabelState();renderLabelView();return;}
     if(event.target.id==='minminLabelPhotoInput'&&event.target.files?.[0]){
       const reader=new FileReader();
-      reader.onload=()=>{const draft=ensureLabelState().draft;draft.photoUrl=String(reader.result||'');draft.photoOptions=[draft.photoUrl,...(draft.photoOptions||[]).filter(url=>url!==draft.photoUrl)];saveLabelState('Đã dùng ảnh riêng cho Label.');renderLabelView();};
+      reader.onload=()=>{const draft=labelActiveSlot().draft,url=String(reader.result||'');draft.photoUrl=url;draft.originalPhotoUrl=url;draft.backgroundRemoved=false;draft.photoOptions=[url,...(draft.photoOptions||[]).filter(option=>option!==url)];saveLabelState('Đã dùng ảnh riêng cho Label.');renderLabelView();};
       reader.readAsDataURL(event.target.files[0]);
     }
   });

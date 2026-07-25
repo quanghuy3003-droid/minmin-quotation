@@ -74,12 +74,20 @@ test('variable data is editable in both fields and the live preview',()=>{
 test('saved templates retain edits until the user requests an inventory refresh',()=>{
   assert.match(label,/savedByProduct/);
   assert.match(label,/labelDraftFromInventory\(item,saved,false\)/);
-  assert.match(label,/labelDraftFromInventory\(item,label\.draft\)/);
+  assert.match(label,/labelDraftFromInventory\(item,slot\.draft\)/);
   assert.match(label,/data-label-save-template/);
   assert.match(label,/data-label-refresh/);
 });
 
-test('preview and output use four label pairs on one A4 landscape sheet',()=>{
+test('each A4 sheet supports four independent product slots and more sheets can be added',()=>{
+  assert.match(label,/function labelSheetDefaults\(\)/);
+  assert.match(label,/slots:Array\.from\(\{length:4\}/);
+  assert.match(label,/function labelActiveSlot/);
+  assert.match(label,/data-label-select-slot/);
+  assert.match(label,/data-label-add-sheet/);
+  assert.match(label,/function addLabelSheet\(\)/);
+  assert.match(label,/label\.sheets\.push\(labelSheetDefaults\(\)\)/);
+  assert.match(label,/data-label-remove-sheet/);
   assert.match(label,/Array\.from\(\{length:4\}/);
   assert.match(label,/grid-template-columns:repeat\(2,1fr\)/);
   assert.match(label,/grid-template-rows:repeat\(2,1fr\)/);
@@ -87,8 +95,20 @@ test('preview and output use four label pairs on one A4 landscape sheet',()=>{
   assert.match(label,/orientation:'landscape'/);
   assert.match(label,/format:'a4'/);
   assert.match(label,/pdf\.addImage\([^;]*297,210/);
+  assert.match(label,/pdf\.addPage\('a4','landscape'\)/);
   assert.match(label,/@page\{size:A4 landscape;margin:0\}/);
   assert.match(label,/window\.print\(\)/);
+});
+
+test('every selected label can keep its original background or remove it non-destructively',()=>{
+  assert.match(label,/originalPhotoUrl/);
+  assert.match(label,/backgroundRemoved/);
+  assert.match(label,/data-label-background-mode="keep"/);
+  assert.match(label,/data-label-background-mode="remove"/);
+  assert.match(label,/async function labelRemoveBackgroundDataUrl/);
+  assert.match(label,/new Uint8Array\(total\)/);
+  assert.match(label,/canvas\.toDataURL\('image\/png'\)/);
+  assert.match(label,/draft\.photoUrl=draft\.originalPhotoUrl\|\|draft\.photoUrl/);
 });
 
 test('PDF image loading has a finite wait and product labels can be exported or printed',()=>{
