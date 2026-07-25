@@ -2892,6 +2892,35 @@
           font-size: 0.78rem;
           outline: none;
         }
+        .minmin-stock-mobile-kind-filter {
+          display: grid;
+          grid-template-columns: 84px minmax(0, 1fr);
+          align-items: center;
+          gap: 0.75rem;
+          min-height: 48px;
+          border: 1px solid var(--minmin-border);
+          border-radius: var(--minmin-radius-control);
+          background: #fff;
+          padding: 0.35rem 0.75rem;
+          box-shadow: var(--minmin-shadow-card);
+        }
+        .minmin-stock-mobile-kind-filter span {
+          font-size: 0.72rem;
+          font-weight: 800;
+          color: rgba(17, 19, 21, 0.55);
+        }
+        .minmin-stock-mobile-kind-filter select {
+          width: 100%;
+          min-width: 0;
+          height: 36px;
+          border: 0;
+          background: transparent;
+          color: #111315;
+          font-size: 0.78rem;
+          font-weight: 800;
+          text-align: right;
+          outline: none;
+        }
         .minmin-stock-mobile-search-row svg {
           width: 20px;
           height: 20px;
@@ -7601,7 +7630,7 @@ function inventoryMobileListItem(item,filterNeedle=''){
     ?'<span class="minmin-stock-mobile-owner text-coral">● Hàng mẫu</span>'
     :`<span class="minmin-stock-mobile-owner text-mint">✓ ${esc(inventoryOrderCustomerName(item)||'Hàng order')}</span>`;
   const menuOpen=state.ui?.stockMobileMenuId===key;
-  return `<div data-stock-mobile-filter-row data-stock-mobile-stage="${esc(stage.key)}" data-stock-mobile-search="${esc(searchText)}" class="minmin-stock-mobile-item" ${hidden?'hidden':''}>
+  return `<div data-stock-mobile-filter-row data-stock-mobile-stage="${esc(stage.key)}" data-stock-mobile-kind="${esc(item.itemKind||'reserve')}" data-stock-mobile-search="${esc(searchText)}" class="minmin-stock-mobile-item" ${hidden?'hidden':''}>
     <button data-stock-mobile-open="${esc(key)}" type="button" class="minmin-stock-mobile-item-main text-left" aria-label="Xem chi tiết ${esc(item.code||'sản phẩm')}">
       <span class="minmin-stock-mobile-item-photo">${item.photoDataUrl?`<img src="${esc(driveAssetUrl(item.photoDataUrl))}" alt="${esc(item.name||item.code||'Sản phẩm')}"/>`:'<span class="px-2 text-center text-xs font-bold text-black/35">Chưa có ảnh</span>'}</span>
       <span class="min-w-0">
@@ -7675,13 +7704,22 @@ function inventoryMobileDetailView(item){
   </div>`;
 }
 function renderInventoryMobileView(){
-  const inv=normalizeInventoryStorage(state.inventory||{}), category=state.ui.stockMobileCategory||'all', needle=cleanSearch(state.ui.stockSearch||'');
+  const inv=normalizeInventoryStorage(state.inventory||{}), category=state.ui.stockMobileCategory||'all', kind=state.ui.stockMobileKind||'all', needle=cleanSearch(state.ui.stockSearch||'');
   const counts={stock:0,production:0,sold:0};
-  inv.items.forEach(item=>{const key=inventoryStage(item).key; if(counts[key]!==undefined)counts[key]++;});
+  const kindCounts={order:0,reserve:0,sample:0};
+  inv.items.forEach(item=>{
+    const itemKind=item.itemKind||'reserve';
+    if(kindCounts[itemKind]!==undefined)kindCounts[itemKind]++;
+    const key=inventoryStage(item).key;
+    if((kind==='all'||itemKind===kind)&&counts[key]!==undefined)counts[key]++;
+  });
   const selectedKey=String(state.ui.stockMobileDetail||'');
   const selected=selectedKey?findInventoryItem(selectedKey):null;
   if(selected)return `<div class="minmin-stock-mobile-view">${inventoryMobileDetailView(selected)}</div>`;
-  const categoryItems=inv.items.filter(item=>category==='all'||inventoryStage(item).key===category);
+  const categoryItems=inv.items.filter(item=>
+    (category==='all'||inventoryStage(item).key===category)&&
+    (kind==='all'||(item.itemKind||'reserve')===kind)
+  );
   const matchingItems=categoryItems.filter(item=>!needle||inventorySearchText(item).includes(needle));
   const stockItems=inv.items.filter(item=>inventoryStage(item).key==='stock');
   const totalQty=stockItems.reduce((sum,item)=>sum+Number(item.quantity||0),0);
@@ -7702,8 +7740,15 @@ function renderInventoryMobileView(){
         ${inventoryMobileSearchIcon()}
         <input data-stock-mobile-search value="${esc(state.ui.stockSearch||'')}" placeholder="Tìm mã, tên, kích thước..." autocomplete="off"/>
       </div>
+      <label class="minmin-stock-mobile-kind-filter">
+        <span>Phân loại</span>
+        <select data-stock-mobile-kind aria-label="Lọc theo phân loại hàng">
+          <option value="all" ${kind==='all'?'selected':''}>Tất cả phân loại (${inv.items.length})</option>
+          ${INVENTORY_KINDS.map(option=>`<option value="${esc(option.value)}" ${kind===option.value?'selected':''}>${esc(option.label)} (${kindCounts[option.value]||0})</option>`).join('')}
+        </select>
+      </label>
       <div class="minmin-mobile-filter-chips">
-        ${[['all','Tất cả',inv.items.length],['stock','Trong kho',counts.stock],['production','Đang sản xuất',counts.production],['sold','Hết hàng',counts.sold]].map(([key,label,count])=>`<button data-stock-mobile-category-chip="${key}" type="button" class="${category===key?'is-active':''}">${label} (${count})</button>`).join('')}
+        ${[['all','Tất cả',kind==='all'?inv.items.length:(kindCounts[kind]||0)],['stock','Trong kho',counts.stock],['production','Đang sản xuất',counts.production],['sold','Hết hàng',counts.sold]].map(([key,label,count])=>`<button data-stock-mobile-category-chip="${key}" type="button" class="${category===key?'is-active':''}">${label} (${count})</button>`).join('')}
       </div>
     </div>
     <div class="minmin-stock-mobile-list">${categoryItems.map(item=>inventoryMobileListItem(item,needle)).join('')}<div data-stock-mobile-filter-empty class="px-4 py-12 text-center text-sm font-bold text-black/40" ${matchingItems.length?'hidden':''}>${needle?'Không tìm thấy sản phẩm phù hợp.':'Nhóm này chưa có sản phẩm.'}</div></div>
@@ -7881,6 +7926,15 @@ document.addEventListener('click',event=>{
   }
 });
 document.addEventListener('change',event=>{
+  const kind=event.target.closest?.('[data-stock-mobile-kind]');
+  if(kind){
+    state.ui.stockMobileKind=kind.value||'all';
+    state.ui.stockMobileDetail='';
+    state.ui.stockMobileMenuId='';
+    saveDraft();
+    render({force:true});
+    return;
+  }
   const category=event.target.closest?.('[data-stock-mobile-category]');
   if(!category)return;
   state.ui.stockMobileCategory=category.value||'stock';
@@ -7904,11 +7958,11 @@ document.addEventListener('keydown',event=>{
 });
 function applyInventoryMobileFilters(value=state.ui.stockSearch||''){
   if(window.innerWidth>767)return;
-  const needle=cleanSearch(value), category=state.ui.stockMobileCategory||'all';
+  const needle=cleanSearch(value), category=state.ui.stockMobileCategory||'all', kind=state.ui.stockMobileKind||'all';
   let visible=0;
   document.querySelectorAll('[data-stock-mobile-filter-row]').forEach(row=>{
-    const stage=row.dataset.stockMobileStage||'', search=row.dataset.stockMobileSearch||'';
-    const show=(category==='all'||stage===category)&&(!needle||search.includes(needle));
+    const stage=row.dataset.stockMobileStage||'', itemKind=row.dataset.stockMobileKind||'reserve', search=row.dataset.stockMobileSearch||'';
+    const show=(category==='all'||stage===category)&&(kind==='all'||itemKind===kind)&&(!needle||search.includes(needle));
     row.hidden=!show;
     if(show)visible++;
   });

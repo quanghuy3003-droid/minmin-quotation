@@ -12,7 +12,7 @@ assert.match(source,/const filters=\[\['all','Tất cả'\],\['pendant','Đèn t
 assert.match(source,/data-quote-mobile-menu[\s\S]*data-quote-mobile-delete/,'Quotation rows must expose compact overflow actions');
 assert.match(source,/data-quote-mobile-import[\s\S]*importQuotationExcel/,'Quotation mobile must retain old Excel import');
 
-assert.match(source,/\[\['all','Tất cả',inv\.items\.length\],\['stock','Trong kho',counts\.stock\],\['production','Đang sản xuất',counts\.production\],\['sold','Hết hàng',counts\.sold\]\]/,'Inventory mobile must provide status chips');
+assert.match(source,/\[\['all','Tất cả',kind==='all'\?inv\.items\.length:\(kindCounts\[kind\]\|\|0\)\],\['stock','Trong kho',counts\.stock\],\['production','Đang sản xuất',counts\.production\],\['sold','Hết hàng',counts\.sold\]\]/,'Inventory mobile must provide status chips scoped to the selected classification');
 assert.match(source,/● Hàng mẫu[\s\S]*✓ \$\{esc\(inventoryOrderCustomerName/,'Inventory cards must distinguish samples and customer orders');
 assert.match(source,/data-stock-mobile-quick-quote[\s\S]*addInventoryItemToQuote/,'In-stock cards must support adding directly to a quotation');
 assert.match(source,/minmin-stock-mobile-age[\s\S]*duration\.total/,'Inventory cards must show total age');
