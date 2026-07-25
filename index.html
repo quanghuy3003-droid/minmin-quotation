@@ -4085,6 +4085,9 @@
         .mm-quote-exact-row { min-height: 94px; border-bottom: 1px solid #e9ecef; padding: 13px 16px; transition: background-color 150ms ease; }
         .mm-quote-exact-row:hover { background: #fafbfb; }
         .mm-quote-exact-row:last-of-type { border-bottom: 0; }
+        [data-quote-inline-code] { cursor: text; border-radius: 6px; outline: none; }
+        [data-quote-inline-code]:hover,[data-quote-inline-code]:focus-visible { background: rgba(15,139,106,.09); box-shadow: 0 0 0 3px rgba(15,139,106,.09); }
+        .minmin-quote-inline-code-input { display: block; width: min(100%,240px); min-width: 0; height: 32px; border: 1px solid var(--mm-mint,#0f8b6a); border-radius: 7px; background: #fff; padding: 0 8px; color: var(--mm-ink,#151b26); font: inherit; font-weight: 850; outline: none; box-shadow: 0 0 0 3px rgba(15,139,106,.12); }
         .mm-quote-product-cell { display: grid; grid-template-columns: 68px minmax(0,1fr); align-items: center; gap: 12px; min-width: 0; }
         .mm-quote-product-cell img,.mm-quote-product-placeholder { width: 64px; height: 64px; border: 1px solid #e9ecef; border-radius: 12px; object-fit: contain; background: #f7f8fa; }
         .mm-quote-product-cell b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 900; }
@@ -18113,7 +18116,7 @@ function quoteMobileProductRows(){
     return `<div class="minmin-quote-product-row" data-quote-mobile-product data-quote-mobile-search="${esc(search)}">
       <div class="minmin-quote-product-photo">${image?`<img src="${esc(image)}" alt="${esc(line.name||line.code||'Sản phẩm')}" loading="lazy"/>`:'<span class="text-[9px] font-bold text-black/30">Chưa có ảnh</span>'}</div>
       <div class="minmin-quote-product-name">
-        <strong>${esc(line.code||`Dòng ${idx+1}`)}</strong>
+        <strong data-quote-inline-code="${esc(line.uid)}" role="button" tabindex="0" title="Nhấp để sửa mã sản phẩm" aria-label="Sửa mã sản phẩm ${esc(line.code||`dòng ${idx+1}`)}">${esc(line.code||`Dòng ${idx+1}`)}</strong>
         <span class="block truncate">${esc(line.name||productTypeName(line.productType)||'Sản phẩm')}</span>
         <span class="mt-1 block truncate text-black/50">SL ${Number(line.quantity||0)} ${esc(line.unit||'')} × ${moneyPlain(unitPrice)} đ</span>
         <span class="minmin-quote-product-number is-total mt-1 block">${moneyPlain(amount)} đ</span>
@@ -19220,7 +19223,7 @@ function mmQuoteExactDashboard(){
   const quoteDate=info.quoteDate?compactDate(info.quoteDate):compactDate(todayIso());
   const rows=state.lines.map((line,index)=>{
     const image=previewImage(line);
-    return `<article class="mm-quote-exact-row" data-mm-quote-row="${esc(line.uid)}" data-mm-quote-search="${esc(invoiceNorm([line.code,line.name,line.productType,line.dimension].join(' ')))}" data-mm-quote-type="${esc(invoiceNorm(line.name||line.productType||''))}"><div class="mm-quote-product-cell">${image?`<img src="${esc(image)}" alt=""/>`:'<span class="mm-quote-product-placeholder"></span>'}<span><b>${esc(line.code||`Sản phẩm ${index+1}`)}</b><small>${esc(line.name||productTypeName(line.productType))}</small><small>SL ${Number(line.quantity||0)} ${esc(line.unit||'')}</small></span></div><strong class="mm-quote-price">${money(line.price)}</strong><div class="mm-quote-quantity"><button type="button" data-mm-quote-qty="${esc(line.uid)}" data-step="-1">−</button><span>${Number(line.quantity||0)}</span><button type="button" data-mm-quote-qty="${esc(line.uid)}" data-step="1">＋</button></div><strong class="mm-quote-total">${money(lineAmount(line))}</strong><button type="button" class="mm-quote-row-menu" data-mm-quote-edit="${esc(line.uid)}">•••</button></article>`;
+    return `<article class="mm-quote-exact-row" data-mm-quote-row="${esc(line.uid)}" data-mm-quote-search="${esc(invoiceNorm([line.code,line.name,line.productType,line.dimension].join(' ')))}" data-mm-quote-type="${esc(invoiceNorm(line.name||line.productType||''))}"><div class="mm-quote-product-cell">${image?`<img src="${esc(image)}" alt=""/>`:'<span class="mm-quote-product-placeholder"></span>'}<span><b data-quote-inline-code="${esc(line.uid)}" role="button" tabindex="0" title="Nhấp để sửa mã sản phẩm" aria-label="Sửa mã sản phẩm ${esc(line.code||`sản phẩm ${index+1}`)}">${esc(line.code||`Sản phẩm ${index+1}`)}</b><small>${esc(line.name||productTypeName(line.productType))}</small><small>SL ${Number(line.quantity||0)} ${esc(line.unit||'')}</small></span></div><strong class="mm-quote-price">${money(line.price)}</strong><div class="mm-quote-quantity"><button type="button" data-mm-quote-qty="${esc(line.uid)}" data-step="-1">−</button><span>${Number(line.quantity||0)}</span><button type="button" data-mm-quote-qty="${esc(line.uid)}" data-step="1">＋</button></div><strong class="mm-quote-total">${money(lineAmount(line))}</strong><button type="button" class="mm-quote-row-menu" data-mm-quote-edit="${esc(line.uid)}">•••</button></article>`;
   }).join('');
   const summary=[['Tổng giá trị',t.subtotal],['Chiết khấu',t.discount],['Sau chiết khấu',t.afterDiscount],[`VAT (${Number(info.vatRate||0)}%)`,t.vat],['Đặt cọc',t.deposit],['Còn lại',t.remaining]];
   return `<section class="mm-quote-exact-left"><div class="mm-quote-exact-head"><div><h1>Báo giá&nbsp; / &nbsp;${esc(quoteCode)} <span class="mm-quote-status">Đang mở</span></h1><p>Tạo ngày ${esc(quoteDate)} · Cập nhật ${esc(new Date().toLocaleDateString('vi-VN'))}</p></div><div class="mm-desktop-actions"><button class="mm-button" type="button" data-mm-quote-customer>✎ Chỉnh sửa khách hàng</button><button class="mm-button" type="button">••• Khác</button></div></div><div class="mm-quote-exact-customer"><div><span>Khách hàng</span><strong>${esc(info.client||'Chưa nhập')}</strong><p>${esc(info.tel||'Chưa có điện thoại')}${info.email?` · ${esc(info.email)}`:info.representative?` · ${esc(info.representative)}`:''}</p></div><div><span>Mã khách hàng</span><strong>${esc(info.customerCode||info.clientCode||'--')}</strong></div><div><span>Địa chỉ</span><strong>${esc(info.address||'Xác nhận sau')}</strong><p>${esc(info.delivery||'')}</p></div></div><div class="mm-quote-exact-title"><h2>Bảng sản phẩm</h2><p>Chọn loại đèn, kiểu hàng và nhập thông tin trước khi xuất Excel.</p></div><div class="mm-quote-exact-table"><div class="mm-quote-exact-tools"><label>⌕ <input data-mm-quote-exact-search type="search" placeholder="Tìm mã, tên, loại đèn..."/></label><label><select data-mm-quote-exact-type><option value="">Loại đèn: Tất cả</option><option value="den tha">Đèn thả</option><option value="den tuong">Đèn tường</option><option value="den ban">Đèn bàn</option></select></label><label><select><option>Trạng thái: Tất cả</option></select></label><button class="mm-button primary" type="button" data-mm-quote-product>＋ Thêm sản phẩm</button></div><div class="mm-quote-exact-columns"><span>Sản phẩm</span><span>Đơn giá</span><span>Số lượng</span><span class="text-right">Thành tiền</span><span></span></div><div data-mm-quote-exact-list>${rows||'<div class="p-8 text-center text-sm text-black/45">Chưa có sản phẩm.</div>'}</div><footer class="mm-quote-exact-foot"><span>Hiển thị 1 – ${state.lines.length} trong ${state.lines.length} sản phẩm</span><button type="button">⚙</button></footer></div></section><aside class="mm-quote-exact-right"><div class="mm-quote-dark-summary"><header><span>Tổng tiền sau VAT</span><strong>${money(t.afterVat)}</strong><p>${esc(numberToVietnamese(t.afterVat))}</p></header><dl>${summary.map(([label,value])=>`<div><dt>${esc(label)}</dt><dd>${money(value)}</dd></div>`).join('')}</dl></div><div class="mm-quote-finance-actions"><div class="mm-quote-finance-grid"><label>Phí vận chuyển<input data-mm-quote-finance="shipPriceText" inputmode="numeric" value="${Number(info.shipPriceText||0)}"/></label><label>SL phí<input data-mm-quote-finance="shipQty" type="number" value="${Number(info.shipQty||1)}"/></label></div><div class="mm-quote-finance-grid three"><label>Chiết khấu %<input data-mm-quote-finance="discountRate" type="number" value="${Number(info.discountRate||0)}"/></label><label>VAT %<input data-mm-quote-finance="vatRate" type="number" value="${Number(info.vatRate||0)}"/></label><label>Đặt cọc %<input data-mm-quote-finance="depositRate" type="number" value="${Number(info.depositRate||0)}"/></label></div><button class="mm-quote-action primary" type="button" data-mm-quote-action="excel">▧ Xuất Excel</button><button class="mm-quote-action" type="button" data-mm-quote-action="preview">◉ Xem trước PDF</button><button class="mm-quote-action" type="button" data-mm-quote-action="pdf">▧ Xuất PDF</button><button class="mm-quote-action" type="button" data-mm-quote-action="import">▧ Nhập Excel cũ</button></div></aside>`;
@@ -19294,6 +19297,54 @@ render=function renderWithMinminDesktopUi(){
   mountMinminDesktopUi();
   return output;
 };
+function finishQuoteInlineCodeEdit(input,save){
+  if(!input||input.dataset.quoteInlineCodeDone)return;
+  input.dataset.quoteInlineCodeDone='1';
+  const line=state.lines.find(item=>String(item.uid)===String(input.dataset.quoteInlineCodeInput));
+  if(save&&line){
+    const next=String(input.value||'').trim();
+    line.code=next;
+    line.codeCustom=!!next;
+    line.codePartsTouched=true;
+    if(!next)refreshLineCodes();
+    saveDraft();
+  }
+  render({force:true});
+}
+function beginQuoteInlineCodeEdit(trigger){
+  if(!trigger||trigger.querySelector('input'))return;
+  const line=state.lines.find(item=>String(item.uid)===String(trigger.dataset.quoteInlineCode));
+  if(!line)return;
+  const input=document.createElement('input');
+  input.type='text';
+  input.value=String(line.code||'');
+  input.className='minmin-quote-inline-code-input';
+  input.dataset.quoteInlineCodeInput=line.uid;
+  input.setAttribute('aria-label','Mã sản phẩm');
+  input.setAttribute('autocomplete','off');
+  trigger.replaceChildren(input);
+  trigger.removeAttribute('role');
+  trigger.removeAttribute('tabindex');
+  input.addEventListener('click',event=>event.stopPropagation());
+  input.addEventListener('keydown',event=>{
+    if(event.key==='Enter'){event.preventDefault();finishQuoteInlineCodeEdit(input,true);}
+    else if(event.key==='Escape'){event.preventDefault();finishQuoteInlineCodeEdit(input,false);}
+  });
+  input.addEventListener('blur',()=>finishQuoteInlineCodeEdit(input,true),{once:true});
+  input.focus();
+  input.select();
+}
+document.addEventListener('click',event=>{
+  const code=event.target.closest?.('[data-quote-inline-code]');
+  if(code){event.preventDefault();event.stopPropagation();beginQuoteInlineCodeEdit(code);}
+});
+document.addEventListener('keydown',event=>{
+  const code=event.target.closest?.('[data-quote-inline-code]');
+  if(code&&!code.querySelector('input')&&(event.key==='Enter'||event.key===' ')){
+    event.preventDefault();
+    beginQuoteInlineCodeEdit(code);
+  }
+});
 document.addEventListener('click',event=>{
   if(window.innerWidth<768)return;
   if(event.target.closest?.('[data-mm-stock-entry]')){
