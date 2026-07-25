@@ -18335,7 +18335,40 @@ function websiteMobileWizardBody(){
 }
 function websiteMobileWizard(){
   const labels=['Thông tin','Ảnh','Thuộc tính','Xem trước'];
-  return `<section class="minmin-website-mobile-view">${websiteMobileSubheader(state.website.editingId?'Chỉnh sửa sản phẩm':'Tạo sản phẩm mới',state.website.editingId?'detail':'dashboard')}<div class="minmin-website-steps">${labels.map((label,index)=>`<span class="minmin-website-step ${state.ui.websiteMobileStep===index+1?'is-active':''}"><b>${index+1}</b><span>${label}</span></span>`).join('')}</div>${websiteMobileWizardBody()}<div class="minmin-website-form-actions ${state.ui.websiteMobileStep===1?'is-single':''}">${state.ui.websiteMobileStep>1?`<button data-website-mobile-step="${state.ui.websiteMobileStep-1}" type="button" class="minmin-website-secondary">Quay lại</button>`:''}<button data-website-mobile-step="${state.ui.websiteMobileStep<4?state.ui.websiteMobileStep+1:'save'}" type="button" class="minmin-website-primary">${state.ui.websiteMobileStep<4?'Tiếp tục':'Lưu sản phẩm'}</button></div></section>`;
+  const saving=!!state.ui.websiteMobileSaveSyncBusy;
+  const finalLabel=saving?'Đang lưu & đồng bộ...':'Lưu sản phẩm & đồng bộ';
+  return `<section class="minmin-website-mobile-view">${websiteMobileSubheader(state.website.editingId?'Chỉnh sửa sản phẩm':'Tạo sản phẩm mới',state.website.editingId?'detail':'dashboard')}<div class="minmin-website-steps">${labels.map((label,index)=>`<span class="minmin-website-step ${state.ui.websiteMobileStep===index+1?'is-active':''}"><b>${index+1}</b><span>${label}</span></span>`).join('')}</div>${websiteMobileWizardBody()}<div class="minmin-website-form-actions ${state.ui.websiteMobileStep===1?'is-single':''}">${state.ui.websiteMobileStep>1?`<button data-website-mobile-step="${state.ui.websiteMobileStep-1}" type="button" class="minmin-website-secondary" ${saving?'disabled':''}>Quay lại</button>`:''}<button data-website-mobile-step="${state.ui.websiteMobileStep<4?state.ui.websiteMobileStep+1:'save'}" type="button" class="minmin-website-primary" ${saving?'disabled aria-busy="true"':''}>${state.ui.websiteMobileStep<4?'Tiếp tục':finalLabel}</button></div></section>`;
+}
+async function websiteMobileSaveAndSync(){
+  if(state.ui.websiteMobileSaveSyncBusy)return;
+  state.website=normalizeWebsiteProducts(state.website||websiteProductsDefaults());
+  const draft=normalizeWebsiteProduct(state.website.current||{});
+  const editingId=String(state.website.editingId||'');
+  if(!draft.sku)return alert('Cần nhập SKU/mã sản phẩm.');
+  if(draft.stock_code&&!/^STK/i.test(draft.stock_code))return alert('Mã liên kết kho phải là mã Stock bắt đầu bằng STK.');
+  if(!draft.product_name_en&&!draft.product_name_vi)return alert('Cần nhập tên sản phẩm.');
+  state.ui.websiteMobileSaveSyncBusy=true;
+  render({force:true});
+  try{
+    websiteSaveProduct();
+    const saved=(state.website.products||[]).find(item=>
+      (editingId&&String(item.id)===editingId)||
+      (!editingId&&draft.id&&String(item.id)===String(draft.id))||
+      String(item.sku||'')===String(draft.sku||'')
+    );
+    if(!saved)throw new Error('Không tìm thấy sản phẩm vừa lưu.');
+    state.ui.websiteMobileView='list';
+    state.ui.websiteMobileProductMenuId='';
+    saveWebsiteProducts();
+    render({force:true});
+    await uploadWebsiteProductToWoo(saved.id,{force:true,includeImages:true,includeCategories:true});
+  }catch(error){
+    alert('Đã lưu sản phẩm nhưng chưa đồng bộ được Website: '+(error.message||error));
+  }finally{
+    state.ui.websiteMobileSaveSyncBusy=false;
+    saveWebsiteProducts();
+    render({force:true});
+  }
 }
 function websiteMobileSettings(){
   const c=normalizeWebsiteWooConfig(state.websiteWoo||websiteWooDefaults());
@@ -18528,8 +18561,7 @@ document.addEventListener('click',event=>{
   const step=event.target.closest?.('[data-website-mobile-step]');
   if(step){
     if(step.dataset.websiteMobileStep==='save'){
-      state.ui.websiteMobileView='list';
-      websiteSaveProduct();
+      websiteMobileSaveAndSync();
     }else{
       state.ui.websiteMobileStep=Number(step.dataset.websiteMobileStep)||1;
       saveWebsiteProducts();

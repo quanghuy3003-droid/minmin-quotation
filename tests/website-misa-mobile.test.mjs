@@ -22,6 +22,9 @@ assert.match(source,/const renderWithWebsiteMobile=render;[\s\S]*mountWebsiteMob
 assert.match(source,/section\.classList\.add\('minmin-website-desktop-view'\)/,'Existing desktop website view must be retained');
 assert.match(source,/minminUploadAllWooSuperFast[\s\S]*includeImages/,'Mobile sync must reuse the existing WooCommerce pipeline');
 assert.match(source,/websiteSaveProduct\(\)/,'Mobile wizard must reuse the existing save behavior');
+assert.match(source,/Lưu sản phẩm & đồng bộ/,'The final mobile wizard action must clearly save and synchronize');
+assert.match(source,/async function websiteMobileSaveAndSync\(\)[\s\S]*websiteSaveProduct\(\)[\s\S]*uploadWebsiteProductToWoo\(saved\.id,\{force:true,includeImages:true,includeCategories:true\}\)/,'Saving from the mobile wizard must synchronize the exact saved product with content and images');
+assert.match(source,/websiteMobileSaveSyncBusy[\s\S]*disabled aria-busy="true"/,'The combined save and sync action must prevent duplicate submissions while running');
 assert.match(source,/data-minmin-mobile-auto-name[\s\S]*Tự đặt tên và mã/,'Mobile wizard must expose the desktop auto-name workflow');
 assert.match(source,/data-minmin-mobile-auto-name[\s\S]*websiteAutoNameProduct\(\)/,'Mobile auto-name must reuse the existing desktop logic');
 
