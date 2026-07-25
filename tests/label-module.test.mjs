@@ -105,6 +105,9 @@ test('products can be removed from individual labels and empty labels reopen the
   assert.match(label,/function removeProductFromLabel\(sheetIndex,slotIndex\)/);
   assert.match(label,/label\.sheets\[targetSheet\]\.slots\[targetSlot\]=labelSlotDefaults\(\)/);
   assert.match(label,/data-label-remove-product/);
+  assert.match(label,/class="minmin-label-pair-remove" data-label-remove-product/);
+  assert.match(label,/const removeButton=editable\?/);
+  assert.match(label,/\.minmin-label-pair-remove\{position:absolute;right:4px;top:4px/);
   assert.match(label,/assets\/label\/empty-product-picker\.jpg/);
   assert.match(label,/class="minmin-label-empty-picker" data-label-open-picker/);
   assert.match(label,/Chọn sản phẩm từ Kho hàng/);
