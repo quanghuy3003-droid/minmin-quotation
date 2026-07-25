@@ -4722,14 +4722,14 @@ function saveInventory(){
   try{ localStorage.setItem(INVENTORY_KEY, JSON.stringify(slim)); }catch(e){ console.warn('Không lưu cache nhẹ kho:', e); state.inventory.syncStatus='Kho có file cũ dạng base64; cần migrate ảnh/PDF lên Supabase Storage.'; }
   try{ localStorage.setItem(INVENTORY_BACKUP_KEY, JSON.stringify(slim)); }catch(e){ console.warn('Không lưu được backup kho:', e); }
   try{ localStorage.setItem(INVENTORY_DELETED_KEY, JSON.stringify(state.inventory.deletedItems||{})); }catch(e){ console.warn('Không lưu được danh sách kho đã xóa:', e); }
-  scheduleWorkingStateSave();
+  scheduleWorkingStateSave(450,'inventory');
 }
 function inputInvoiceDefaults(){ return {view:'list', period:`${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}`, note:'', companyTaxCode:'', filters:{period:'',year:String(new Date().getFullYear()),supplier:'',invoiceNumber:'',search:'',category:'',status:'',reviewed:''}, invoices:[], files:[], rules:DEFAULT_ACCOUNTING_RULES.map(r=>({...r,id:uid()})), editingId:'', syncStatus:''}; }
 function loadInputInvoices(){ try{ const raw=JSON.parse(localStorage.getItem(INPUT_INVOICE_KEY)||'null'); return {...inputInvoiceDefaults(),...(raw||{}),filters:{...inputInvoiceDefaults().filters,...(raw?.filters||{})},rules:Array.isArray(raw?.rules)&&raw.rules.length?raw.rules:DEFAULT_ACCOUNTING_RULES.map(r=>({...r,id:uid()})),invoices:Array.isArray(raw?.invoices)?raw.invoices.map(normalizeInputInvoiceRecord):[],files:Array.isArray(raw?.files)?raw.files:[]}; }catch(e){ console.warn('Không đọc được module hóa đơn đầu vào:', e); return inputInvoiceDefaults(); } }
-function saveInputInvoices(){ try{ localStorage.setItem(INPUT_INVOICE_KEY, JSON.stringify(lightInputInvoices())); }catch(e){ alert('Dữ liệu hóa đơn đang quá lớn để lưu trong trình duyệt. Anh nên lưu file lên Supabase Storage.'); console.warn(e); } scheduleWorkingStateSave(); }
+function saveInputInvoices(){ try{ localStorage.setItem(INPUT_INVOICE_KEY, JSON.stringify(lightInputInvoices())); }catch(e){ alert('Dữ liệu hóa đơn đang quá lớn để lưu trong trình duyệt. Anh nên lưu file lên Supabase Storage.'); console.warn(e); } scheduleWorkingStateSave(450,'inputInvoices'); }
 function accountingDefaults(){ const now=new Date(); return {view:'overview',filters:{period:`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`,year:String(now.getFullYear()),search:'',status:'',type:''},outgoingInvoices:[],payments:[],suppliers:[],editingOutgoingId:'',editingPaymentId:'',syncStatus:''}; }
 function loadAccounting(){ try{ const raw=JSON.parse(localStorage.getItem(ACCOUNTING_KEY)||'null'); return {...accountingDefaults(),...(raw||{}),filters:{...accountingDefaults().filters,...(raw?.filters||{})},outgoingInvoices:Array.isArray(raw?.outgoingInvoices)?raw.outgoingInvoices:[],payments:Array.isArray(raw?.payments)?raw.payments:[],suppliers:Array.isArray(raw?.suppliers)?raw.suppliers:[]}; }catch(e){ console.warn('Không đọc được module kế toán:', e); return accountingDefaults(); } }
-function saveAccounting(){ try{ localStorage.setItem(ACCOUNTING_KEY, JSON.stringify(lightAccounting())); }catch(e){ alert('Dữ liệu kế toán đang quá lớn để lưu trong trình duyệt. Anh nên lưu file lên Supabase Storage.'); console.warn(e); } scheduleWorkingStateSave(); }
+function saveAccounting(){ try{ localStorage.setItem(ACCOUNTING_KEY, JSON.stringify(lightAccounting())); }catch(e){ alert('Dữ liệu kế toán đang quá lớn để lưu trong trình duyệt. Anh nên lưu file lên Supabase Storage.'); console.warn(e); } scheduleWorkingStateSave(450,'accounting'); }
 const WEBSITE_PRODUCT_FIELDS=['sku','stock_code','product_name_en','product_name_vi','slug','category','tags','product_type','shade_material','body_material','color','dimensions','diameter','height','cord_length','bulb_type','bulb_count','wattage','voltage','color_temperature','dimmable','cri','cost_price','regular_price','sale_price','seo_title','seo_description','short_description','long_description','technical_specs','website_status','website_product_url'];
 const WEBSITE_CATEGORY_OPTIONS=[
   {value:'Wall Lamp',label:'Wall Lamp'},
@@ -4841,7 +4841,7 @@ function saveWebsiteProducts(){
       console.warn(e2);
     }
   }
-  scheduleWorkingStateSave();
+  scheduleWorkingStateSave(450,'website');
 }
 function websiteWooDefaults(){ return {siteUrl:'https://minmin-lifestyle.com',consumerKey:'',consumerSecret:'',status:''}; }
 function normalizeWebsiteSiteUrl(value){
@@ -5953,9 +5953,15 @@ let workingStateSaveTimer=null;
 let workingStateReady=false;
 let applyingWorkingState=false;
 let workingStateRemoteVersion='';
+let workingStateSaveInFlight=null;
+let workingStateMutationClock=0;
+const workingStateDirtyDomains=new Map();
+let workingStateChannel=null;
 let backgroundSyncInFlight=false;
 let backgroundSyncTimer=null;
+let workingStateSyncTimer=null;
 const BACKGROUND_SYNC_INTERVAL_MS=60000;
+const WORKING_STATE_SYNC_INTERVAL_MS=4000;
 let inventoryImportLockUntil=0;
 function appHasActiveEditor(){
   const active=document.activeElement;
@@ -5980,7 +5986,7 @@ function getDeviceId(){
 }
 function workingStateSnapshot(){
   return safeJsonClone({
-    version:2,
+    version:3,
     savedAt:new Date().toISOString(),
     activeTab:state.activeTab,
     ui:{...state.ui, openStockItems:{}, selectedStockMoves:{}},
@@ -5997,13 +6003,14 @@ function workingStateSnapshot(){
   });
 }
 function writeWorkingStateLocal(snapshot){
-  const meta={version:snapshot?.version||2,savedAt:snapshot?.savedAt||new Date().toISOString(),activeTab:snapshot?.activeTab||state.activeTab||'',sheetInput:snapshot?.sheetInput||state.sheetInput||''};
+  const meta={version:snapshot?.version||3,savedAt:snapshot?.savedAt||new Date().toISOString(),activeTab:snapshot?.activeTab||state.activeTab||'',sheetInput:snapshot?.sheetInput||state.sheetInput||''};
   try{ localStorage.setItem(WORKING_STATE_CACHE_KEY, JSON.stringify(meta)); }catch(e){ console.warn('Không lưu cache working state nhẹ:', e); }
   try{ localStorage.setItem(DRAFT_KEY, JSON.stringify(lightQuoteSnapshot(snapshot))); }catch{}
   try{ localStorage.setItem(HISTORY_KEY, JSON.stringify(snapshot.history||[])); }catch{}
 }
-function applyWorkingStateSnapshot(data){
+function applyWorkingStateSnapshot(data,options={}){
   if(!data||typeof data!=='object')return false;
+  const preserveDeviceUi=options.preserveDeviceUi!==false;
   applyingWorkingState=true;
   try{
     if(data.info) state.info={...state.info,...data.info};
@@ -6016,8 +6023,14 @@ function applyWorkingStateSnapshot(data){
     if(data.accounting){ const d={...accountingDefaults(),...data.accounting}; state.accounting={...d,filters:{...accountingDefaults().filters,...(d.filters||{})},outgoingInvoices:Array.isArray(d.outgoingInvoices)?d.outgoingInvoices:[],payments:Array.isArray(d.payments)?d.payments:[],suppliers:Array.isArray(d.suppliers)?d.suppliers:[]}; }
     if(data.website) state.website=normalizeWebsiteProducts(data.website);
     if(data.documents) state.documents=normalizeDocumentSuite(data.documents);
-    if(data.ui) state.ui={...state.ui,...data.ui,openStockItems:data.ui.openStockItems||{},selectedStockMoves:data.ui.selectedStockMoves||{}};
-    if(data.activeTab) state.activeTab=data.activeTab;
+    if(data.ui){
+      if(preserveDeviceUi){
+        if(data.ui.appPinCode)state.ui={...state.ui,appPinCode:data.ui.appPinCode};
+      }else{
+        state.ui={...state.ui,...data.ui,openStockItems:data.ui.openStockItems||{},selectedStockMoves:data.ui.selectedStockMoves||{}};
+      }
+    }
+    if(data.activeTab&&!preserveDeviceUi) state.activeTab=data.activeTab;
     if(!state.lines.length)state.lines=defaultLines();
     ensureQuoteDateFromLines(state.lines);
     refreshLineCodes();
@@ -6036,6 +6049,7 @@ async function fetchWorkingStateFromSupabase(){
 async function loadWorkingStateFromSupabase(options={}){
   const auto=!!options.auto, activityToken=options.activityToken;
   if(inventoryImportLocked()){ workingStateReady=true; return false; }
+  if(auto&&(workingStateDirtyDomains.size||workingStateSaveInFlight))return false;
   try{
     if(!auto)state.status='Đang tải dữ liệu làm việc cuối từ Supabase...';
     const row=await fetchWorkingStateFromSupabase();
@@ -6047,7 +6061,7 @@ async function loadWorkingStateFromSupabase(options={}){
         return false;
       }
       const data={...row.data,remoteUpdatedAt:row.updated_at};
-      const ok=applyWorkingStateSnapshot(data);
+      const ok=applyWorkingStateSnapshot(data,{preserveDeviceUi:true});
       workingStateRemoteVersion=remoteVersion||workingStateRemoteVersion;
       workingStateReady=true;
       return ok;
@@ -6062,29 +6076,93 @@ async function loadWorkingStateFromSupabase(options={}){
     return false;
   }
 }
-function scheduleWorkingStateSave(delay=1200){
-  if(applyingWorkingState||!workingStateReady)return;
+function scheduleWorkingStateSave(delay=450,domain='all'){
+  if(typeof delay==='string'){ domain=delay; delay=450; }
+  if(applyingWorkingState)return;
+  const revision=++workingStateMutationClock;
+  workingStateDirtyDomains.set(String(domain||'all'),revision);
+  if(!workingStateReady)return;
   clearTimeout(workingStateSaveTimer);
   workingStateSaveTimer=setTimeout(()=>saveWorkingStateToSupabase().catch(e=>console.warn(e)),delay);
 }
-async function saveWorkingStateToSupabase(){
-  if(applyingWorkingState)return false;
-  const snapshot=workingStateSnapshot();
-  writeWorkingStateLocal(snapshot);
-  try{
-    await supabaseRequest('/rest/v1/app_working_state?on_conflict=id',{method:'POST',headers:{'Content-Type':'application/json',Prefer:'resolution=merge-duplicates'},body:JSON.stringify({id:WORKING_STATE_REMOTE_ID,data:snapshot,updated_at:snapshot.savedAt,device_id:getDeviceId()})});
-    workingStateRemoteVersion=snapshot.savedAt;
-    state.status='Đã đồng bộ dữ liệu làm việc cuối lên Supabase.';
-    if(state.inventory)state.inventory.syncStatus='Đã đồng bộ dữ liệu cuối lên Supabase.';
-    if(state.inputInvoices)state.inputInvoices.syncStatus='Đã đồng bộ dữ liệu cuối lên Supabase.';
-    if(state.accounting)state.accounting.syncStatus='Đã đồng bộ dữ liệu cuối lên Supabase.';
+const WORKING_STATE_DOMAIN_FIELDS={
+  quote:['sheetInput','info','pricing','lines','history','documents'],
+  inventory:['inventory'],
+  inputInvoices:['inputInvoices'],
+  accounting:['accounting'],
+  website:['website']
+};
+function mergeWorkingStateForSave(remoteData,localSnapshot,domains){
+  const domainSet=new Set(domains||[]);
+  if(!remoteData||typeof remoteData!=='object'||domainSet.has('all'))return localSnapshot;
+  const merged={...safeJsonClone(remoteData),version:Math.max(3,Number(localSnapshot.version||0)),savedAt:localSnapshot.savedAt};
+  domainSet.forEach(domain=>{
+    (WORKING_STATE_DOMAIN_FIELDS[domain]||[]).forEach(field=>{ merged[field]=localSnapshot[field]; });
+  });
+  if(domainSet.has('ui')){
+    merged.ui={...(remoteData.ui||{})};
+    if(localSnapshot.ui?.appPinCode)merged.ui.appPinCode=localSnapshot.ui.appPinCode;
+  }
+  return merged;
+}
+function notifyWorkingStatePeers(version){
+  try{ workingStateChannel?.postMessage({type:'working-state-saved',version,deviceId:getDeviceId()}); }catch{}
+}
+async function writeWorkingStateRemote(snapshot,remoteRow,options={}){
+  const payload={id:WORKING_STATE_REMOTE_ID,data:snapshot,updated_at:snapshot.savedAt,device_id:getDeviceId()};
+  if(options.skipRemoteMerge||!remoteRow){
+    await supabaseRequest('/rest/v1/app_working_state?on_conflict=id',{method:'POST',keepalive:!!options.keepalive,headers:{'Content-Type':'application/json',Prefer:'resolution=merge-duplicates'},body:JSON.stringify(payload)});
     return true;
-  }catch(e){
-    state.status='Chưa đồng bộ được dữ liệu cuối lên Supabase. App đang giữ cache tạm trên máy này.';
-    console.warn('Working state save failed:',e);
-    return false;
+  }
+  const remoteVersion=String(remoteRow.updated_at||remoteRow.data?.savedAt||'');
+  const rows=await supabaseRequest(`/rest/v1/app_working_state?id=eq.${encodeURIComponent(WORKING_STATE_REMOTE_ID)}&updated_at=eq.${encodeURIComponent(remoteVersion)}&select=id,updated_at`,{method:'PATCH',headers:{'Content-Type':'application/json',Prefer:'return=representation'},body:JSON.stringify(payload)});
+  return Array.isArray(rows)&&rows.length>0;
+}
+async function saveWorkingStateToSupabase(options={}){
+  if(applyingWorkingState)return false;
+  if(workingStateSaveInFlight)return workingStateSaveInFlight;
+  const pendingEntries=[...workingStateDirtyDomains.entries()];
+  const domains=pendingEntries.length?pendingEntries.map(([domain])=>domain):['all'];
+  workingStateSaveInFlight=(async()=>{
+    const localSnapshot=workingStateSnapshot();
+    let snapshot=localSnapshot;
+    try{
+      let remoteRow=options.skipRemoteMerge?null:await fetchWorkingStateFromSupabase().catch(()=>null);
+      let saved=false;
+      for(let attempt=0;attempt<3&&!saved;attempt++){
+        snapshot=remoteRow?.data?mergeWorkingStateForSave(remoteRow.data,localSnapshot,domains):localSnapshot;
+        snapshot.savedAt=new Date(Date.now()+attempt).toISOString();
+        writeWorkingStateLocal(snapshot);
+        saved=await writeWorkingStateRemote(snapshot,remoteRow,options);
+        if(!saved){
+          remoteRow=await fetchWorkingStateFromSupabase();
+        }
+      }
+      if(!saved)throw new Error('Dữ liệu vừa thay đổi trên thiết bị khác; chưa thể hợp nhất sau 3 lần thử.');
+      workingStateRemoteVersion=snapshot.savedAt;
+      pendingEntries.forEach(([domain,revision])=>{ if(workingStateDirtyDomains.get(domain)===revision)workingStateDirtyDomains.delete(domain); });
+      state.status='Đã đồng bộ nội dung giữa điện thoại và desktop.';
+      if(state.inventory)state.inventory.syncStatus='Đã đồng bộ dữ liệu cuối lên Supabase.';
+      if(state.inputInvoices)state.inputInvoices.syncStatus='Đã đồng bộ dữ liệu cuối lên Supabase.';
+      if(state.accounting)state.accounting.syncStatus='Đã đồng bộ dữ liệu cuối lên Supabase.';
+      notifyWorkingStatePeers(snapshot.savedAt);
+      return true;
+    }catch(e){
+      state.status='Chưa đồng bộ được dữ liệu cuối lên Supabase. App đang giữ cache tạm trên máy này.';
+      console.warn('Working state save failed:',e);
+      return false;
+    }finally{
+      // Không render tự động sau mỗi lần autosave, tránh màn hình chớp/tắt khi đang nhập hoặc import Excel.
+    }
+  })();
+  try{
+    return await workingStateSaveInFlight;
   }finally{
-    // Không render tự động sau mỗi lần autosave, tránh màn hình chớp/tắt khi đang nhập hoặc import Excel.
+    workingStateSaveInFlight=null;
+    if(workingStateDirtyDomains.size&&workingStateReady){
+      clearTimeout(workingStateSaveTimer);
+      workingStateSaveTimer=setTimeout(()=>saveWorkingStateToSupabase().catch(e=>console.warn(e)),300);
+    }
   }
 }
 
@@ -6266,9 +6344,9 @@ async function syncInventoryFromSupabase(options={}){
   }
 }
 async function syncAppInBackground(options={}){
-  const force=!!options.force, includeWorkingState=options.includeWorkingState!==false;
+  const force=!!options.force, includeWorkingState=options.includeWorkingState!==false, includeChildData=options.includeChildData!==false;
   if(backgroundSyncInFlight||document.visibilityState!=='visible'||appHasActiveEditor())return false;
-  if(!force&&Date.now()-appLastActivity<5000)return false;
+  if(!force&&Date.now()-appLastActivity<1200)return false;
   backgroundSyncInFlight=true;
   const activityToken=appLastActivity;
   try{
@@ -6277,13 +6355,15 @@ async function syncAppInBackground(options={}){
       changed=!!(await loadWorkingStateFromSupabase({auto:true,activityToken}));
       if(backgroundSyncShouldYield(activityToken))return false;
     }
-    const results=await Promise.all([
-      syncInventoryFromSupabase({auto:true,silent:true,activityToken}),
-      syncInputInvoicesFromSupabase({auto:true,silent:true,activityToken}),
-      syncAccountingFromSupabase({auto:true,silent:true,activityToken})
-    ]);
-    if(backgroundSyncShouldYield(activityToken))return false;
-    changed=changed||results.some(Boolean);
+    if(includeChildData){
+      const results=await Promise.all([
+        syncInventoryFromSupabase({auto:true,silent:true,activityToken}),
+        syncInputInvoicesFromSupabase({auto:true,silent:true,activityToken}),
+        syncAccountingFromSupabase({auto:true,silent:true,activityToken})
+      ]);
+      if(backgroundSyncShouldYield(activityToken))return false;
+      changed=changed||results.some(Boolean);
+    }
     if(changed)render();
     return changed;
   }catch(e){
@@ -6294,6 +6374,37 @@ async function syncAppInBackground(options={}){
   }
 }
 window.__minminBackgroundSync=syncAppInBackground;
+function syncWorkingStateNow(){
+  return syncAppInBackground({force:true,includeWorkingState:true,includeChildData:false});
+}
+async function flushThenSyncWorkingState(){
+  if(workingStateDirtyDomains.size)await saveWorkingStateToSupabase();
+  return syncWorkingStateNow();
+}
+function cacheAndFlushWorkingState(){
+  if(!workingStateReady||applyingWorkingState)return;
+  const snapshot=workingStateSnapshot();
+  writeWorkingStateLocal(snapshot);
+  if(workingStateDirtyDomains.size)saveWorkingStateToSupabase({keepalive:true,skipRemoteMerge:true}).catch(()=>{});
+}
+function initWorkingStateBridge(){
+  if(typeof BroadcastChannel==='function'){
+    try{
+      workingStateChannel=new BroadcastChannel('minmin-working-state-v1');
+      workingStateChannel.onmessage=event=>{
+        const message=event?.data||{};
+        if(message.type!=='working-state-saved')return;
+        if(message.version&&message.version<=workingStateRemoteVersion)return;
+        syncWorkingStateNow();
+      };
+    }catch(e){ console.warn('Không mở được kênh đồng bộ giữa các tab:',e); }
+  }
+  document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible')flushThenSyncWorkingState(); });
+  window.addEventListener('focus',()=>flushThenSyncWorkingState());
+  window.addEventListener('online',()=>flushThenSyncWorkingState());
+  window.addEventListener('pagehide',cacheAndFlushWorkingState);
+  window.addEventListener('beforeunload',cacheAndFlushWorkingState);
+}
 async function saveInventoryItemRemote(item){ await supabaseRequest('/rest/v1/inventory_items?on_conflict=barcode_id',{method:'POST',headers:{'Content-Type':'application/json',Prefer:'resolution=merge-duplicates'},body:JSON.stringify(itemToSupabaseRow(item))}); }
 async function insertInventoryMovementRemote(movement){ await supabaseRequest('/rest/v1/inventory_movements',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(movementToSupabaseRow(movement))}); }
 async function deleteInventoryItemRemote(item){ const barcode=encodeURIComponent(item.barcodeId||item.code||''), code=encodeURIComponent(item.code||item.barcodeId||''); await Promise.all([supabaseRequest(`/rest/v1/inventory_items?barcode_id=eq.${barcode}`,{method:'DELETE'}), code!==barcode?supabaseRequest(`/rest/v1/inventory_items?code=eq.${code}`,{method:'DELETE'}):Promise.resolve()]); }
@@ -6443,7 +6554,7 @@ function quoteSnapshot(){ return lightQuoteSnapshot(); }
 function restoreSnapshot(snapshot){ if(!snapshot)return false; if(snapshot.info)state.info={...state.info,...snapshot.info}; if(snapshot.pricing)state.pricing={...state.pricing,...snapshot.pricing}; if(typeof snapshot.sheetInput==='string')state.sheetInput=snapshot.sheetInput; if(Array.isArray(snapshot.lines))state.lines=snapshot.lines.map(l=>normalizeQuoteLine({...applyProduct({}),...l,attributes:{...ATTRIBUTE_DEFAULTS,...(l.attributes||{})}})); ensureQuoteDateFromLines(state.lines); refreshLineCodes(); saveDraft(); state.activeTab='quote'; render(); return true; }
 function recordExportHistory(fileName,total){ const now=new Date(); const first=state.lines[0]||{}; const item={id:uid(), exportedAt:now.toISOString(), fileName, client:state.info.client||'', representative:state.info.representative||'', tel:state.info.tel||'', total:Number(total||0), productCount:state.lines.length, firstCode:first.code||'', firstName:first.name||'', snapshot:quoteSnapshot()}; state.history=[item,...state.history].slice(0,50); saveHistory(); }
 function defaultLines(){ return []; }
-function saveDraft(){ try{ localStorage.setItem(DRAFT_KEY, JSON.stringify(lightQuoteSnapshot())); }catch(e){ console.warn('Không lưu được bản nháp báo giá:', e); } scheduleWorkingStateSave(); }
+function saveDraft(){ try{ localStorage.setItem(DRAFT_KEY, JSON.stringify(lightQuoteSnapshot())); }catch(e){ console.warn('Không lưu được bản nháp báo giá:', e); } scheduleWorkingStateSave(450,'quote'); }
 function scheduleSave(){ clearTimeout(saveTimer); saveTimer=setTimeout(saveDraft,250); }
 function loadDraft(){ try{ const draft=JSON.parse(localStorage.getItem(DRAFT_KEY)||'null'); if(!draft)return false; if(draft.info) state.info={...state.info,...draft.info}; if(draft.pricing) state.pricing={...state.pricing,...draft.pricing}; if(typeof draft.sheetInput==='string') state.sheetInput=draft.sheetInput; if(Array.isArray(draft.lines)&&draft.lines.length){ state.lines=draft.lines.map(l=>normalizeQuoteLine({...applyProduct({}),...l,attributes:{...ATTRIBUTE_DEFAULTS,...(l.attributes||{})}})); ensureQuoteDateFromLines(state.lines); return true; } }catch(e){ console.warn('Không đọc được bản nháp báo giá:', e); } return false; }
 state.history=loadHistory();
@@ -6546,7 +6657,7 @@ function unlockApp(pin){
     appUnlocked=true;
     appPinError='';
     appLastActivity=Date.now();
-    scheduleWorkingStateSave();
+    scheduleWorkingStateSave(450,'ui');
     render();
     return true;
   }
@@ -6606,7 +6717,7 @@ function bindPinTools(){
     if(a!==b)return alert('PIN nhập lại chưa khớp.');
     localStorage.setItem(PIN_CODE_KEY,a);
     state.ui.appPinCode=a;
-    scheduleWorkingStateSave();
+    scheduleWorkingStateSave(450,'ui');
     alert('Đã đổi PIN. PIN mới sẽ đồng bộ qua Supabase working state nếu thiết bị có mạng.');
     document.getElementById('pinNew1').value='';
     document.getElementById('pinNew2').value='';
@@ -10763,9 +10874,10 @@ async function initApp(){
     render();
     syncAppInBackground({force:true,includeWorkingState:false});
     backgroundSyncTimer=setInterval(()=>syncAppInBackground(),BACKGROUND_SYNC_INTERVAL_MS);
+    workingStateSyncTimer=setInterval(()=>syncAppInBackground({includeChildData:false}),WORKING_STATE_SYNC_INTERVAL_MS);
+    initWorkingStateBridge();
     ['click','keydown','pointerdown','touchstart'].forEach(evt=>document.addEventListener(evt,touchAppActivity,{passive:true}));
     setInterval(()=>{ if(appUnlocked&&Date.now()-appLastActivity>5*60*1000)lockApp(); },30000);
-    window.addEventListener('beforeunload',()=>{ if(workingStateReady&&!applyingWorkingState){ const snapshot=workingStateSnapshot(); writeWorkingStateLocal(snapshot); } });
   }catch(e){ setRootHtml(`<div style="padding:24px;font-family:Arial,sans-serif;color:#b91c1c"><b>App bị lỗi:</b> ${esc(e.message)}</div>`); }
 }
 
@@ -13203,7 +13315,7 @@ html,body{
     appPinError = '';
     appLastActivity = Date.now();
     render();
-    try{ scheduleWorkingStateSave(); }catch(e){ console.warn('MINMIN chưa lưu được PIN lên working state:', e); }
+    try{ scheduleWorkingStateSave(450,'ui'); }catch(e){ console.warn('MINMIN chưa lưu được PIN lên working state:', e); }
     return true;
   };
 
@@ -14224,7 +14336,7 @@ documentPrintCss = function(){
         const wordsNode = aside.querySelector('[data-quote-finance-words]');
         if(totalNode) totalNode.textContent = money(total.afterVat);
         if(wordsNode) wordsNode.textContent = numberToVietnamese(total.afterVat);
-        scheduleWorkingStateSave();
+        scheduleWorkingStateSave(450,'quote');
       };
       input.oninput = update;
       input.onchange = () => { update(); saveDraft(); };
