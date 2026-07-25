@@ -20329,7 +20329,9 @@ function removeLabelSheet(sheetIndex){
   renderLabelView();
 }
 function labelInventoryItems(){
-  return (state.inventory?.items||[]).filter(item=>!isInventoryDeleted(item));
+  return (state.inventory?.items||[])
+    .filter(item=>!isInventoryDeleted(item))
+    .filter(item=>['stock','production'].includes(inventoryStage(item).key));
 }
 function labelInventoryItem(code){
   const key=String(code||'');

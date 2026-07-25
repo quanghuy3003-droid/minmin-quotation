@@ -24,6 +24,7 @@ test('Label is a first-class navigation tab and cross-device working-state domai
 test('Label reads inventory data and supports choosing the product image',()=>{
   assert.match(label,/function labelInventoryItems\(\)/);
   assert.match(label,/filter\(item=>!isInventoryDeleted\(item\)\)/);
+  assert.match(label,/filter\(item=>\['stock','production'\]\.includes\(inventoryStage\(item\)\.key\)\)/);
   assert.match(label,/function labelDraftFromInventory/);
   assert.match(label,/data-label-open-picker/);
   assert.match(label,/data-label-pick-code/);
