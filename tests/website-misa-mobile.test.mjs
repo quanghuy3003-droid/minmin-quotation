@@ -22,5 +22,7 @@ assert.match(source,/const renderWithWebsiteMobile=render;[\s\S]*mountWebsiteMob
 assert.match(source,/section\.classList\.add\('minmin-website-desktop-view'\)/,'Existing desktop website view must be retained');
 assert.match(source,/minminUploadAllWooSuperFast[\s\S]*includeImages/,'Mobile sync must reuse the existing WooCommerce pipeline');
 assert.match(source,/websiteSaveProduct\(\)/,'Mobile wizard must reuse the existing save behavior');
+assert.match(source,/data-minmin-mobile-auto-name[\s\S]*Tự đặt tên và mã/,'Mobile wizard must expose the desktop auto-name workflow');
+assert.match(source,/data-minmin-mobile-auto-name[\s\S]*websiteAutoNameProduct\(\)/,'Mobile auto-name must reuse the existing desktop logic');
 
 console.log('website-misa-mobile: ok');
