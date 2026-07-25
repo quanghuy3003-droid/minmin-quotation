@@ -114,6 +114,16 @@ test('products can be removed from individual labels and empty labels reopen the
   assert.match(label,/sản phẩm vẫn còn trong Kho hàng/);
 });
 
+test('the label editor follows desktop scrolling and slots clearly show hover and selected states',()=>{
+  assert.match(label,/body:has\(\.minmin-label-module\)\{overflow-x:clip!important;overflow-y:visible!important\}/);
+  assert.match(label,/\.minmin-label-editor\{position:sticky;top:18px;max-height:calc\(100vh - 36px\);overflow-y:auto/);
+  assert.match(label,/\.minmin-label-slot-nav button:hover\{border-color:#65aa96/);
+  assert.match(label,/\.minmin-label-slot-nav button\.is-active\{border-color:#2d8b70/);
+  assert.match(label,/\.minmin-label-pair:hover::after\{border-width:3px/);
+  assert.match(label,/\.minmin-label-pair\.is-active::after\{border-width:4px;border-color:#2d8b70/);
+  assert.match(label,/\.minmin-label-editor\{position:static;order:1;max-height:none;overflow:visible\}/);
+});
+
 test('every selected label can keep its original background or remove it non-destructively',()=>{
   assert.match(label,/originalPhotoUrl/);
   assert.match(label,/backgroundRemoved/);
