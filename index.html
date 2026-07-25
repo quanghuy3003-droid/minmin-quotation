@@ -7517,15 +7517,16 @@ function inventoryMobileArrowIcon(direction='left'){
 function inventoryMobileSearchIcon(){
   return '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>';
 }
-function inventoryMobileListItem(item){
+function inventoryMobileListItem(item,filterNeedle=''){
   const key=item.barcodeId||item.code, stage=inventoryStage(item), finance=inventoryFinance(item);
+  const searchText=inventorySearchText(item), hidden=!!filterNeedle&&!searchText.includes(filterNeedle);
   const description=[item.name||productTypeName(item.productType),item.dimension,item.unit].filter(Boolean).join(' · ');
   const duration=inventoryTotalDays(item);
   const owner=item.itemKind==='sample'
     ?'<span class="minmin-stock-mobile-owner text-coral">● Hàng mẫu</span>'
     :`<span class="minmin-stock-mobile-owner text-mint">✓ ${esc(inventoryOrderCustomerName(item)||'Hàng order')}</span>`;
   const menuOpen=state.ui?.stockMobileMenuId===key;
-  return `<div class="minmin-stock-mobile-item">
+  return `<div data-stock-mobile-filter-row data-stock-mobile-stage="${esc(stage.key)}" data-stock-mobile-search="${esc(searchText)}" class="minmin-stock-mobile-item" ${hidden?'hidden':''}>
     <button data-stock-mobile-open="${esc(key)}" type="button" class="minmin-stock-mobile-item-main text-left" aria-label="Xem chi tiết ${esc(item.code||'sản phẩm')}">
       <span class="minmin-stock-mobile-item-photo">${item.photoDataUrl?`<img src="${esc(driveAssetUrl(item.photoDataUrl))}" alt="${esc(item.name||item.code||'Sản phẩm')}"/>`:'<span class="px-2 text-center text-xs font-bold text-black/35">Chưa có ảnh</span>'}</span>
       <span class="min-w-0">
@@ -7596,7 +7597,8 @@ function renderInventoryMobileView(){
   const selectedKey=String(state.ui.stockMobileDetail||'');
   const selected=selectedKey?findInventoryItem(selectedKey):null;
   if(selected)return `<div class="minmin-stock-mobile-view">${inventoryMobileDetailView(selected)}</div>`;
-  const visible=inv.items.filter(item=>category==='all'||inventoryStage(item).key===category).filter(item=>!needle||inventorySearchText(item).includes(needle));
+  const categoryItems=inv.items.filter(item=>category==='all'||inventoryStage(item).key===category);
+  const matchingItems=categoryItems.filter(item=>!needle||inventorySearchText(item).includes(needle));
   const stockItems=inv.items.filter(item=>inventoryStage(item).key==='stock');
   const totalQty=stockItems.reduce((sum,item)=>sum+Number(item.quantity||0),0);
   const totalValue=stockItems.reduce((sum,item)=>sum+Number(item.quantity||0)*parseInputMoney(item.price),0);
@@ -7620,7 +7622,7 @@ function renderInventoryMobileView(){
         ${[['all','Tất cả',inv.items.length],['stock','Trong kho',counts.stock],['production','Đang sản xuất',counts.production],['sold','Hết hàng',counts.sold]].map(([key,label,count])=>`<button data-stock-mobile-category-chip="${key}" type="button" class="${category===key?'is-active':''}">${label} (${count})</button>`).join('')}
       </div>
     </div>
-    <div class="minmin-stock-mobile-list">${visible.length?visible.map(inventoryMobileListItem).join(''):`<div class="px-4 py-12 text-center text-sm font-bold text-black/40">${needle?'Không tìm thấy sản phẩm phù hợp.':'Nhóm này chưa có sản phẩm.'}</div>`}</div>
+    <div class="minmin-stock-mobile-list">${categoryItems.map(item=>inventoryMobileListItem(item,needle)).join('')}<div data-stock-mobile-filter-empty class="px-4 py-12 text-center text-sm font-bold text-black/40" ${matchingItems.length?'hidden':''}>${needle?'Không tìm thấy sản phẩm phù hợp.':'Nhóm này chưa có sản phẩm.'}</div></div>
   </div>`;
 }
 const renderInventoryTabDesktop = renderInventoryTab;
@@ -7804,7 +7806,9 @@ document.addEventListener('change',event=>{
 });
 document.addEventListener('input',event=>{
   const search=event.target.closest?.('[data-stock-mobile-search]');
-  if(search)state.ui.stockSearch=search.value||'';
+  if(!search)return;
+  state.ui.stockSearch=search.value||'';
+  applyInventoryMobileFilters(search.value);
 });
 document.addEventListener('keydown',event=>{
   const search=event.target.closest?.('[data-stock-mobile-search]');
@@ -7814,6 +7818,22 @@ document.addEventListener('keydown',event=>{
     render({force:true});
   }
 });
+function applyInventoryMobileFilters(value=state.ui.stockSearch||''){
+  if(window.innerWidth>767)return;
+  const needle=cleanSearch(value), category=state.ui.stockMobileCategory||'all';
+  let visible=0;
+  document.querySelectorAll('[data-stock-mobile-filter-row]').forEach(row=>{
+    const stage=row.dataset.stockMobileStage||'', search=row.dataset.stockMobileSearch||'';
+    const show=(category==='all'||stage===category)&&(!needle||search.includes(needle));
+    row.hidden=!show;
+    if(show)visible++;
+  });
+  const empty=document.querySelector('[data-stock-mobile-filter-empty]');
+  if(empty){
+    empty.hidden=visible>0;
+    empty.textContent=needle?'Không tìm thấy sản phẩm phù hợp.':'Nhóm này chưa có sản phẩm.';
+  }
+}
 
 function websiteNewProduct(){ state.website=normalizeWebsiteProducts(state.website||websiteProductsDefaults()); state.website.editingId=''; state.website.current=websiteProductDefaults(); saveWebsiteProducts(); render(); }
 function websiteSaveProduct(){
