@@ -38,6 +38,13 @@ test('outgoing invoice details use a six-tab right drawer', () => {
   assert.ok(patch.includes('data-sale-order-file'));
 });
 
+test('matched products show compact inventory thumbnails without cropping', () => {
+  assert.ok(patch.includes('function mmsoDrawerStockChip(inv,line,stock)'));
+  assert.ok(patch.includes('class="mmso-drawer-stock-chip"'));
+  assert.match(patch, /photoSourceValue\(stock\)\|\|stock\.photoDataUrl\|\|stock\.photoStorageUrl/);
+  assert.match(patch, /\.mmso-drawer-stock-chip>img[\s\S]*?object-fit:contain/);
+});
+
 test('service invoices do not force inventory matching', () => {
   assert.ok(patch.includes("return 'service'"));
   assert.ok(patch.includes('Dịch vụ · Không áp dụng'));
