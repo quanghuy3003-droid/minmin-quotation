@@ -17370,6 +17370,13 @@ document.addEventListener('click',event=>{
       render({force:true});
     });
   };
+  window.__minminOutgoingModel=Object.freeze({
+    lines:outGLines,
+    kind:outGLineKind,
+    finance:outGFinance,
+    match:outGMatchProgress,
+    managedRows:outGManagedRows
+  });
 })();
 
 /* MINMIN PATCH 2026-07-17I
@@ -21455,6 +21462,240 @@ async function printLabelDirect(){
     if(status)status.textContent=`Đã chọn ${files.length} file. Đang upload và đọc XML...`;
     processInputInvoiceFiles().catch(error=>alert('Chưa upload được hóa đơn: '+(error.message||error)));
   });
+})();
+
+/* MINMIN PATCH 2026-07-26 OUTGOING QUIET LUXURY
+   Desktop-only presentation layer. Existing outgoing upload, matching and persistence handlers stay authoritative. */
+(function(){
+  const mmsoBase=renderOutgoingInvoices;
+  const mmsoModel=window.__minminOutgoingModel||{};
+  function mmsoUi(){
+    state.ui=state.ui||{};
+    return state.ui.mmOutgoingQuiet=state.ui.mmOutgoingQuiet||{
+      drawerId:'',drawerTab:'info',menuId:'',view:'table',uploadMessage:'',
+      filters:{period:'',year:'',type:'',status:'',review:'',search:''}
+    };
+  }
+  const mmsoNum=value=>Number(parseInputMoney(value||0))||0;
+  const mmsoCodes=value=>Array.isArray(value)?value.map(String):String(value||'').split(/[,\n;|]+/).map(x=>x.trim()).filter(Boolean);
+  function mmsoLines(inv){
+    if(mmsoModel.lines)return mmsoModel.lines(inv);
+    return (Array.isArray(inv?.items_json)?inv.items_json:[]).map((line,index)=>({
+      ...line,
+      id:String(line.id||line.line_id||`out-line-${index+1}`),
+      item_name:line.item_name||line.name||`Dòng ${index+1}`,
+      quantity:Number(line.quantity||line.qty||1)||1,
+      unit_price:mmsoNum(line.unit_price||line.price),
+      net_amount:mmsoNum(line.net_amount||line.amount)||mmsoNum(line.unit_price||line.price)*(Number(line.quantity||line.qty||1)||1),
+      vat_amount:mmsoNum(line.vat_amount),
+      total_amount:mmsoNum(line.total_amount)||mmsoNum(line.net_amount||line.amount)+mmsoNum(line.vat_amount),
+      selected_stock_codes:mmsoCodes(line.selected_stock_codes||line.linked_inventory_code),
+      selected_input_invoice_ids:mmsoCodes(line.selected_input_invoice_ids).map(String)
+    }));
+  }
+  function mmsoKind(line){
+    if(mmsoModel.kind)return mmsoModel.kind(line);
+    const text=invoiceNorm(line?.item_name||line?.name||'');
+    if(/\b(chiet khau|giam gia|discount|rebate)\b/.test(text))return 'discount';
+    if(/\b(phi van chuyen|van chuyen|shipping|ship|logistics|cuoc|chuyen phat|giao hang)\b/.test(text))return 'shipping';
+    if(/\b(dich vu|service|tu van|quang cao|phan mem|license|bao tri|gia cong)\b/.test(text))return 'service';
+    if(!mmsoNum(line?.net_amount)&&!mmsoNum(line?.vat_amount)&&!mmsoNum(line?.total_amount))return 'note';
+    return 'product';
+  }
+  function mmsoStock(code){ const item=findInventoryItem(String(code||'').trim()); return item?normalizeInventoryItem(item):null; }
+  function mmsoStockKey(item){ return String(item?.code||item?.barcodeId||'').trim(); }
+  function mmsoInput(id){ return (state.inputInvoices?.invoices||[]).find(inv=>String(inv.id)===String(id))||null; }
+  function mmsoInputLinks(code){
+    const key=String(code||'').trim(), rows=[];
+    (state.inputInvoices?.invoices||[]).forEach(inv=>(inv.items||[]).forEach((raw,index)=>{
+      const item=normalizeInputInvoiceItem(raw,index), codes=mmsoCodes(item.linked_inventory_code);
+      if(!codes.includes(key))return;
+      const split=Math.max(1,codes.length);
+      rows.push({net:Number(item.net_amount||0)/split,vat:Number(item.vat_amount||0)/split});
+    }));
+    return rows;
+  }
+  function mmsoLineFinance(line){
+    const kind=mmsoKind(line), discount=kind==='discount', sign=value=>discount?-Math.abs(mmsoNum(value)):mmsoNum(value);
+    let inputNet=0,inputVat=0;
+    if(kind==='product')line.selected_stock_codes.forEach(code=>{
+      const stock=mmsoStock(code); if(!stock)return;
+      const links=mmsoInputLinks(mmsoStockKey(stock));
+      inputNet+=links.reduce((sum,row)=>sum+row.net,0)||mmsoNum(stock.purchasePrice);
+      inputVat+=links.reduce((sum,row)=>sum+row.vat,0);
+    });
+    if(kind==='shipping')line.selected_input_invoice_ids.forEach(id=>{
+      const invoice=mmsoInput(id); if(!invoice)return;
+      inputNet+=mmsoNum(invoice.net_amount); inputVat+=mmsoNum(invoice.vat_amount);
+    });
+    const saleNet=sign(line.net_amount),saleVat=sign(line.vat_amount);
+    return {kind,inputNet,inputVat,saleNet,saleVat,saleTotal:sign(line.total_amount),profit:saleNet-inputNet,vatDiff:saleVat-inputVat};
+  }
+  function mmsoFinance(inv){
+    if(mmsoModel.finance)return mmsoModel.finance(inv);
+    const total=mmsoLines(inv).reduce((sum,line)=>{
+      const value=mmsoLineFinance(line);
+      Object.keys(sum).forEach(key=>sum[key]+=value[key]||0);
+      return sum;
+    },{inputNet:0,inputVat:0,saleNet:0,saleVat:0,saleTotal:0,profit:0,vatDiff:0});
+    if(mmsoNum(inv.net_amount))total.saleNet=mmsoNum(inv.net_amount);
+    if(mmsoNum(inv.vat_amount))total.saleVat=mmsoNum(inv.vat_amount);
+    if(mmsoNum(inv.total_amount))total.saleTotal=mmsoNum(inv.total_amount);
+    total.profit=total.saleNet-total.inputNet; total.vatDiff=total.saleVat-total.inputVat;
+    return total;
+  }
+  function mmsoMatch(inv){
+    const lines=mmsoLines(inv), actionable=lines.filter(line=>['product','shipping'].includes(mmsoKind(line)));
+    if(mmsoModel.match){
+      const progress=mmsoModel.match(inv);
+      return {...progress,serviceOnly:!actionable.length};
+    }
+    const matched=actionable.filter(line=>mmsoKind(line)==='shipping'?line.selected_input_invoice_ids.length:line.selected_stock_codes.length).length;
+    return {matched,total:actionable.length,complete:!!actionable.length&&matched===actionable.length,serviceOnly:!actionable.length};
+  }
+  function mmsoManaged(){
+    if(mmsoModel.managedRows)return mmsoModel.managedRows().slice().reverse();
+    return (state.accounting?.outgoingInvoices||[]).filter(isManagedOutgoingInvoice)
+      .sort((a,b)=>String(b.invoice_date||b.request_date||b.created_at||'').localeCompare(String(a.invoice_date||a.request_date||a.created_at||'')));
+  }
+  function mmsoFiltered(){
+    const filters=mmsoUi().filters||{}, search=invoiceNorm(filters.search||'');
+    return mmsoManaged().filter(inv=>{
+      const date=String(inv.invoice_date||inv.request_date||'');
+      const lines=mmsoLines(inv), product=lines.some(line=>mmsoKind(line)==='product'), match=mmsoMatch(inv);
+      if(filters.period&&!date.startsWith(filters.period))return false;
+      if(filters.year&&!date.startsWith(filters.year))return false;
+      if(filters.type==='product'&&!product)return false;
+      if(filters.type==='service'&&product)return false;
+      if(filters.status&&String(inv.status||'')!==filters.status)return false;
+      if(filters.review==='matched'&&!match.complete)return false;
+      if(filters.review==='review'&&match.complete)return false;
+      if(search&&!invoiceNorm([inv.customer_name,inv.customer_tax_code,inv.invoice_number,inv.invoice_series,inv.item_summary,...lines.map(line=>line.item_name)].join(' ')).includes(search))return false;
+      return true;
+    });
+  }
+  function mmsoIcon(name,size=18){
+    const paths={upload:'<path d="M12 16V4m0 0L7 9m5-5 5 5"/><path d="M5 14v5h14v-5"/>',check:'<path d="m5 12 4 4L19 6"/>',search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',more:'<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',close:'<path d="m6 6 12 12M18 6 6 18"/>'};
+    return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name]||paths.more}</svg>`;
+  }
+  function mmsoKpis(rows){
+    const totals=rows.reduce((sum,inv)=>{const f=mmsoFinance(inv);sum.sale+=f.saleNet;sum.cost+=f.inputNet;sum.profit+=f.profit;sum.vat+=f.vatDiff;return sum;},{sale:0,cost:0,profit:0,vat:0});
+    return `<div class="mmso-kpis">${[['Doanh thu',totals.sale,''],['Chi phí đầu vào',totals.cost,''],['Lợi nhuận',totals.profit,'accent'],['Chênh lệch VAT',totals.vat,'warning']].map(([label,value,tone])=>`<article class="mmso-kpi ${tone}"><span>${esc(label)}</span><strong>${money(value)}</strong><small>${label==='Lợi nhuận'?'Doanh thu trừ giá mua':label==='Chênh lệch VAT'?'VAT ra trừ VAT vào':'Theo bộ lọc hiện tại'}</small></article>`).join('')}</div>`;
+  }
+  function mmsoDropzone(rows){
+    const xml=rows.filter(inv=>inv.xml_url).length,pdf=rows.filter(inv=>inv.pdf_url).length,status=state.accounting?.syncStatus||'Sẵn sàng xử lý hóa đơn.';
+    return `<section class="mmso-dropzone" data-mmso-dropzone><div class="mmso-drop-main"><span class="mmso-drop-icon">${mmsoIcon('upload',22)}</span><div><h2>Kéo XML/PDF vào đây</h2><p>XML tạo hóa đơn tự động; PDF được gắn vào hóa đơn đang mở.</p></div><label class="mmso-upload-button">Upload hóa đơn<input data-mmso-drop-files type="file" multiple accept=".xml,.pdf,application/pdf,text/xml,application/xml"/></label><input id="outgXmlScanner" type="file" accept=".xml,text/xml,application/xml" hidden/></div><div class="mmso-drop-status"><span>${mmsoIcon('check',14)} XML đã đọc · ${xml}</span><span>${mmsoIcon('check',14)} PDF đã lưu · ${pdf}</span><span class="working">${esc(mmsoUi().uploadMessage||status)}</span></div></section>`;
+  }
+  function mmsoFilters(rows){
+    const ui=mmsoUi(),f=ui.filters,years=[...new Set(mmsoManaged().map(inv=>String(inv.invoice_date||inv.request_date||'').slice(0,4)).filter(Boolean))].sort().reverse();
+    const statuses=[...new Set(mmsoManaged().map(inv=>String(inv.status||'')).filter(Boolean))];
+    const field=(label,control)=>`<label><span>${label}</span>${control}</label>`;
+    return `<div class="mmso-filters">${field('Kỳ / tháng',`<input data-mmso-filter="period" type="month" value="${esc(f.period||'')}"/>`)}${field('Năm',`<select data-mmso-filter="year"><option value="">Tất cả</option>${years.map(year=>`<option value="${year}" ${f.year===year?'selected':''}>${year}</option>`).join('')}</select>`)}${field('Loại hóa đơn',`<select data-mmso-filter="type"><option value="">Tất cả</option><option value="product" ${f.type==='product'?'selected':''}>Hàng hóa</option><option value="service" ${f.type==='service'?'selected':''}>Dịch vụ / không kho</option></select>`)}${field('Trạng thái',`<select data-mmso-filter="status"><option value="">Tất cả</option>${statuses.map(status=>`<option value="${esc(status)}" ${f.status===status?'selected':''}>${esc(status)}</option>`).join('')}</select>`)}${field('Kiểm tra',`<select data-mmso-filter="review"><option value="">Tất cả</option><option value="matched" ${f.review==='matched'?'selected':''}>Đã khớp</option><option value="review" ${f.review==='review'?'selected':''}>Cần xử lý</option></select>`)}${field('Search',`<div class="mmso-search">${mmsoIcon('search',15)}<input data-mmso-filter="search" value="${esc(f.search||'')}" placeholder="Tìm hóa đơn..."/></div>`)}<button data-mmso-clear-filters type="button">Xóa bộ lọc</button></div>`;
+  }
+  function mmsoProductChip(inv){
+    const lines=mmsoLines(inv), products=lines.filter(line=>mmsoKind(line)==='product'), codes=[...new Set(products.flatMap(line=>line.selected_stock_codes))], stocks=codes.map(mmsoStock).filter(Boolean);
+    if(!products.length)return `<span class="mmso-service-chip">Dịch vụ · Không áp dụng</span>`;
+    if(!stocks.length)return `<button data-mmso-products="${esc(inv.id)}" class="mmso-unmatched-chip" type="button">Cần khớp kho</button>`;
+    const first=stocks[0],photo=driveAssetUrl(photoSourceValue(first)||first.photoDataUrl||first.photoStorageUrl||''),qty=products.reduce((sum,line)=>sum+Number(line.quantity||0),0);
+    return `<button data-mmso-products="${esc(inv.id)}" class="mmso-product-chip" type="button">${photo?`<img src="${esc(photo)}" alt=""/>`:'<i></i>'}<span><b>${esc(first.name||productTypeName(first.productType)||mmsoStockKey(first))}${stocks.length>1?` <em>+${stocks.length-1}</em>`:''}</b><small>${esc(mmsoStockKey(first))} · SL ${qty}</small></span></button>`;
+  }
+  function mmsoRow(inv){
+    const f=mmsoFinance(inv),match=mmsoMatch(inv),lines=mmsoLines(inv),first=lines[0],menu=String(mmsoUi().menuId)===String(inv.id);
+    const status=match.serviceOnly?'Không áp dụng':match.complete?'Đã khớp':'Cần khớp';
+    return `<tr data-mmso-row="${esc(inv.id)}"><td><b>${esc(compactDate(inv.invoice_date||inv.request_date))}</b><small>${esc(inv.invoice_number||'Chờ số HĐ')}</small></td><td><b>${esc(inv.customer_name||'Chưa có khách hàng')}</b><small>${esc(inv.customer_tax_code||inv.invoice_series||'Thiếu mã')}</small></td><td><b>${esc(first?.item_name||inv.item_summary||'Hóa đơn bán ra')}</b><small>${lines.length>1?`+${lines.length-1} dòng XML`:esc(inv.invoice_series||'')}</small></td><td>${mmsoProductChip(inv)}</td><td class="number">${money(f.inputVat)}</td><td class="number">${money(f.saleVat)}</td><td class="number">${money(f.inputNet)}</td><td class="number">${money(f.saleNet)}</td><td class="number profit ${f.profit<0?'negative':''}">${money(f.profit)}</td><td><span class="mmso-status ${status==='Cần khớp'?'warning':status==='Không áp dụng'?'neutral':''}">${esc(status)}</span></td><td><div class="mmso-actions">${inv.xml_url?`<button data-open-url="${esc(inv.xml_url)}" type="button">XML</button>`:`<label>XML<input data-sale-order-file="${esc(inv.id)}" data-file-type="xml" type="file" accept=".xml,text/xml,application/xml"/></label>`}<button data-mmso-edit="${esc(inv.id)}" type="button">Sửa</button><button data-mmso-menu="${esc(inv.id)}" type="button" aria-label="Thêm thao tác">${mmsoIcon('more',16)}</button>${menu?mmsoMenu(inv):''}</div></td></tr>`;
+  }
+  function mmsoMenu(inv){
+    return `<div class="mmso-menu"><button data-mmso-open-tab="${esc(inv.id)}" data-mmso-target-tab="pdf">Xem PDF</button><button data-mmso-open-tab="${esc(inv.id)}" data-mmso-target-tab="products">Khớp lại</button><button data-mmso-unlink="${esc(inv.id)}">Xóa liên kết</button><button data-mmso-open-tab="${esc(inv.id)}" data-mmso-target-tab="history">Lịch sử xử lý</button><button data-outg-delete-order="${esc(inv.id)}" class="danger">Xóa hóa đơn</button></div>`;
+  }
+  function mmsoGroupCards(rows){
+    return `<div class="mmso-group-grid">${rows.map(inv=>{const f=mmsoFinance(inv),lines=mmsoLines(inv),match=mmsoMatch(inv);return `<article data-mmso-row="${esc(inv.id)}"><header><span><b>${esc(inv.customer_name||'Khách hàng')}</b><small>${esc(inv.invoice_number||inv.invoice_series||'Chưa có số')}</small></span><i class="${match.complete?'complete':''}">${match.serviceOnly?'Không kho':match.complete?'Đã khớp':'Cần khớp'}</i></header><div><span>${lines.length}<small>Dòng XML</small></span><span>${money(f.saleNet)}<small>Doanh thu</small></span><span>${money(f.inputNet)}<small>Chi phí</small></span><span class="${f.profit<0?'negative':''}">${money(f.profit)}<small>Lợi nhuận</small></span></div><footer>VAT vào ${money(f.inputVat)} · VAT ra ${money(f.saleVat)} · Chênh ${money(f.vatDiff)}</footer></article>`;}).join('')}</div>`;
+  }
+  function mmsoTable(rows){
+    const ui=mmsoUi();
+    return `<section class="mmso-list"><header><div><h2>Danh sách hóa đơn</h2><p>${rows.length} hóa đơn theo bộ lọc hiện tại</p></div><div class="mmso-view-toggle"><button data-mmso-view="table" class="${ui.view==='table'?'active':''}">Bảng</button><button data-mmso-view="group" class="${ui.view==='group'?'active':''}">Theo nhóm</button></div></header>${ui.view==='group'?mmsoGroupCards(rows):`<div class="mmso-table-wrap"><table><thead><tr><th>Ngày</th><th>Khách hàng / mã</th><th>Nội dung XML</th><th>Sản phẩm đã khớp</th><th>VAT vào</th><th>VAT ra</th><th>Giá mua</th><th>Giá bán</th><th>Lợi nhuận</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>${rows.map(mmsoRow).join('')}</tbody></table></div>`}${rows.length?'':'<div class="mmso-empty">Chưa có hóa đơn phù hợp.</div>'}</section>`;
+  }
+  function mmsoDrawerField(label,key,type='text'){
+    const inv=mmsoDrawerInvoice(),value=type==='date'?(inv?.[key]||''):outgoingEditValue(key,inv?.[key]||'');
+    return `<label><span>${esc(label)}</span><input data-outgoing-edit="${esc(key)}" type="${type}" value="${esc(value)}"/></label>`;
+  }
+  function mmsoDrawerInvoice(){ return (state.accounting?.outgoingInvoices||[]).find(inv=>String(inv.id)===String(mmsoUi().drawerId))||null; }
+  function mmsoDrawerInfo(inv){
+    return `<div class="mmso-drawer-form">${mmsoDrawerField('Ngày hóa đơn','invoice_date','date')}${mmsoDrawerField('Số hóa đơn','invoice_number')}${mmsoDrawerField('Ký hiệu','invoice_series')}${mmsoDrawerField('Khách hàng','customer_name')}${mmsoDrawerField('MST khách','customer_tax_code')}${mmsoDrawerField('Địa chỉ','customer_address')}${mmsoDrawerField('Doanh thu','net_amount')}${mmsoDrawerField('VAT đầu ra','vat_amount')}${mmsoDrawerField('Tổng thanh toán','total_amount')}<label><span>Trạng thái</span><select data-outgoing-edit="status">${['Chờ xuất hóa đơn','Đã xuất hóa đơn','Đã gửi khách','Đã thanh toán','Hủy'].map(status=>`<option ${inv.status===status?'selected':''}>${status}</option>`).join('')}</select></label></div><button id="saveOutgoingInvoice" class="mmso-primary">Lưu thay đổi</button>`;
+  }
+  function mmsoDrawerFile(inv,type){
+    const url=type==='pdf'?inv.pdf_url:inv.xml_url,label=type.toUpperCase();
+    return `<div class="mmso-file-panel"><strong>${label} hóa đơn</strong><p>${url?'File đã được lưu và liên kết với hóa đơn.':'Chưa có file '+label+'.'}</p><div>${url?`<button data-open-url="${esc(url)}">Mở ${label}</button>`:''}<label>Chọn ${label}<input data-sale-order-file="${esc(inv.id)}" data-file-type="${type}" type="file" accept="${type==='pdf'?'application/pdf,.pdf':'.xml,text/xml,application/xml'}"/></label></div>${type==='pdf'&&url?`<iframe src="${esc(driveViewUrl(url))}" title="PDF hóa đơn"></iframe>`:''}</div>`;
+  }
+  function mmsoDrawerProducts(inv){
+    const lines=mmsoLines(inv);
+    return `<div class="mmso-drawer-products">${lines.map((line,index)=>{const kind=mmsoKind(line),stocks=line.selected_stock_codes.map(mmsoStock).filter(Boolean);return `<article><header><span><b>${index+1}. ${esc(line.item_name)}</b><small>SL ${line.quantity} · ${money(line.net_amount)}</small></span><i>${kind==='product'?'Hàng hóa':kind==='shipping'?'Vận chuyển':'Không áp dụng'}</i></header>${kind==='product'?`<div class="mmso-drawer-chips">${stocks.map(stock=>`<span>${esc(stock.name||mmsoStockKey(stock))}<small>${esc(mmsoStockKey(stock))}</small><button data-outg-stock-remove="${esc(mmsoStockKey(stock))}" data-invoice-id="${esc(inv.id)}" data-line-id="${esc(line.id)}">×</button></span>`).join('')||'<em>Chưa khớp sản phẩm kho</em>'}</div><button data-outg-line-picker="${esc(inv.id)}" data-line-id="${esc(line.id)}">Chọn / sửa khớp kho</button>`:kind==='shipping'?`<span class="mmso-service-chip">Dịch vụ vận chuyển · Không khớp kho</span><button data-outg-input-picker="${esc(inv.id)}" data-line-id="${esc(line.id)}">Chọn hóa đơn chi phí</button>`:'<span class="mmso-service-chip">Không áp dụng khớp kho</span>'}</article>`;}).join('')}</div>`;
+  }
+  function mmsoVisibleNote(inv){ return String(inv.note||'').replace(OUTGOING_MANAGED_MARKER,'').replace(/\[TEN_DON_HANG:[^\]]+\]/,'').trim(); }
+  function mmsoDrawerBody(inv){
+    const tab=mmsoUi().drawerTab;
+    if(tab==='pdf'||tab==='xml')return mmsoDrawerFile(inv,tab);
+    if(tab==='products')return mmsoDrawerProducts(inv);
+    if(tab==='note')return `<label class="mmso-note"><span>Ghi chú nội bộ</span><textarea data-mmso-note="${esc(inv.id)}">${esc(mmsoVisibleNote(inv))}</textarea><small>Ghi chú không làm thay đổi dữ liệu XML.</small></label>`;
+    if(tab==='history')return `<div class="mmso-history"><article><i></i><span><time>${esc(compactDate(inv.created_at||inv.request_date))}</time><b>Tạo bản ghi hóa đơn</b><p>${esc(inv.quote_file_name||'Tạo từ XML hóa đơn đầu ra')}</p></span></article><article><i></i><span><time>${esc(compactDate(inv.updated_at||inv.invoice_date))}</time><b>Cập nhật gần nhất</b><p>${esc(inv.status||'Đang xử lý')} · ${mmsoMatch(inv).complete?'Đã khớp':'Cần kiểm tra'}</p></span></article></div>`;
+    return mmsoDrawerInfo(inv);
+  }
+  function mmsoDrawer(){
+    const inv=mmsoDrawerInvoice(); if(!inv)return '';
+    const f=mmsoFinance(inv),tabs=[['info','Thông tin'],['pdf','PDF'],['xml','XML'],['products','Sản phẩm khớp'],['note','Ghi chú'],['history','Lịch sử']];
+    return `<div class="mmso-drawer-backdrop" data-mmso-close></div><aside class="mmso-drawer" role="dialog" aria-label="Chi tiết hóa đơn bán ra"><header><span><small>Hóa đơn bán ra</small><h2>${esc(inv.invoice_number||'Chưa có số')}</h2><p>${esc(inv.customer_name||'Chưa có khách hàng')}</p></span><button data-mmso-close aria-label="Đóng">${mmsoIcon('close',19)}</button></header><div class="mmso-drawer-summary"><span>Doanh thu<b>${money(f.saleNet)}</b></span><span>Chi phí<b>${money(f.inputNet)}</b></span><span>Lợi nhuận<b>${money(f.profit)}</b></span></div><nav>${tabs.map(([id,label])=>`<button data-mmso-drawer-tab="${id}" class="${mmsoUi().drawerTab===id?'active':''}">${label}</button>`).join('')}</nav><div class="mmso-drawer-body">${mmsoDrawerBody(inv)}</div></aside>`;
+  }
+  function mmsoLegacyOverlays(){
+    const template=document.createElement('template');template.innerHTML=String(mmsoBase()||'');
+    return [...template.content.querySelectorAll('.fixed.inset-0')].map(node=>node.outerHTML).join('');
+  }
+  renderOutgoingInvoices=function renderOutgoingQuietLuxury(){
+    if(window.matchMedia?.('(max-width: 767px)').matches)return mmsoBase.apply(this,arguments);
+    const rows=mmsoFiltered();
+    return `<div class="mmso-page">${mmsoKpis(rows)}${mmsoDropzone(rows)}${mmsoFilters(rows)}${mmsoTable(rows)}${mmsoDrawer()}${mmsoLegacyOverlays()}</div>`;
+  };
+  async function mmsoRouteFiles(files){
+    const list=[...(files||[])],xml=list.find(file=>/\.xml$/i.test(file.name||'')),pdf=list.find(file=>/\.pdf$/i.test(file.name||''));
+    const assign=(input,file)=>{if(!input||!file)return false;const transfer=new DataTransfer();transfer.items.add(file);input.files=transfer.files;input.dispatchEvent(new Event('change',{bubbles:true}));return true;};
+    if(xml)assign(document.getElementById('outgXmlScanner'),xml);
+    if(pdf){
+      const id=mmsoUi().drawerId,input=id?document.querySelector(`[data-sale-order-file="${CSS.escape(String(id))}"][data-file-type="pdf"]`):null;
+      if(!assign(input,pdf)){mmsoUi().uploadMessage='PDF đã chọn · mở đúng hóa đơn rồi tải PDF trong Drawer.';render({force:true});}
+    }
+  }
+  document.addEventListener('click',event=>{
+    const edit=event.target.closest?.('[data-mmso-edit]'),products=event.target.closest?.('[data-mmso-products]'),openTab=event.target.closest?.('[data-mmso-open-tab]');
+    if(edit||products||openTab){const ui=mmsoUi(),id=(edit?.dataset.mmsoEdit||products?.dataset.mmsoProducts||openTab?.dataset.mmsoOpenTab);ui.drawerId=id;ui.drawerTab=openTab?.dataset.mmsoTargetTab||(products?'products':'info');ui.menuId='';state.accounting.editingOutgoingId=id;saveAccounting();render({force:true});return;}
+    if(event.target.closest?.('[data-mmso-close]')){const ui=mmsoUi();ui.drawerId='';ui.menuId='';state.accounting.editingOutgoingId='';render({force:true});return;}
+    const tab=event.target.closest?.('[data-mmso-drawer-tab]');if(tab){mmsoUi().drawerTab=tab.dataset.mmsoDrawerTab;render({force:true});return;}
+    const menu=event.target.closest?.('[data-mmso-menu]');if(menu){event.stopPropagation();const ui=mmsoUi(),id=menu.dataset.mmsoMenu;ui.menuId=String(ui.menuId)===String(id)?'':id;render({force:true});return;}
+    const view=event.target.closest?.('[data-mmso-view]');if(view){mmsoUi().view=view.dataset.mmsoView;render({force:true});return;}
+    if(event.target.closest?.('[data-mmso-clear-filters]')){mmsoUi().filters={period:'',year:'',type:'',status:'',review:'',search:''};render({force:true});return;}
+    const unlink=event.target.closest?.('[data-mmso-unlink]');if(unlink){const inv=(state.accounting.outgoingInvoices||[]).find(row=>String(row.id)===String(unlink.dataset.mmsoUnlink));if(inv&&confirm('Xóa toàn bộ liên kết kho của hóa đơn này?')){inv.items_json=mmsoLines(inv).map(line=>({...line,selected_stock_codes:[],selected_input_invoice_ids:[]}));inv.updated_at=new Date().toISOString();saveAccounting();saveOutgoingInvoiceRemote(inv).catch(console.warn);mmsoUi().menuId='';render({force:true});}return;}
+    const row=event.target.closest?.('[data-mmso-row]');if(row&&!event.target.closest?.('button,label,input,select,textarea,a')){const ui=mmsoUi();ui.drawerId=row.dataset.mmsoRow;ui.drawerTab='info';ui.menuId='';state.accounting.editingOutgoingId=ui.drawerId;render({force:true});return;}
+    if(mmsoUi().menuId&&!event.target.closest?.('.mmso-menu')){mmsoUi().menuId='';render({force:true});}
+  });
+  document.addEventListener('change',event=>{
+    const filter=event.target.closest?.('[data-mmso-filter]');if(filter){mmsoUi().filters[filter.dataset.mmsoFilter]=filter.value;render({force:true});return;}
+    const files=event.target.closest?.('[data-mmso-drop-files]');if(files){mmsoRouteFiles(files.files);files.value='';return;}
+    const note=event.target.closest?.('[data-mmso-note]');if(note){const inv=(state.accounting.outgoingInvoices||[]).find(row=>String(row.id)===String(note.dataset.mmsoNote));if(!inv)return;const name=String(inv.note||'').match(/\[TEN_DON_HANG:([^\]]+)\]/)?.[1]||'Đơn hàng';inv.note=`${OUTGOING_MANAGED_MARKER}[TEN_DON_HANG:${name}]${note.value.trim()?`\n${note.value.trim()}`:''}`;inv.updated_at=new Date().toISOString();saveAccounting();saveOutgoingInvoiceRemote(inv).catch(console.warn);}}
+  );
+  document.addEventListener('input',event=>{const search=event.target.closest?.('[data-mmso-filter="search"]');if(!search)return;mmsoUi().filters.search=search.value;clearTimeout(window.mmsoSearchTimer);window.mmsoSearchTimer=setTimeout(()=>render({force:true}),160);});
+  document.addEventListener('dragover',event=>{const zone=event.target.closest?.('[data-mmso-dropzone]');if(!zone)return;event.preventDefault();zone.classList.add('dragging');});
+  document.addEventListener('dragleave',event=>{const zone=event.target.closest?.('[data-mmso-dropzone]');if(zone&&!zone.contains(event.relatedTarget))zone.classList.remove('dragging');});
+  document.addEventListener('drop',event=>{const zone=event.target.closest?.('[data-mmso-dropzone]');if(!zone)return;event.preventDefault();zone.classList.remove('dragging');mmsoRouteFiles(event.dataTransfer?.files);});
+  document.addEventListener('keydown',event=>{if(event.key==='Escape'&&mmsoUi().drawerId){mmsoUi().drawerId='';mmsoUi().menuId='';state.accounting.editingOutgoingId='';render({force:true});}});
+
+  const style=document.createElement('style');style.textContent=`
+    .mmso-page{display:grid;gap:18px;color:#171A18}.mmso-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.mmso-kpi{display:grid;min-height:128px;align-content:center;border:1px solid #ECECEC;border-radius:16px;background:#fff;padding:20px;box-shadow:0 8px 28px rgba(21,25,22,.025)}.mmso-kpi span{color:#777C78;font-size:10px;font-weight:750;text-transform:uppercase;letter-spacing:.04em}.mmso-kpi strong{margin-top:8px;font-size:22px;letter-spacing:-.02em}.mmso-kpi small{margin-top:6px;color:#9A9E9B;font-size:9px}.mmso-kpi.accent strong{color:#3D8B74}.mmso-kpi.warning strong{color:#B9692D}
+    .mmso-dropzone{display:grid;grid-template-columns:minmax(0,1fr) 310px;overflow:hidden;border:1px dashed #D8DCD9;border-radius:16px;background:#fff;transition:.18s}.mmso-dropzone.dragging{border-color:#3D8B74;box-shadow:0 0 0 4px rgba(61,139,116,.07)}.mmso-drop-main{display:flex;min-height:132px;align-items:center;gap:15px;padding:22px}.mmso-drop-icon{display:grid;height:46px;width:46px;place-items:center;border:1px solid #E6E9E7;border-radius:13px}.mmso-drop-main h2{font-size:14px}.mmso-drop-main p{margin-top:5px;color:#838884;font-size:10px}.mmso-upload-button{position:relative;margin-left:auto;display:inline-flex;height:46px;cursor:pointer;align-items:center;border-radius:11px;background:#171C1A;padding:0 18px;color:#fff;font-size:11px;font-weight:760}.mmso-upload-button input,.mmso-actions input,.mmso-file-panel input{display:none}.mmso-drop-status{display:grid;align-content:center;gap:10px;border-left:1px solid #EFEFED;background:#FCFCFA;padding:20px}.mmso-drop-status span{display:flex;align-items:center;gap:8px;color:#3D8B74;font-size:10px;font-weight:700}.mmso-drop-status .working{color:#777C78}
+    .mmso-filters{display:grid;grid-template-columns:1.05fr .72fr 1fr 1fr .9fr 1.25fr auto;align-items:end;gap:10px}.mmso-filters label{display:grid;gap:6px}.mmso-filters label>span{color:#7E827F;font-size:9px;font-weight:750;text-transform:uppercase}.mmso-filters input,.mmso-filters select{height:44px;min-width:0;border:1px solid #E4E6E4;border-radius:10px;background:#fff;padding:0 11px;font-size:10px;font-weight:650;outline:none}.mmso-filters input:focus,.mmso-filters select:focus{border-color:rgba(61,139,116,.65);box-shadow:0 0 0 3px rgba(61,139,116,.07)}.mmso-search{position:relative}.mmso-search svg{position:absolute;left:11px;top:14px;color:#8B908C}.mmso-search input{width:100%;padding-left:34px}.mmso-filters>button{height:44px;border:1px solid #E5E7E5;border-radius:10px;background:#fff;padding:0 13px;font-size:10px;font-weight:720}
+    .mmso-list{overflow:visible;border:1px solid #ECECEC;border-radius:16px;background:#fff;box-shadow:0 9px 30px rgba(20,25,22,.025)}.mmso-list>header{display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid #EFEFED}.mmso-list h2{font-size:14px}.mmso-list header p{margin-top:4px;color:#929693;font-size:9px}.mmso-view-toggle{display:flex;border:1px solid #E7E9E7;border-radius:9px;padding:3px}.mmso-view-toggle button{height:30px;border-radius:7px;padding:0 11px;color:#777C78;font-size:9px;font-weight:720}.mmso-view-toggle button.active{background:#171C1A;color:#fff}.mmso-table-wrap{overflow:auto}.mmso-table-wrap table{width:100%;min-width:1480px;border-collapse:separate;border-spacing:0}.mmso-table-wrap th{height:42px;border-bottom:1px solid #ECEEEC;background:#FAFAF8;padding:0 10px;color:#888D89;font-size:8px;font-weight:760;text-align:left;text-transform:uppercase;letter-spacing:.04em}.mmso-table-wrap td{height:76px;border-bottom:1px solid #F0F0EE;padding:11px 10px;vertical-align:middle;font-size:10px}.mmso-table-wrap tbody tr{cursor:pointer;transition:.15s}.mmso-table-wrap tbody tr:hover{background:#FBFCFA}.mmso-table-wrap td>b,.mmso-table-wrap td>small{display:block;max-width:190px}.mmso-table-wrap td>small{margin-top:4px;color:#8D918E;font-size:8px}.mmso-table-wrap .number{white-space:nowrap;text-align:right;font-weight:720}.mmso-table-wrap .profit{color:#3D8B74;font-weight:800}.mmso-table-wrap .negative,.mmso-group-grid .negative{color:#B65D50!important}
+    .mmso-product-chip{display:grid;grid-template-columns:36px minmax(0,1fr);width:176px;align-items:center;gap:8px;text-align:left}.mmso-product-chip img,.mmso-product-chip>i{height:36px;width:36px;border:1px solid #E9EBE9;border-radius:8px;object-fit:contain;background:#FAFAF8}.mmso-product-chip span{min-width:0}.mmso-product-chip b,.mmso-product-chip small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mmso-product-chip b{font-size:9px}.mmso-product-chip b em{color:#3D8B74;font-style:normal}.mmso-product-chip small{margin-top:4px;color:#878C88;font-size:8px}.mmso-service-chip,.mmso-unmatched-chip,.mmso-status{display:inline-flex;min-height:26px;align-items:center;border:1px solid #DCEAE5;border-radius:999px;background:#F1F7F4;padding:0 9px;color:#3D8B74;font-size:8px;font-weight:760}.mmso-unmatched-chip,.mmso-status.warning{border-color:#F1DAC6;background:#FFF6ED;color:#B9692D}.mmso-status.neutral,.mmso-service-chip{border-color:#E7E8E7;background:#F8F8F6;color:#767B77}.mmso-actions{position:relative;display:flex;justify-content:flex-end;gap:5px}.mmso-actions>button,.mmso-actions>label{display:inline-flex;height:32px;cursor:pointer;align-items:center;justify-content:center;border:1px solid #E4E6E4;border-radius:8px;background:#fff;padding:0 9px;font-size:8px;font-weight:760}.mmso-actions>[data-mmso-edit]{background:#171C1A;color:#fff}.mmso-menu{position:absolute;right:0;top:37px;z-index:60;display:grid;width:156px;overflow:hidden;border:1px solid #E6E8E6;border-radius:11px;background:#fff;padding:5px;box-shadow:0 15px 38px rgba(20,24,21,.14)}.mmso-menu button{height:34px;border-radius:7px;padding:0 9px;text-align:left;font-size:9px;font-weight:680}.mmso-menu button:hover{background:#F5F7F5}.mmso-menu .danger{color:#B65D50}
+    .mmso-group-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:16px}.mmso-group-grid article{cursor:pointer;border:1px solid #ECEEEC;border-radius:14px;padding:15px;transition:.16s}.mmso-group-grid article:hover{border-color:#BDD5CC;box-shadow:0 8px 24px rgba(25,50,40,.05)}.mmso-group-grid header{display:flex;align-items:start;justify-content:space-between}.mmso-group-grid header b,.mmso-group-grid header small{display:block}.mmso-group-grid header small{margin-top:4px;color:#8A8F8B;font-size:9px}.mmso-group-grid header i{border-radius:999px;background:#FFF4E8;padding:5px 8px;color:#B9692D;font-size:8px;font-style:normal;font-weight:750}.mmso-group-grid header i.complete{background:#EFF6F3;color:#3D8B74}.mmso-group-grid article>div{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-top:15px}.mmso-group-grid article>div span{font-size:11px;font-weight:780}.mmso-group-grid article>div small{display:block;margin-top:4px;color:#939794;font-size:8px;font-weight:600}.mmso-group-grid footer{margin-top:13px;border-top:1px solid #F0F0EE;padding-top:10px;color:#777C78;font-size:9px}.mmso-empty{padding:40px;text-align:center;color:#8A8F8B;font-size:11px}
+    .mmso-drawer-backdrop{position:fixed;inset:0;z-index:10020;background:rgba(20,23,21,.18);backdrop-filter:blur(2px)}.mmso-drawer{position:fixed;right:0;top:0;z-index:10021;display:grid;height:100vh;width:min(520px,96vw);grid-template-rows:auto auto auto 1fr;border-left:1px solid #E8EAE8;background:#fff;box-shadow:-18px 0 48px rgba(20,24,21,.08)}.mmso-drawer>header{display:flex;align-items:start;justify-content:space-between;padding:22px;border-bottom:1px solid #EEE}.mmso-drawer header small{color:#3D8B74;font-size:9px;font-weight:760;text-transform:uppercase}.mmso-drawer h2{margin-top:4px;font-size:18px}.mmso-drawer header p{margin-top:4px;color:#7C817D;font-size:10px}.mmso-drawer header button{display:grid;height:36px;width:36px;place-items:center;border:1px solid #E7E9E7;border-radius:10px}.mmso-drawer-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:14px 22px}.mmso-drawer-summary span{border:1px solid #ECEEEC;border-radius:11px;padding:10px;color:#8A8F8B;font-size:8px}.mmso-drawer-summary b{display:block;margin-top:5px;color:#242825;font-size:11px}.mmso-drawer>nav{display:flex;overflow-x:auto;border-bottom:1px solid #ECEEEC;padding:0 15px}.mmso-drawer>nav button{height:43px;white-space:nowrap;border-bottom:2px solid transparent;padding:0 10px;color:#777C78;font-size:9px;font-weight:720}.mmso-drawer>nav button.active{border-color:#3D8B74;color:#3D8B74}.mmso-drawer-body{overflow:auto;padding:20px 22px 90px}.mmso-drawer-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.mmso-drawer-form label,.mmso-note{display:grid;gap:6px}.mmso-drawer-form label span,.mmso-note>span{color:#7D827E;font-size:8px;font-weight:760;text-transform:uppercase}.mmso-drawer-form input,.mmso-drawer-form select,.mmso-note textarea{height:44px;border:1px solid #E3E6E3;border-radius:10px;padding:0 11px;font-size:10px;font-weight:650;outline:none}.mmso-note textarea{height:170px;padding:12px;resize:vertical}.mmso-note small{color:#969A97;font-size:8px}.mmso-primary{height:44px;margin-top:15px;border-radius:10px;background:#171C1A;padding:0 16px;color:#fff;font-size:10px;font-weight:760}.mmso-file-panel{display:grid;gap:12px}.mmso-file-panel>p{color:#838884;font-size:10px}.mmso-file-panel>div{display:flex;gap:8px}.mmso-file-panel button,.mmso-file-panel label{display:inline-flex;height:42px;cursor:pointer;align-items:center;border:1px solid #DDE4E0;border-radius:10px;padding:0 14px;color:#3D8B74;font-size:10px;font-weight:740}.mmso-file-panel iframe{height:520px;border:1px solid #ECEEEC;border-radius:12px}.mmso-drawer-products{display:grid;gap:11px}.mmso-drawer-products article{display:grid;gap:10px;border:1px solid #ECEEEC;border-radius:13px;padding:13px}.mmso-drawer-products article header{display:flex;justify-content:space-between}.mmso-drawer-products header b,.mmso-drawer-products header small{display:block}.mmso-drawer-products header small{margin-top:4px;color:#8A8F8B;font-size:8px}.mmso-drawer-products header i{font-size:8px;font-style:normal;color:#3D8B74}.mmso-drawer-products article>button{height:36px;border:1px solid #BDD5CC;border-radius:9px;color:#3D8B74;font-size:9px;font-weight:740}.mmso-drawer-chips{display:flex;flex-wrap:wrap;gap:7px}.mmso-drawer-chips>span{position:relative;display:grid;border:1px solid #DDE9E4;border-radius:9px;background:#F3F8F5;padding:7px 28px 7px 9px;font-size:9px;font-weight:720}.mmso-drawer-chips small{color:#3D8B74;font-size:8px}.mmso-drawer-chips button{position:absolute;right:6px;top:8px;color:#B65D50}.mmso-drawer-chips em{color:#B9692D;font-size:9px;font-style:normal}.mmso-history article{display:grid;grid-template-columns:13px 1fr;gap:10px;min-height:100px}.mmso-history i{position:relative;margin-top:4px;height:9px;width:9px;border:2px solid #83AD9E;border-radius:50%}.mmso-history i:after{content:"";position:absolute;left:2px;top:10px;height:76px;width:1px;background:#DCE5E1}.mmso-history article:last-child i:after{display:none}.mmso-history time,.mmso-history b,.mmso-history p{display:block}.mmso-history time{color:#969A97;font-size:8px}.mmso-history b{margin-top:5px;font-size:10px}.mmso-history p{margin-top:5px;color:#777C78;font-size:9px}
+    @media(max-width:1180px){.mmso-kpis{gap:9px}.mmso-kpi{padding:15px}.mmso-kpi strong{font-size:17px}.mmso-dropzone{grid-template-columns:1fr}.mmso-drop-status{grid-template-columns:repeat(3,1fr);border-left:0;border-top:1px solid #EFEFED}.mmso-filters{grid-template-columns:repeat(3,1fr)}.mmso-group-grid{grid-template-columns:1fr}}
+    @media(max-width:767px){.mmso-page{display:none}}
+  `;document.head.appendChild(style);
 })();
 
 initApp();
