@@ -56,3 +56,9 @@ test('redesign stays desktop-only and delegates to existing business logic', () 
   }
   assert.doesNotMatch(patch, /create table|alter table|supabaseRequest\(/i);
 });
+
+test('wide invoice table scrolls inside the card without stretching the desktop page', () => {
+  assert.match(patch, /\.mmso-page\{display:grid;min-width:0/);
+  assert.match(patch, /\.mmso-list\{min-width:0/);
+  assert.match(patch, /\.mmso-table-wrap\{width:100%;max-width:100%;overflow:auto\}/);
+});
