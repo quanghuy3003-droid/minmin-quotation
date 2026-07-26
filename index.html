@@ -15636,7 +15636,7 @@ document.addEventListener('click',event=>{
     const item=findInventoryItem(code);
     if(!item)return null;
     const n=normalizeInventoryItem(item);
-    return n.itemKind==='order'?n:null;
+    return ['reserve','order'].includes(n.itemKind)?n:null;
   }
   function mmOrderStockItemsFromCodes(value){
     return mmMultiCodes(value).map(mmOrderStockItem).filter(Boolean);
@@ -16051,7 +16051,7 @@ document.addEventListener('click',event=>{
     const item=findInventoryItem(code);
     if(!item)return null;
     const n=normalizeInventoryItem(item);
-    return n.itemKind==='order'?n:null;
+    return ['reserve','order'].includes(n.itemKind)?n:null;
   }
   function mmJItems(value){ return mmJCodes(value).map(mmJOrderItem).filter(Boolean); }
   function mmJShort(item){

@@ -63,6 +63,8 @@ test('every desktop accounting view shares the Quiet Luxury shell', () => {
 test('inventory matching offers both reserve and order VAT products that are in stock', () => {
   const strictFilter = "['reserve','order'].includes(item.itemKind)&&inventoryStage(item).key==='stock'&&inventoryHasInboundInvoice(item)";
   assert.ok(html.split(strictFilter).length >= 4, 'all incoming invoice pickers must accept both VAT inventory kinds');
+  assert.match(html, /function mmOrderStockItem\(code\)[\s\S]*?\['reserve','order'\]\.includes\(n\.itemKind\)\?n:null/, 'linked VAT products must resolve reserve inventory so its image remains available');
+  assert.match(html, /function mmJOrderItem\(code\)[\s\S]*?\['reserve','order'\]\.includes\(n\.itemKind\)\?n:null/, 'compact selected-product thumbnails must resolve reserve inventory');
   assert.ok(html.includes('Chỉ hiển thị Hàng dự trữ hoặc Hàng order đang Trong kho và đã có hóa đơn VAT'));
   assert.ok(html.includes('sản phẩm Trong kho có hóa đơn VAT'));
 });
