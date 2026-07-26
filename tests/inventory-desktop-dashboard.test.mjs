@@ -55,3 +55,11 @@ test('inventory dashboard has exact toolbar, grid/list cards, sidebar and modal 
     '.mm-stock-modal-overlay',
   ]) assert.ok(html.includes(marker), `missing ${marker}`);
 });
+
+test('product detail can choose, replace and clear XML or PDF invoices', () => {
+  assert.ok(html.includes('＋ Chọn XML/PDF'));
+  assert.ok(html.includes('accept=".xml,.pdf,application/pdf,text/xml,application/xml"'));
+  assert.ok(html.includes('data-mm-stock-file-remove'));
+  assert.ok(html.includes('function clearInventoryItemInvoice'));
+  assert.ok(html.includes('_ignoreLinkedInboundInvoice'));
+});

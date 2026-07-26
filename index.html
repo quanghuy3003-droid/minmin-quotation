@@ -4444,6 +4444,9 @@
         .mm-stock-edit-files > div { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 10px; border: 1px solid var(--mm-line); border-radius: 11px; padding: 10px; }
         .mm-stock-edit-files span { min-width: 0; overflow: hidden; color: var(--mm-muted); font-size: 10px; font-weight: 850; text-overflow: ellipsis; white-space: nowrap; }
         .mm-stock-edit-files button,.mm-stock-edit-files label { display: inline-flex; min-height: 36px; flex: 0 0 auto; cursor: pointer; align-items: center; justify-content: center; border: 1px solid rgba(17,132,95,.25); border-radius: 9px; background: var(--mm-green-soft); padding: 0 11px; color: var(--mm-green); font-size: 10px; font-weight: 900; }
+        .mm-stock-edit-file-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 6px; }
+        .mm-stock-edit-files .mm-stock-file-remove { min-height: 30px; width: 30px; border-color: rgba(207,82,70,.28); border-radius: 50%; background: #fff; padding: 0; color: #cf5246; font-size: 16px; line-height: 1; }
+        .mm-stock-edit-files .mm-stock-file-remove:hover { border-color: #cf5246; background: #fff6f4; }
         .mm-stock-edit-files input { display: none; }
         .mm-stock-edit-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 9px; border: 1px solid var(--mm-line); border-radius: 14px; background: #fff; padding: 12px; }
         .mm-stock-edit-actions input { width: 90px; height: 40px; border: 1px solid var(--mm-line); border-radius: 9px; padding: 0 10px; font-weight: 850; }
@@ -7724,6 +7727,7 @@ function inventoryInvoiceFileUrl(inv,type=''){
 }
 function inventoryLinkedInputInvoice(item){
   if(!item||!state?.inputInvoices?.invoices)return null;
+  if(item.attributes?._ignoreLinkedInboundInvoice)return null;
   const keys=inventoryInvoiceCodeKeys(item);
   if(!keys.size)return null;
   const hit=(raw)=>{
@@ -7763,6 +7767,7 @@ async function uploadInventoryItemFile(code,field,nameField,kind,file){
     item[nameField]=file.name;
     item[field]=uploaded?.publicUrl||uploaded?.viewUrl||uploaded?.downloadUrl||uploaded?.url||'';
     item.attributes={...(item.attributes||{}),[`_${field}StoragePath`]:uploaded?.storagePath||uploaded?.path||'', [`_${field}StorageBucket`]:uploaded?.bucket||''};
+    if(field==='invoiceDataUrl')delete item.attributes._ignoreLinkedInboundInvoice;
     if(field==='photoDataUrl')applyUploadedPhotoMeta(item,uploaded);
     state.inventory.syncStatus='Đã upload file lên Supabase Storage.';
     saveInventory();
@@ -7772,6 +7777,35 @@ async function uploadInventoryItemFile(code,field,nameField,kind,file){
     console.warn(e);
   }
   render();
+}
+
+async function clearInventoryItemInvoice(code,field,nameField){
+  const item=findInventoryItem(code);
+  if(!item)return;
+  item[field]='';
+  item[nameField]='';
+  item.attributes={...(item.attributes||{})};
+  const prefix=field==='invoiceDataUrl'?'invoice':'saleInvoice';
+  [
+    `_${field}StoragePath`,
+    `_${field}StorageBucket`,
+    `_${prefix}StoragePath`,
+    `_${prefix}StorageBucket`,
+    `_${prefix}StorageUrl`,
+    `_${prefix}FileName`,
+    `_${prefix}MimeType`,
+    `_${prefix}Size`,
+    `_${prefix}UploadedAt`,
+    `_${prefix}DriveId`,
+  ].forEach(key=>delete item.attributes[key]);
+  if(field==='invoiceDataUrl')item.attributes._ignoreLinkedInboundInvoice=true;
+  state.inventory.syncStatus='Đã gỡ hóa đơn khỏi sản phẩm. Có thể chọn lại file XML/PDF.';
+  saveInventory();
+  await saveInventoryItemRemote(item).catch(error=>{
+    state.inventory.syncStatus='Chưa ghi được Supabase, đã gỡ hóa đơn tạm trên máy.';
+    console.warn(error);
+  });
+  render({force:true});
 }
 
 function daysBetweenDates(start,end){
@@ -19162,9 +19196,12 @@ function mmStockEditPanel(item){
   const key=mmStockItemKey(item), stage=inventoryStage(item), attrs=item.attributes||{}, photo=mmDesktopImage(item);
   const productOptions=PRODUCT_TYPES.map(type=>`<option value="${esc(type.value)}" ${item.productType===type.value?'selected':''}>${esc(type.label)}</option>`).join('');
   const attributeInputs=ATTRIBUTE_FIELDS.map(field=>`<label>${esc(field.label)}<input data-mm-stock-edit-attr="${esc(field.key)}" data-key="${esc(key)}" value="${esc(attrs[field.key]||'')}"/></label>`).join('');
+  const linkedInbound=inventoryLinkedInputInvoice(item), inboundHas=inventoryHasInboundInvoice(item);
+  const inboundName=item.invoiceName||(linkedInbound?.invoice?.invoice_number?`HĐ ${linkedInbound.invoice.invoice_number} · từ Kế toán`:(linkedInbound?'XML/PDF từ Kế toán':''));
+  const invoiceControl=(label,field,nameField,kind,has,fileName)=>`<div><span>${esc(label)}${fileName?` · ${esc(fileName)}`:''}</span><div class="mm-stock-edit-file-actions">${has?`<button type="button" data-mm-stock-file="${esc(key)}" data-field="${esc(field)}">Mở hóa đơn</button>`:''}<label>＋ Chọn XML/PDF<input data-mm-stock-upload="${esc(key)}" data-field="${esc(field)}" data-name-field="${esc(nameField)}" data-kind="${esc(kind)}" type="file" accept=".xml,.pdf,application/pdf,text/xml,application/xml"/></label>${has?`<button type="button" class="mm-stock-file-remove" data-mm-stock-file-remove="${esc(key)}" data-field="${esc(field)}" data-name-field="${esc(nameField)}" aria-label="Xóa ${esc(label.toLowerCase())}" title="Gỡ hóa đơn để chọn lại">×</button>`:''}</div></div>`;
   const invoiceFiles=item.itemKind==='sample'?'':`<div class="mm-stock-edit-files">
-    <div><span>Hóa đơn mua vào${item.invoiceName?` · ${esc(item.invoiceName)}`:''}</span>${inventoryHasInboundInvoice(item)?`<button type="button" data-mm-stock-file="${esc(key)}" data-field="invoiceDataUrl">Mở hóa đơn</button>`:`<label>＋ Tải PDF<input data-mm-stock-upload="${esc(key)}" data-field="invoiceDataUrl" data-name-field="invoiceName" data-kind="invoice" type="file" accept="application/pdf,.pdf"/></label>`}</div>
-    <div><span>Hóa đơn đầu ra${item.saleInvoiceName?` · ${esc(item.saleInvoiceName)}`:''}</span>${item.saleInvoiceDataUrl?`<button type="button" data-mm-stock-file="${esc(key)}" data-field="saleInvoiceDataUrl">Mở hóa đơn</button>`:`<label>＋ Tải PDF<input data-mm-stock-upload="${esc(key)}" data-field="saleInvoiceDataUrl" data-name-field="saleInvoiceName" data-kind="sale-invoice" type="file" accept="application/pdf,.pdf"/></label>`}</div>
+    ${invoiceControl('Hóa đơn mua vào','invoiceDataUrl','invoiceName','invoice',inboundHas,inboundName)}
+    ${invoiceControl('Hóa đơn đầu ra','saleInvoiceDataUrl','saleInvoiceName','sale-invoice',!!item.saleInvoiceDataUrl,item.saleInvoiceName)}
   </div>`;
   return `<div class="mm-stock-edit-shell">
     <div class="mm-stock-edit-hero">${photo?`<img src="${esc(driveAssetUrl(photo))}" alt=""/>`:'<span class="mm-stock-edit-placeholder"></span>'}<div><span class="mm-stock-status is-${esc(stage.key)}">${esc(stage.label)}</span><h2>${esc(item.name||mmStockCategory(item))}</h2><p>${esc(item.code||'Chưa có mã')} · Tồn ${Number(item.quantity||0)} ${esc(item.unit||'sản phẩm')}</p><strong class="mm-stock-card-price">${money(item.price)}</strong></div></div>
@@ -19426,6 +19463,15 @@ document.addEventListener('click',event=>{
   if(stockFile){
     const item=findInventoryItem(stockFile.dataset.mmStockFile);
     viewInventoryFile(stockFile.dataset.mmStockFile,stockFile.dataset.field,item?.[stockFile.dataset.field]||'Hóa đơn');
+    return;
+  }
+  const stockFileRemove=event.target.closest?.('[data-mm-stock-file-remove]');
+  if(stockFileRemove){
+    clearInventoryItemInvoice(
+      stockFileRemove.dataset.mmStockFileRemove,
+      stockFileRemove.dataset.field,
+      stockFileRemove.dataset.nameField,
+    );
     return;
   }
   const stockArrive=event.target.closest?.('[data-mm-stock-arrive]');
