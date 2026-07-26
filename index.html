@@ -22023,6 +22023,337 @@ async function printLabelDirect(){
   `;document.head.appendChild(style);
 })();
 
+/* MINMIN WEBSITE DESKTOP 2026-07-26
+   Quiet Luxury dashboard + right drawer. Mobile and all existing data/sync
+   handlers continue to use the original renderer and functions. */
+(function(){
+  const mmwWebsiteBase=renderWebsiteProductsTab;
+  function mmwUi(){
+    state.ui=state.ui||{};
+    state.ui.websiteDesktop=state.ui.websiteDesktop||{
+      drawerOpen:false,
+      drawerTab:'info',
+      menuId:'',
+      connectionMenu:false,
+      advanced:false,
+      syncFilter:''
+    };
+    return state.ui.websiteDesktop;
+  }
+  function mmwIcon(name,size=17){
+    const icons={
+      external:'<path d="M14 3h5v5M10 12l9-9M18 11v7a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h7"/>',
+      sync:'<path d="M20 6v5h-5M4 18v-5h5"/><path d="M6.1 9a7 7 0 0 1 11.6-2.6L20 11M4 13l2.3 4.6A7 7 0 0 0 17.9 15"/>',
+      image:'<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 15-5-5L5 20"/>',
+      more:'<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
+      search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',
+      close:'<path d="m6 6 12 12M18 6 6 18"/>',
+      check:'<path d="m5 12 4 4L19 6"/>',
+      alert:'<path d="M12 3 2.8 19h18.4L12 3Z"/><path d="M12 9v4M12 17h.01"/>',
+      chevron:'<path d="m9 18 6-6-6-6"/>',
+      copy:'<rect x="8" y="8" width="11" height="11" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>',
+      trash:'<path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/>',
+      filter:'<path d="M4 5h16M7 12h10M10 19h4"/>',
+      plus:'<path d="M12 5v14M5 12h14"/>',
+      globe:'<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/>'
+    };
+    return `<svg aria-hidden="true" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${icons[name]||icons.more}</svg>`;
+  }
+  function mmwSync(product){
+    const p=normalizeWebsiteProduct(product||{});
+    if(p.websiteSyncPhase==='error'||String(p.wooStatus||'').startsWith('Lỗi'))return {label:'Lỗi',tone:'error'};
+    if(websiteProductSyncing(p))return {label:p.wooStatus||'Đang đồng bộ',tone:'running'};
+    if(!p.wooProductId)return {label:'Chưa đồng bộ',tone:'neutral'};
+    if(!websiteProductFullySynced(p))return {label:'Có thay đổi',tone:'warning'};
+    return {label:'Hoàn tất',tone:'success'};
+  }
+  function mmwCompleteness(product){
+    const missing=websiteMissingFields(product);
+    return missing.length
+      ? {label:`Thiếu ${missing.length} mục`,tone:'warning',missing}
+      : {label:'Đầy đủ',tone:'success',missing:[]};
+  }
+  function mmwProducts(){
+    const ui=mmwUi();
+    let rows=websiteFilteredProducts();
+    if(ui.syncFilter)rows=rows.filter(product=>mmwSync(product).tone===ui.syncFilter);
+    return rows;
+  }
+  function mmwConnection(){
+    const c=normalizeWebsiteWooConfig(state.websiteWoo||websiteWooDefaults()),ui=mmwUi();
+    const connected=websiteWooReady(),last=state.website.lastWooSyncAt||c.updatedAt||'';
+    return `<section class="mmw-connection">
+      <header><div><span class="mmw-section-kicker">Kết nối WooCommerce</span><div class="mmw-connection-title"><h2>Website Minmin</h2><i class="${connected?'connected':''}">${connected?'Đang kết nối':'Chưa kết nối'}</i></div></div><small>${last?`Kết nối lần cuối · ${esc(new Date(last).toLocaleString('vi-VN'))}`:'Chưa có lịch sử kết nối'}</small></header>
+      <div class="mmw-connection-body">
+        <label><span>Website URL</span><input data-woo-config="siteUrl" value="${esc(c.siteUrl||'https://minmin-lifestyle.com')}" autocomplete="url"/></label>
+        <label><span>Consumer Key</span><input data-woo-config="consumerKey" type="password" value="${esc(c.consumerKey||'')}" autocomplete="off"/></label>
+        <label><span>Consumer Secret</span><input data-woo-config="consumerSecret" type="password" value="${esc(c.consumerSecret||'')}" autocomplete="off"/></label>
+        <div class="mmw-connection-actions">
+          <button id="testWooConnection" type="button">Kết nối lại</button>
+          <button data-mmw-check-images type="button">${mmwIcon('image',15)}Kiểm tra ảnh</button>
+          <button id="importWooProducts" type="button">${mmwIcon('sync',15)}Đồng bộ lại</button>
+          <button id="uploadAllWoo" class="primary" type="button">${mmwIcon('sync',15)}Đồng bộ nhanh</button>
+          <button data-mmw-connection-menu type="button" aria-label="Thêm thao tác">${mmwIcon('more',16)}</button>
+          ${ui.connectionMenu?`<div class="mmw-connection-menu"><button id="uploadAllWooImages" type="button">Đồng bộ toàn bộ kèm ảnh</button><button id="cancelStuckWoo" type="button">Hủy trạng thái đồng bộ bị kẹt</button><button id="exportWooCsv" type="button">Xuất CSV đang lọc</button><button id="exportWooCsvAll" type="button">Xuất toàn bộ CSV</button></div>`:''}
+        </div>
+      </div>
+      <p class="${connected?'success':'warning'}">${esc(c.status||(connected?'Thông tin kết nối đã sẵn sàng.':'Cần nhập đủ URL, Consumer Key và Consumer Secret.'))}</p>
+    </section>`;
+  }
+  function mmwKpis(){
+    const products=state.website.products||[],complete=products.filter(product=>!websiteMissingFields(product).length).length;
+    const incomplete=products.length-complete,review=products.filter(product=>['warning','error'].includes(mmwSync(product).tone)).length;
+    const cards=[
+      ['Tổng sản phẩm',products.length,'Sản phẩm đang quản lý',''],
+      ['Đủ dữ liệu',complete,products.length?`${Math.round(complete/products.length*100)}% danh mục`:'Chưa có dữ liệu','accent'],
+      ['Đang thiếu dữ liệu',incomplete,'Cần bổ sung trước khi đăng',''],
+      ['Cần kiểm tra / Có thay đổi',review,'Chưa đồng bộ hoặc đang lỗi','warning']
+    ];
+    return `<section class="mmw-kpis">${cards.map(([label,value,note,tone])=>`<article class="${tone}"><span>${label}</span><strong>${value}</strong><small>${note}</small></article>`).join('')}</section>`;
+  }
+  function mmwFilters(){
+    const ui=mmwUi();
+    return `<section class="mmw-filters">
+      <label class="mmw-search">${mmwIcon('search',16)}<input data-mmw-filter="search" type="search" value="${esc(state.website.search||'')}" placeholder="Tìm SKU, mã kho hoặc tên..."/></label>
+      <select data-mmw-filter="status"><option value="">Trạng thái Website</option>${['Nháp','Sẵn sàng CSV','Đã đăng website','Tạm ẩn'].map(value=>`<option value="${esc(value)}" ${state.website.statusFilter===value?'selected':''}>${esc(value)}</option>`).join('')}</select>
+      <select data-mmw-filter="category"><option value="">Tất cả danh mục</option>${websiteCategories().map(value=>`<option value="${esc(value)}" ${state.website.categoryFilter===value?'selected':''}>${esc(websiteCategoryLabel(value))}</option>`).join('')}</select>
+      <select data-mmw-filter="missing"><option value="">Mức độ dữ liệu</option><option value="missing_required" ${state.website.missingFilter==='missing_required'?'selected':''}>Thiếu dữ liệu</option><option value="missing_image" ${state.website.missingFilter==='missing_image'?'selected':''}>Thiếu ảnh</option><option value="missing_price" ${state.website.missingFilter==='missing_price'?'selected':''}>Thiếu giá</option></select>
+      <button data-mmw-advanced type="button" class="${ui.advanced?'active':''}">${mmwIcon('filter',15)}Bộ lọc nâng cao</button>
+      <button data-mmw-new type="button" class="primary">${mmwIcon('plus',15)}Tạo sản phẩm</button>
+      ${ui.advanced?`<div class="mmw-advanced"><span>Trạng thái đồng bộ</span>${[['','Tất cả'],['success','Hoàn tất'],['warning','Có thay đổi'],['error','Lỗi'],['neutral','Chưa đồng bộ']].map(([value,label])=>`<button data-mmw-sync-filter="${value}" class="${ui.syncFilter===value?'active':''}" type="button">${label}</button>`).join('')}<button data-mmw-clear-filters type="button">Xóa bộ lọc</button></div>`:''}
+    </section>`;
+  }
+  function mmwProductMenu(product){
+    const ui=mmwUi(),open=String(ui.menuId||'')===String(product.id),url=product.wooProductUrl||product.website_product_url||'';
+    return `<div class="mmw-row-menu">
+      <button data-mmw-menu="${esc(product.id)}" type="button" aria-label="Thêm thao tác">${mmwIcon('more',16)}</button>
+      ${open?`<div class="mmw-menu-popover">
+        <button data-website-to-quote="${esc(product.id)}" type="button">${mmwIcon('image',15)}Import BG</button>
+        ${url?`<a href="${esc(url)}" target="_blank" rel="noopener">${mmwIcon('external',15)}Mở Website</a>`:`<button type="button" disabled>${mmwIcon('external',15)}Chưa có URL Website</button>`}
+        <button data-mmw-duplicate="${esc(product.id)}" type="button">${mmwIcon('copy',15)}Nhân bản</button>
+        <button data-website-delete="${esc(product.id)}" class="danger" type="button">${mmwIcon('trash',15)}Xóa sản phẩm</button>
+      </div>`:''}
+    </div>`;
+  }
+  function mmwTable(){
+    const rows=mmwProducts();
+    return `<section class="mmw-list">
+      <header><div><h2>Danh sách sản phẩm</h2><p>${rows.length}/${state.website.products.length} sản phẩm theo bộ lọc hiện tại</p></div><span>${rows.length} dòng</span></header>
+      <div class="mmw-table-wrap"><table><thead><tr><th>Ảnh</th><th>Sản phẩm</th><th>SKU / Stock</th><th>Danh mục</th><th>Giá</th><th>Trạng thái Website</th><th>Mức độ dữ liệu</th><th>Đồng bộ</th><th>Thao tác</th></tr></thead><tbody>
+      ${rows.length?rows.map(product=>{
+        const image=driveAssetUrl(product.featured_image_url||''),complete=mmwCompleteness(product),sync=mmwSync(product);
+        return `<tr data-mmw-row="${esc(product.id)}">
+          <td><div class="mmw-thumb">${image?`<img src="${esc(image)}" alt="${esc(product.product_name_en||product.product_name_vi||product.sku)}" loading="lazy"/>`:`<span>${mmwIcon('image',18)}</span>`}</div></td>
+          <td><b>${esc(product.product_name_en||product.product_name_vi||'Chưa đặt tên')}</b><small>${esc(product.product_name_vi||product.slug||'')}</small></td>
+          <td><b>${esc(product.sku||'--')}</b><small>${esc(product.stock_code||'Chưa liên kết kho')}</small></td>
+          <td><span class="mmw-category">${esc(websiteCategoryLabel(product.category)||'Chưa phân loại')}</span></td>
+          <td class="mmw-price">${money(websiteMoneyNumber(product.regular_price))}</td>
+          <td><span class="mmw-pill ${product.website_status==='Đã đăng website'?'success':'neutral'}">${esc(product.website_status||'Nháp')}</span>${product.wooProductId?`<small>Woo #${esc(product.wooProductId)}</small>`:''}</td>
+          <td><span class="mmw-pill ${complete.tone}" title="${esc(complete.missing.join(', '))}">${esc(complete.label)}</span></td>
+          <td><span class="mmw-pill ${sync.tone}">${esc(sync.label)}</span>${product.websiteSyncPhase==='running'||websiteProductSyncing(product)?`<i class="mmw-row-progress"><b style="width:${Math.max(0,Math.min(100,Number(product.wooProgress||0)))}%"></b></i>`:''}</td>
+          <td><div class="mmw-actions"><button data-mmw-edit="${esc(product.id)}" type="button">Sửa</button><button data-website-upload-woo="${esc(product.id)}" type="button">${mmwIcon('sync',14)}Đồng bộ</button>${mmwProductMenu(product)}</div></td>
+        </tr>`;
+      }).join(''):`<tr><td colspan="9" class="mmw-empty">Không có sản phẩm phù hợp bộ lọc.</td></tr>`}
+      </tbody></table></div>
+    </section>`;
+  }
+  function mmwInfoTab(){
+    return `<div class="mmw-form-grid">
+      ${websiteField('SKU / Mã Website','sku')}
+      ${websiteStockField()}
+      ${websiteField('Tên EN','product_name_en')}
+      ${websiteField('Tên VI','product_name_vi')}
+      ${websiteField('Slug','slug')}
+      ${websiteStatusSelect()}
+      <div class="wide">${websiteCategorySelect()}</div>
+      ${websiteField('Tags','tags')}
+      ${websiteField('Giá','regular_price','text')}
+      <div class="wide">${websiteTextarea('Mô tả ngắn','short_description',4)}</div>
+    </div>`;
+  }
+  function mmwAttributeTab(){
+    return `<div class="mmw-drawer-section"><header><div><h3>Product Attributes</h3><p>Giữ nguyên mapping WooCommerce hiện tại.</p></div></header><details open><summary>Thông số sản phẩm <span>${mmwIcon('chevron',15)}</span></summary><div class="mmw-form-grid">${websiteSimpleAttributeFields()}</div></details></div>`;
+  }
+  function mmwSeoTab(){
+    const p=normalizeWebsiteProduct(state.website.current||{}),url=p.wooProductUrl||p.website_product_url||'';
+    return `<div class="mmw-form-grid">
+      <div class="wide">${websiteField('Website URL','website_product_url')}</div>
+      ${websiteField('Slug','slug')}
+      ${websiteStatusSelect()}
+      <div class="wide">${websiteField('Meta title','seo_title')}</div>
+      <div class="wide">${websiteTextarea('Meta description','seo_description',4)}</div>
+      <div class="wide">${websiteTextarea('Mô tả Website','long_description',7)}</div>
+      ${url?`<a class="mmw-open-website wide" href="${esc(url)}" target="_blank" rel="noopener">${mmwIcon('external',16)}Xem trên Website</a>`:''}
+    </div>`;
+  }
+  function mmwSyncTab(){
+    const p=normalizeWebsiteProduct(state.website.current||{}),sync=mmwSync(p),retry=sync.tone==='error';
+    const steps=[
+      ['Tối ưu ảnh',p.websiteLastOptimization?'Hoàn tất':p.featured_image_url?'Sẵn sàng':'Chưa có ảnh'],
+      ['Nội dung & Attributes',p.wooUploadedAt?'Đã cập nhật':'Chờ đồng bộ'],
+      ['Ảnh đại diện & Gallery',p.wooImageSyncedAt?'Đã cập nhật':'Chờ đồng bộ'],
+      ['Trạng thái Website',p.website_status||'Nháp']
+    ];
+    return `<div class="mmw-sync-panel">
+      <div class="mmw-sync-state ${sync.tone}"><span>${mmwIcon(sync.tone==='error'?'alert':'sync',20)}</span><div><b>${esc(sync.label)}</b><p>${esc(p.websiteSyncError||p.wooStatus||'Sản phẩm sẵn sàng đồng bộ.')}</p></div></div>
+      ${websiteProductSyncing(p)?`<div class="mmw-sync-progress"><span><b>${esc(p.wooStatus||'Đang đồng bộ')}</b><em>${Number(p.wooProgress||0)}%</em></span><i><b style="width:${Math.max(0,Math.min(100,Number(p.wooProgress||0)))}%"></b></i></div>`:''}
+      <div class="mmw-sync-steps">${steps.map(([label,status])=>`<div><span>${mmwIcon('check',15)}${label}</span><b>${esc(status)}</b></div>`).join('')}</div>
+      <dl><div><dt>Woo ID</dt><dd>${esc(p.wooProductId||'Chưa có')}</dd></div><div><dt>Lần đồng bộ gần nhất</dt><dd>${p.wooUploadedAt?esc(new Date(p.wooUploadedAt).toLocaleString('vi-VN')):'Chưa đồng bộ'}</dd></div></dl>
+      <button data-website-upload-woo="${esc(p.id)}" class="mmw-sync-now" type="button">${mmwIcon('sync',16)}${retry?'Thử lại phần còn thiếu':'Đồng bộ sản phẩm'}</button>
+    </div>`;
+  }
+  function mmwHistoryTab(){
+    const p=normalizeWebsiteProduct(state.website.current||{});
+    const items=[
+      [p.created_at,'Tạo sản phẩm',p.sku||'Sản phẩm Website'],
+      [p.imageUpdatedAt,'Cập nhật Media',p.websiteLastOptimization?`Tối ưu ${p.websiteLastOptimization.before||''} → ${p.websiteLastOptimization.after||''}`:'Ảnh sản phẩm được thay đổi'],
+      [p.updated_at,'Chỉnh sửa gần nhất',p.product_name_en||p.product_name_vi||'Cập nhật dữ liệu'],
+      [p.wooUploadedAt,'Đồng bộ Website',p.wooStatus||'WooCommerce']
+    ].filter(([date])=>date);
+    return `<div class="mmw-history">${items.length?items.sort((a,b)=>Date.parse(b[0])-Date.parse(a[0])).map(([date,title,note])=>`<article><i></i><div><time>${esc(new Date(date).toLocaleString('vi-VN'))}</time><b>${esc(title)}</b><p>${esc(note)}</p></div></article>`).join(''):'<p>Chưa có lịch sử cho sản phẩm này.</p>'}</div>`;
+  }
+  function mmwDrawerBody(){
+    const tab=mmwUi().drawerTab;
+    if(tab==='media')return websiteImagesPanel();
+    if(tab==='attributes')return mmwAttributeTab();
+    if(tab==='seo')return mmwSeoTab();
+    if(tab==='sync')return mmwSyncTab();
+    if(tab==='history')return mmwHistoryTab();
+    return mmwInfoTab();
+  }
+  function mmwDrawer(){
+    const ui=mmwUi();
+    if(!ui.drawerOpen)return '';
+    const p=normalizeWebsiteProduct(state.website.current||{}),complete=mmwCompleteness(p);
+    const tabs=[['info','Thông tin'],['media','Media'],['attributes','Attributes'],['seo','Website / SEO'],['sync','Đồng bộ'],['history','Lịch sử']];
+    return `<div class="mmw-drawer-backdrop" data-mmw-close></div><aside class="mmw-drawer" role="dialog" aria-modal="true" aria-label="Chỉnh sửa sản phẩm Website">
+      <header><div><span class="mmw-section-kicker">${state.website.editingId?'Chỉnh sửa sản phẩm':'Tạo sản phẩm mới'}</span><h2>${esc(p.product_name_en||p.product_name_vi||p.sku||'Sản phẩm mới')}</h2><p>${esc(p.sku||'Chưa có SKU')}${p.wooProductId?` · Woo #${esc(p.wooProductId)}`:''}</p><i class="${complete.tone}">${esc(p.website_status||'Nháp')} · ${esc(complete.label)}</i></div><button data-mmw-close type="button" aria-label="Đóng">${mmwIcon('close',19)}</button></header>
+      <nav>${tabs.map(([id,label])=>`<button data-mmw-drawer-tab="${id}" class="${ui.drawerTab===id?'active':''}" type="button">${label}</button>`).join('')}</nav>
+      <div class="mmw-drawer-body">${mmwDrawerBody()}</div>
+      <footer><button data-mmw-save-draft type="button">Lưu nháp</button><button data-mmw-close type="button">Hủy</button><button data-mmw-complete class="primary" type="button">Hoàn tất</button></footer>
+    </aside>`;
+  }
+  function mmwBatchSummary(){
+    const summary=state.ui?.websiteBatchSummary;
+    if(!summary)return '';
+    return `<div class="mmw-batch-summary"><span><b>Kết quả đồng bộ</b><small>${esc(summary.message||`Thành công ${summary.ok||0} · Thất bại ${summary.fail||0}`)}</small></span>${summary.fail?'<button data-minmin-retry-failed type="button">Thử lại sản phẩm lỗi</button>':''}</div>`;
+  }
+  renderWebsiteProductsTab=function renderWebsiteQuietLuxury(){
+    if(window.matchMedia?.('(max-width: 767px)').matches)return mmwWebsiteBase.apply(this,arguments);
+    state.website=normalizeWebsiteProducts(state.website||websiteProductsDefaults());
+    return `<section class="mmw-page" data-mm-desktop-hero><span id="websiteNew" hidden></span>
+      <header class="mmw-hero"><div><h1>Website Minmin Lifestyle</h1><p>Quản lý sản phẩm và đồng bộ dữ liệu với Website WooCommerce.</p></div><div><button data-mm-website-open type="button">${mmwIcon('external',16)}Xem Website</button><button id="uploadAllWooImages" class="primary" type="button">${mmwIcon('sync',16)}Đồng bộ toàn bộ</button></div></header>
+      ${mmwConnection()}${mmwKpis()}${mmwBatchSummary()}${mmwFilters()}${mmwTable()}${mmwDrawer()}
+    </section>`;
+  };
+  function mmwOpenProduct(id){
+    const product=(state.website.products||[]).find(item=>String(item.id)===String(id));
+    if(!product)return;
+    state.website.editingId=product.id;
+    state.website.current=normalizeWebsiteProduct(product);
+    const ui=mmwUi();ui.drawerOpen=true;ui.drawerTab='info';ui.menuId='';
+    saveWebsiteProducts();render({force:true});
+  }
+  function mmwNewProduct(){
+    state.website=normalizeWebsiteProducts(state.website||websiteProductsDefaults());
+    state.website.editingId='';
+    state.website.current=websiteProductDefaults();
+    const ui=mmwUi();ui.drawerOpen=true;ui.drawerTab='info';ui.menuId='';
+    saveWebsiteProducts();render({force:true});
+  }
+  function mmwDraftValid(){
+    const p=normalizeWebsiteProduct(state.website.current||{});
+    if(!p.sku){alert('Cần nhập SKU/mã sản phẩm.');return false;}
+    if(p.stock_code&&!/^STK/i.test(p.stock_code)){alert('Mã liên kết kho phải là mã Stock bắt đầu bằng STK.');return false;}
+    if(!p.product_name_en&&!p.product_name_vi){alert('Cần nhập tên sản phẩm.');return false;}
+    return true;
+  }
+  function mmwSaveDraft(){
+    if(!mmwDraftValid())return;
+    const draft=normalizeWebsiteProduct(state.website.current||{}),editingId=String(state.website.editingId||'');
+    websiteSaveProduct();
+    const saved=(state.website.products||[]).find(item=>(editingId&&String(item.id)===editingId)||String(item.sku||'')===String(draft.sku||''));
+    if(!saved)return;
+    state.website.editingId=saved.id;
+    state.website.current=normalizeWebsiteProduct(saved);
+    mmwUi().drawerOpen=true;
+    saveWebsiteProducts();render({force:true});
+  }
+  function mmwComplete(){
+    if(!mmwDraftValid())return;
+    mmwUi().drawerOpen=false;
+    websiteSaveProduct();
+  }
+  function mmwClose(){
+    const ui=mmwUi();ui.drawerOpen=false;ui.menuId='';
+    websiteCancelEdit();
+  }
+  function mmwDuplicate(id){
+    const source=(state.website.products||[]).find(item=>String(item.id)===String(id));
+    if(!source)return;
+    const copy=normalizeWebsiteProduct({...source,id:uid(),sku:`${source.sku||'SP'}-COPY`,slug:`${source.slug||slugifyWebsite(source.product_name_en||source.product_name_vi||'product')}-copy`,website_status:'Nháp',wooProductId:'',wooProductUrl:'',website_product_url:'',wooStatus:'Chưa đồng bộ',wooProgress:0,wooUploadedAt:'',wooImageSyncedAt:'',created_at:new Date().toISOString(),updated_at:new Date().toISOString()});
+    state.website.products.unshift(copy);
+    state.website.editingId=copy.id;state.website.current=copy;
+    const ui=mmwUi();ui.drawerOpen=true;ui.drawerTab='info';ui.menuId='';
+    saveWebsiteProducts();render({force:true});
+  }
+  document.addEventListener('click',event=>{
+    if(window.innerWidth<768||state.activeTab!=='website')return;
+    const edit=event.target.closest?.('[data-mmw-edit]');
+    if(edit){event.preventDefault();mmwOpenProduct(edit.dataset.mmwEdit);return;}
+    const row=event.target.closest?.('[data-mmw-row]');
+    if(row&&!event.target.closest?.('button,a,input,select,label')){mmwOpenProduct(row.dataset.mmwRow);return;}
+    if(event.target.closest?.('[data-mmw-new]')){mmwNewProduct();return;}
+    if(event.target.closest?.('[data-mmw-save-draft]')){mmwSaveDraft();return;}
+    if(event.target.closest?.('[data-mmw-complete]')){mmwComplete();return;}
+    if(event.target.closest?.('[data-mmw-close]')){mmwClose();return;}
+    const tab=event.target.closest?.('[data-mmw-drawer-tab]');
+    if(tab){mmwUi().drawerTab=tab.dataset.mmwDrawerTab;render({force:true});return;}
+    const menu=event.target.closest?.('[data-mmw-menu]');
+    if(menu){event.stopPropagation();const ui=mmwUi();ui.menuId=String(ui.menuId)===String(menu.dataset.mmwMenu)?'':menu.dataset.mmwMenu;render({force:true});return;}
+    const duplicate=event.target.closest?.('[data-mmw-duplicate]');
+    if(duplicate){mmwDuplicate(duplicate.dataset.mmwDuplicate);return;}
+    if(event.target.closest?.('[data-mmw-check-images]')){state.website.missingFilter='missing_image';mmwUi().advanced=true;mmwUi().connectionMenu=false;saveWebsiteProducts();render({force:true});return;}
+    if(event.target.closest?.('[data-mmw-advanced]')){mmwUi().advanced=!mmwUi().advanced;render({force:true});return;}
+    const syncFilter=event.target.closest?.('[data-mmw-sync-filter]');
+    if(syncFilter){mmwUi().syncFilter=syncFilter.dataset.mmwSyncFilter||'';render({force:true});return;}
+    if(event.target.closest?.('[data-mmw-clear-filters]')){state.website.search='';state.website.statusFilter='';state.website.categoryFilter='';state.website.missingFilter='';mmwUi().syncFilter='';saveWebsiteProducts();render({force:true});return;}
+    if(event.target.closest?.('[data-mmw-connection-menu]')){event.stopPropagation();mmwUi().connectionMenu=!mmwUi().connectionMenu;render({force:true});return;}
+    if((mmwUi().menuId||mmwUi().connectionMenu)&&!event.target.closest?.('.mmw-row-menu,.mmw-connection-actions')){mmwUi().menuId='';mmwUi().connectionMenu=false;render({force:true});}
+  });
+  document.addEventListener('input',event=>{
+    const filter=event.target.closest?.('[data-mmw-filter="search"]');
+    if(!filter||window.innerWidth<768)return;
+    state.website.search=filter.value||'';saveWebsiteProducts();
+    clearTimeout(window.mmWebsiteDesktopSearchTimer);
+    window.mmWebsiteDesktopSearchTimer=setTimeout(()=>render({force:true}),180);
+  });
+  document.addEventListener('change',event=>{
+    const filter=event.target.closest?.('[data-mmw-filter]');
+    if(!filter||window.innerWidth<768)return;
+    const map={status:'statusFilter',category:'categoryFilter',missing:'missingFilter'};
+    const key=map[filter.dataset.mmwFilter];
+    if(!key)return;
+    state.website[key]=filter.value||'';saveWebsiteProducts();render({force:true});
+  });
+  document.addEventListener('keydown',event=>{
+    if(event.key==='Escape'&&window.innerWidth>=768&&state.activeTab==='website'&&mmwUi().drawerOpen)mmwClose();
+  });
+  const style=document.createElement('style');
+  style.id='minmin-website-quiet-luxury-style';
+  style.textContent=`
+    .mmw-page{display:grid;gap:18px;min-width:0;max-width:none!important;margin:0!important;padding:24px 28px 40px!important;background:#FAFAF8;color:#171A18}.mmw-page *{box-sizing:border-box}.mmw-hero{display:flex;align-items:center;justify-content:space-between;gap:20px}.mmw-hero h1{font-size:23px;line-height:1.15;letter-spacing:-.025em}.mmw-hero p{margin-top:6px;color:#777C78;font-size:10px}.mmw-hero>div:last-child{display:flex;gap:9px}.mmw-hero button,.mmw-hero a{display:inline-flex;height:44px;align-items:center;gap:8px;border:1px solid #E3E5E3;border-radius:10px;background:#fff;padding:0 15px;font-size:10px;font-weight:760}.mmw-hero .primary{border-color:#171C1A;background:#171C1A;color:#fff}
+    .mmw-section-kicker{color:#717671;font-size:9px;font-weight:780;text-transform:uppercase;letter-spacing:.055em}.mmw-connection{position:relative;border:1px solid #ECECEC;border-radius:16px;background:#fff;padding:17px 18px;box-shadow:0 8px 28px rgba(21,25,22,.025)}.mmw-connection>header{display:flex;align-items:start;justify-content:space-between;gap:15px}.mmw-connection>header>small{color:#8A8F8B;font-size:8px}.mmw-connection-title{display:flex;align-items:center;gap:10px;margin-top:4px}.mmw-connection-title h2{font-size:14px}.mmw-connection-title i{border-radius:999px;background:#F4F5F3;padding:5px 8px;color:#777C78;font-size:8px;font-style:normal;font-weight:760}.mmw-connection-title i.connected{background:#EFF7F4;color:#3D8B74}.mmw-connection-body{display:grid;grid-template-columns:1.05fr .85fr .85fr minmax(510px,1.45fr);align-items:end;gap:10px;margin-top:14px}.mmw-connection label{display:grid;gap:6px}.mmw-connection label span{color:#7D827E;font-size:8px;font-weight:750}.mmw-connection input{height:44px;min-width:0;border:1px solid #E4E6E4;border-radius:10px;background:#fff;padding:0 11px;font-size:10px;font-weight:650;outline:none}.mmw-connection input:focus{border-color:#8BB9AA;box-shadow:0 0 0 3px rgba(61,139,116,.07)}.mmw-connection-actions{position:relative;display:flex;justify-content:flex-end;gap:6px}.mmw-connection-actions>button{display:inline-flex;height:44px;align-items:center;gap:6px;white-space:nowrap;border:1px solid #E3E6E3;border-radius:10px;background:#fff;padding:0 11px;font-size:9px;font-weight:750}.mmw-connection-actions>button.primary{border-color:#D0E3DC;background:#F1F8F5;color:#2F7A64}.mmw-connection-actions>button:last-of-type{width:42px;justify-content:center;padding:0}.mmw-connection>p{max-width:100%;margin-top:10px;overflow:hidden;color:#818682;font-size:9px;text-overflow:ellipsis;white-space:nowrap}.mmw-connection>p.success{color:#3D8B74}.mmw-connection>p.warning{color:#B9692D}.mmw-connection-menu,.mmw-menu-popover{position:absolute;right:0;top:50px;z-index:80;display:grid;width:205px;border:1px solid #E7E9E7;border-radius:12px;background:#fff;padding:5px;box-shadow:0 16px 42px rgba(20,24,21,.13)}.mmw-connection-menu button,.mmw-menu-popover button,.mmw-menu-popover a{display:flex;min-height:36px;align-items:center;gap:8px;border-radius:8px;padding:0 10px;color:#272B28;font-size:9px;font-weight:700;text-align:left}.mmw-connection-menu button:hover,.mmw-menu-popover button:hover,.mmw-menu-popover a:hover{background:#F6F7F5}
+    .mmw-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px}.mmw-kpis article{display:grid;min-height:112px;align-content:center;border:1px solid #ECECEC;border-radius:16px;background:#fff;padding:18px;box-shadow:0 8px 28px rgba(21,25,22,.023)}.mmw-kpis span{color:#777C78;font-size:9px;font-weight:760;text-transform:uppercase;letter-spacing:.045em}.mmw-kpis strong{margin-top:8px;font-size:22px;letter-spacing:-.02em}.mmw-kpis small{margin-top:6px;color:#959996;font-size:8px}.mmw-kpis .accent strong{color:#3D8B74}.mmw-kpis .warning strong{color:#B9692D}.mmw-batch-summary{display:flex;align-items:center;justify-content:space-between;border:1px solid #DDEAE5;border-radius:13px;background:#F4F9F7;padding:12px 14px}.mmw-batch-summary b,.mmw-batch-summary small{display:block}.mmw-batch-summary b{color:#2F745F;font-size:10px}.mmw-batch-summary small{margin-top:3px;color:#6B7771;font-size:8px}.mmw-batch-summary button{height:38px;border-radius:9px;background:#171C1A;padding:0 13px;color:#fff;font-size:9px;font-weight:750}
+    .mmw-filters{position:relative;display:grid;grid-template-columns:minmax(250px,1.45fr) repeat(3,minmax(150px,.8fr)) auto auto;align-items:center;gap:8px}.mmw-filters input,.mmw-filters select,.mmw-filters>button{height:44px;min-width:0;border:1px solid #E4E6E4;border-radius:10px;background:#fff;padding:0 11px;font-size:9px;font-weight:680;outline:none}.mmw-search{position:relative}.mmw-search svg{position:absolute;left:12px;top:14px;color:#8A8F8B}.mmw-search input{width:100%;padding-left:36px}.mmw-filters>button{display:inline-flex;align-items:center;justify-content:center;gap:7px;white-space:nowrap}.mmw-filters>button.active{border-color:#BDD6CD;color:#3D8B74}.mmw-filters>button.primary{border-color:#171C1A;background:#171C1A;color:#fff}.mmw-advanced{grid-column:1/-1;display:flex;align-items:center;gap:7px;border-top:1px solid #ECEEEC;padding-top:10px}.mmw-advanced>span{margin-right:3px;color:#838884;font-size:8px;font-weight:750;text-transform:uppercase}.mmw-advanced button{height:30px;border:1px solid #E5E7E5;border-radius:999px;background:#fff;padding:0 10px;color:#737874;font-size:8px;font-weight:720}.mmw-advanced button.active{border-color:#BFD8CF;background:#F1F8F5;color:#3D8B74}.mmw-advanced button:last-child{margin-left:auto;color:#B45E51}
+    .mmw-list{min-width:0;overflow:visible;border:1px solid #ECECEC;border-radius:16px;background:#fff;box-shadow:0 9px 30px rgba(20,25,22,.025)}.mmw-list>header{display:flex;align-items:center;justify-content:space-between;padding:17px 19px;border-bottom:1px solid #EFEFED}.mmw-list h2{font-size:14px}.mmw-list header p{margin-top:4px;color:#929693;font-size:8px}.mmw-list header>span{border:1px solid #ECEEEC;border-radius:8px;padding:6px 8px;color:#777C78;font-size:8px;font-weight:720}.mmw-table-wrap{width:100%;max-width:100%;overflow:auto;scrollbar-width:none;-ms-overflow-style:none}.mmw-table-wrap::-webkit-scrollbar{display:none;width:0;height:0}.mmw-table-wrap table{width:100%;min-width:1180px;border-collapse:separate!important;border-spacing:0!important}.mmw-table-wrap thead th{height:42px;border-bottom:1px solid #ECEEEC!important;background:#FAFAF8;padding:0 10px;color:#888D89;font-size:8px;font-weight:760;text-align:left;text-transform:uppercase;letter-spacing:.04em}.mmw-table-wrap tbody tr{background:#fff!important;box-shadow:none!important;cursor:pointer;transition:background .16s ease}.mmw-table-wrap tbody tr:hover{background:#FBFCFA!important}.mmw-table-wrap tbody td{height:72px;border-bottom:1px solid #F0F0EE!important;padding:10px!important;vertical-align:middle;font-size:9px}.mmw-table-wrap td>b,.mmw-table-wrap td>small{display:block;max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mmw-table-wrap td>b{font-size:10px}.mmw-table-wrap td>small{margin-top:4px;color:#8D918E;font-size:8px}.mmw-thumb{display:grid;width:42px;height:42px;place-items:center;overflow:hidden;border:1px solid #E8EAE8;border-radius:9px;background:#FAFAF8;color:#9A9E9B}.mmw-thumb img{width:100%;height:100%;object-fit:contain;opacity:0;animation:mmwFadeIn .22s ease forwards}.mmw-category{display:block;max-width:130px;overflow:hidden;color:#606561;font-weight:680;text-overflow:ellipsis;white-space:nowrap}.mmw-price{white-space:nowrap;color:#2E775F;font-weight:790}.mmw-pill{display:inline-flex;min-height:25px;align-items:center;white-space:nowrap;border:1px solid #E5E7E5;border-radius:999px;background:#F7F8F6;padding:0 8px;color:#737874;font-size:8px;font-weight:760}.mmw-pill.success{border-color:#D8E9E3;background:#EFF7F4;color:#3D8B74}.mmw-pill.warning{border-color:#F0DAC7;background:#FFF5EB;color:#B9692D}.mmw-pill.error{border-color:#ECD3CF;background:#FFF3F1;color:#B65D50}.mmw-pill.running{border-color:#D7E8E2;background:#F1F8F5;color:#3D8B74}.mmw-row-progress{display:block;width:78px;height:3px;margin-top:7px;overflow:hidden;border-radius:5px;background:#E7ECE9}.mmw-row-progress b{display:block;height:100%;background:#3D8B74;transition:width .2s}.mmw-actions{display:flex;align-items:center;justify-content:flex-end;gap:5px}.mmw-actions>button,.mmw-row-menu>button{display:inline-flex;height:32px;align-items:center;justify-content:center;gap:5px;border:1px solid #E3E6E3;border-radius:8px;background:#fff;padding:0 9px;font-size:8px;font-weight:760}.mmw-actions>[data-mmw-edit]{background:#171C1A;color:#fff}.mmw-row-menu{position:relative}.mmw-row-menu>button{width:32px;padding:0}.mmw-menu-popover{top:37px;width:175px}.mmw-menu-popover .danger{color:#B65D50}.mmw-menu-popover button:disabled{opacity:.45}.mmw-empty{padding:44px!important;text-align:center;color:#898E8A}
+    .mmw-drawer-backdrop{position:fixed;inset:0;z-index:12020;background:rgba(19,23,20,.16);backdrop-filter:blur(1px);animation:mmwFadeIn .2s ease}.mmw-drawer{position:fixed;right:0;top:0;z-index:12021;display:grid;width:min(580px,96vw);height:100vh;grid-template-rows:auto auto minmax(0,1fr) auto;border-left:1px solid #E7E9E7;background:#fff;box-shadow:-22px 0 56px rgba(18,23,20,.09);animation:mmwSlideIn .23s ease}.mmw-drawer>header{display:flex;align-items:start;justify-content:space-between;gap:20px;padding:21px 22px 17px;border-bottom:1px solid #EEE}.mmw-drawer h2{max-width:450px;margin-top:5px;overflow:hidden;font-size:18px;text-overflow:ellipsis;white-space:nowrap}.mmw-drawer header p{margin-top:4px;color:#7C817D;font-size:9px}.mmw-drawer header i{display:inline-flex;margin-top:8px;border-radius:999px;background:#F5F6F4;padding:5px 8px;color:#727773;font-size:8px;font-style:normal;font-weight:750}.mmw-drawer header i.success{background:#EFF7F4;color:#3D8B74}.mmw-drawer header i.warning{background:#FFF5EB;color:#B9692D}.mmw-drawer header>button{display:grid;width:36px;height:36px;flex:0 0 36px;place-items:center;border:1px solid #E5E7E5;border-radius:10px}.mmw-drawer>nav{display:flex;overflow-x:auto;border-bottom:1px solid #ECEEEC;padding:0 12px;scrollbar-width:none}.mmw-drawer>nav button{height:46px;white-space:nowrap;border-bottom:2px solid transparent;padding:0 10px;color:#777C78;font-size:8px;font-weight:730}.mmw-drawer>nav button.active{border-color:#3D8B74;color:#3D8B74}.mmw-drawer-body{overflow:auto;padding:20px 22px 34px}.mmw-drawer>footer{display:grid;grid-template-columns:1fr 1fr 1.35fr;gap:8px;border-top:1px solid #ECEEEC;background:#fff;padding:13px 22px}.mmw-drawer>footer button{height:44px;border:1px solid #E3E6E3;border-radius:10px;background:#fff;font-size:9px;font-weight:760}.mmw-drawer>footer .primary{border-color:#171C1A;background:#171C1A;color:#fff}
+    .mmw-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.mmw-form-grid .wide{grid-column:1/-1}.mmw-drawer-body label{min-width:0}.mmw-drawer-body label>span{color:#737874!important;font-size:8px!important;font-weight:760!important;text-transform:none!important;letter-spacing:0!important}.mmw-drawer-body input,.mmw-drawer-body select{height:46px!important;border:1px solid #E2E5E2!important;border-radius:10px!important;background:#fff!important;padding:0 11px!important;font-size:10px!important;font-weight:650!important}.mmw-drawer-body textarea{min-height:108px!important;border:1px solid #E2E5E2!important;border-radius:10px!important;padding:11px!important;font-size:10px!important;font-weight:620!important}.mmw-drawer-body input:focus,.mmw-drawer-body select:focus,.mmw-drawer-body textarea:focus{border-color:#8CB8A9!important;box-shadow:0 0 0 3px rgba(61,139,116,.07)!important}.mmw-drawer-body #websiteApplyStock{height:46px!important;border-radius:10px!important;background:#F0F7F4!important;color:#3D8B74!important}.mmw-drawer-body [data-website-category-option]{height:16px!important}.mmw-drawer-body .minmin-website-image-manager{grid-template-columns:190px minmax(0,1fr);padding:0;border:0}.mmw-drawer-body .minmin-image-gallery{grid-template-columns:repeat(3,minmax(0,1fr))}.mmw-drawer-section>header h3{font-size:14px}.mmw-drawer-section>header p{margin-top:5px;color:#858A86;font-size:9px}.mmw-drawer-section details{margin-top:16px;border:1px solid #ECEEEC;border-radius:13px}.mmw-drawer-section summary{display:flex;height:46px;cursor:pointer;align-items:center;justify-content:space-between;padding:0 13px;font-size:10px;font-weight:750}.mmw-drawer-section details>div{border-top:1px solid #ECEEEC;padding:13px}.mmw-open-website{display:flex;height:44px;align-items:center;justify-content:center;gap:7px;border:1px solid #DCE7E3;border-radius:10px;color:#3D8B74;font-size:9px;font-weight:760}.mmw-sync-panel{display:grid;gap:14px}.mmw-sync-state{display:grid;grid-template-columns:40px 1fr;align-items:center;gap:11px;border:1px solid #E3E7E4;border-radius:13px;background:#FAFAF8;padding:13px}.mmw-sync-state>span{display:grid;width:40px;height:40px;place-items:center;border-radius:11px;background:#EEF6F3;color:#3D8B74}.mmw-sync-state b{font-size:11px}.mmw-sync-state p{margin-top:4px;color:#7B807C;font-size:9px;line-height:1.5}.mmw-sync-state.error>span{background:#FFF2F0;color:#B65D50}.mmw-sync-state.warning>span{background:#FFF5EB;color:#B9692D}.mmw-sync-progress{display:grid;gap:8px}.mmw-sync-progress>span{display:flex;justify-content:space-between;font-size:9px}.mmw-sync-progress em{color:#3D8B74;font-style:normal;font-weight:760}.mmw-sync-progress>i{height:6px;overflow:hidden;border-radius:8px;background:#E7ECE9}.mmw-sync-progress>i b{display:block;height:100%;background:#3D8B74}.mmw-sync-steps{display:grid;border:1px solid #ECEEEC;border-radius:13px}.mmw-sync-steps>div{display:flex;min-height:45px;align-items:center;justify-content:space-between;border-bottom:1px solid #F0F0EE;padding:0 12px}.mmw-sync-steps>div:last-child{border:0}.mmw-sync-steps span{display:flex;align-items:center;gap:8px;color:#555B56;font-size:9px}.mmw-sync-steps span svg{color:#3D8B74}.mmw-sync-steps b{color:#818682;font-size:8px}.mmw-sync-panel dl{display:grid;grid-template-columns:1fr 1fr;gap:9px}.mmw-sync-panel dl>div{border:1px solid #ECEEEC;border-radius:11px;padding:11px}.mmw-sync-panel dt{color:#858A86;font-size:8px}.mmw-sync-panel dd{margin-top:5px;font-size:9px;font-weight:750}.mmw-sync-now{display:flex;height:46px;align-items:center;justify-content:center;gap:8px;border-radius:10px;background:#171C1A;color:#fff;font-size:10px;font-weight:760}.mmw-history{display:grid}.mmw-history article{display:grid;grid-template-columns:14px 1fr;gap:10px;min-height:93px}.mmw-history article>i{position:relative;width:9px;height:9px;margin-top:4px;border:2px solid #79A996;border-radius:50%}.mmw-history article>i:after{content:"";position:absolute;left:2px;top:10px;width:1px;height:70px;background:#DCE5E1}.mmw-history article:last-child>i:after{display:none}.mmw-history time,.mmw-history b,.mmw-history p{display:block}.mmw-history time{color:#989C99;font-size:8px}.mmw-history b{margin-top:5px;font-size:10px}.mmw-history p{margin-top:5px;color:#777C78;font-size:9px}
+    @keyframes mmwSlideIn{from{transform:translateX(24px);opacity:.5}to{transform:translateX(0);opacity:1}}@keyframes mmwFadeIn{to{opacity:1}}@media(max-width:1280px){.mmw-page{padding:20px!important}.mmw-connection-body{grid-template-columns:repeat(3,1fr)}.mmw-connection-actions{grid-column:1/-1;justify-content:flex-start}.mmw-filters{grid-template-columns:1.3fr repeat(3,.8fr) auto}.mmw-filters>button.primary{grid-column:1/-1;width:max-content}.mmw-kpis{gap:9px}.mmw-kpis article{padding:15px}.mmw-kpis strong{font-size:18px}}@media(max-width:767px){.mmw-page,.mmw-drawer,.mmw-drawer-backdrop{display:none!important}}
+  `;
+  document.head.appendChild(style);
+})();
+
 initApp();
     </script>
   </body>
