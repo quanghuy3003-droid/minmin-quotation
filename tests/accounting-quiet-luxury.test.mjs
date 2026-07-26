@@ -50,3 +50,17 @@ test('the redesign is desktop-only and delegates to existing business logic', ()
   assert.match(patch, /saveInputInvoices\(\)/);
   assert.doesNotMatch(patch, /create table if not exists|supabaseRequest\(/i);
 });
+
+test('every desktop accounting view shares the Quiet Luxury shell', () => {
+  for (const [id, label] of [['outgoing', 'Bán ra'], ['payments', 'Thu/chi'], ['debts', 'Công nợ'], ['vat', 'Thuế GTGT'], ['vouchers', 'Chứng từ'], ['cashbook', 'Sổ quỹ'], ['reports', 'Báo cáo'], ['reconcile', 'Đối soát']]) {
+    assert.ok(patch.includes(`['${id}','${label}']`), `missing Quiet Luxury view ${label}`);
+  }
+  assert.match(patch, /function quietAccountingOtherDesktop/);
+  assert.match(patch, /class="mmq-other-body"/);
+  assert.match(patch, /return quietAccountingOtherDesktop/);
+});
+
+test('inventory matching only offers products with an inbound VAT invoice', () => {
+  assert.match(html, /\.filter\(item=>item\.itemKind==='order'&&inventoryHasInboundInvoice\(item\)\)/);
+  assert.ok(html.includes('Chỉ hiển thị sản phẩm đã có hóa đơn VAT'));
+});
