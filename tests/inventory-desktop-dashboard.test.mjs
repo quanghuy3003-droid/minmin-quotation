@@ -56,6 +56,23 @@ test('inventory dashboard has exact toolbar, grid/list cards, sidebar and modal 
   ]) assert.ok(html.includes(marker), `missing ${marker}`);
 });
 
+test('desktop product dots use the same inventory classification as mobile', () => {
+  for (const marker of [
+    'function mmStockKindPresentation(itemOrKind)',
+    'function mmStockKindSignal(item)',
+    'function mmStockKindLegend()',
+    'data-mm-stock-kind',
+    'Hàng dự trữ (VAT)',
+    'Hàng mẫu (NON)',
+    'Hàng order (VAT)',
+    '.mm-stock-card-signal.is-kind-reserve',
+    '.mm-stock-card-signal.is-kind-sample',
+    '.mm-stock-card-signal.is-kind-order',
+  ]) assert.ok(html.includes(marker), `missing ${marker}`);
+  assert.match(html, /const kind=inventoryKindMeta\(value\)/);
+  assert.doesNotMatch(html, /mmStockProductCard\(item\)[\s\S]*?mm-stock-card-signal is-\$\{esc\(stage\.key\)\}/);
+});
+
 test('product detail can choose, replace and clear XML or PDF invoices', () => {
   assert.ok(html.includes('＋ Chọn XML/PDF'));
   assert.ok(html.includes('accept=".xml,.pdf,application/pdf,text/xml,application/xml"'));

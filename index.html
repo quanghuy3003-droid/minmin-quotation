@@ -4329,9 +4329,16 @@
         .mm-stock-card-copy h3 { margin: 6px 0 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 900; }
         .mm-stock-card-copy p { margin: 5px 0 0; overflow: hidden; color: var(--mm-muted); font-size: 10px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
         .mm-stock-card-price { display: block; margin-top: 8px; color: var(--mm-green); font-size: 14px; font-weight: 900; }
-        .mm-stock-card-signal { position: absolute; top: 14px; right: 14px; width: 7px; height: 7px; border-radius: 999px; background: #f2a536; }
-        .mm-stock-card-signal.is-stock { background: var(--mm-green); }
-        .mm-stock-card-signal.is-sold { background: #ef5b55; }
+        .mm-stock-card-signal { position: absolute; top: 14px; right: 14px; width: 8px; height: 8px; border-radius: 999px; box-shadow: 0 0 0 3px rgba(17,24,32,.035); }
+        .mm-stock-card-signal.is-kind-reserve,
+        .mm-stock-kind-legend i.is-kind-reserve { background: var(--mm-green); }
+        .mm-stock-card-signal.is-kind-sample,
+        .mm-stock-kind-legend i.is-kind-sample { background: #fb923c; }
+        .mm-stock-card-signal.is-kind-order,
+        .mm-stock-kind-legend i.is-kind-order { background: #f2c14e; }
+        .mm-stock-kind-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 5px; }
+        .mm-stock-kind-legend span { display: inline-flex; align-items: center; gap: 6px; color: var(--mm-muted); font-size: 9px; font-weight: 750; }
+        .mm-stock-kind-legend i { width: 7px; height: 7px; flex: 0 0 auto; border-radius: 999px; }
         .mm-stock-card-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 7px 14px; border-top: 1px solid rgba(17,24,32,.07); padding-top: 10px; }
         .mm-stock-card-meta div { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 8px; color: var(--mm-muted); font-size: 10px; font-weight: 700; }
         .mm-stock-card-meta strong { min-width: 0; overflow: hidden; color: var(--mm-ink); font-size: 10px; font-weight: 850; text-overflow: ellipsis; white-space: nowrap; }
@@ -19125,6 +19132,19 @@ function mmStockCreatedTime(item){
   const time=new Date(value).getTime();
   return Number.isFinite(time)?time:0;
 }
+function mmStockKindPresentation(itemOrKind){
+  const value=typeof itemOrKind==='string'?itemOrKind:itemOrKind?.itemKind;
+  const kind=inventoryKindMeta(value);
+  const labels={reserve:'Hàng dự trữ (VAT)',sample:'Hàng mẫu (NON)',order:'Hàng order (VAT)'};
+  return {value:kind.value,label:labels[kind.value]||kind.label};
+}
+function mmStockKindSignal(item){
+  const kind=mmStockKindPresentation(item);
+  return `<span class="mm-stock-card-signal is-kind-${esc(kind.value)}" data-mm-stock-kind="${esc(kind.value)}" title="${esc(kind.label)}" aria-label="${esc(kind.label)}"></span>`;
+}
+function mmStockKindLegend(){
+  return `<div class="mm-stock-kind-legend" aria-label="Chú giải phân loại đèn">${['reserve','sample','order'].map(value=>{const kind=mmStockKindPresentation(value);return `<span><i class="is-kind-${esc(kind.value)}"></i>${esc(kind.label)}</span>`;}).join('')}</div>`;
+}
 function mmStockFilteredItems(stats){
   const ui=mmStockDesktopUi();
   const query=cleanSearch(ui.query);
@@ -19145,7 +19165,7 @@ function mmStockProductCard(item){
   const detail=[mmStockCategory(item),attrs.color,item.dimension].filter(Boolean).join(' · ');
   const duration=inventoryTotalDays(item);
   return `<article class="mm-stock-product-card" data-mm-stock-key="${esc(key)}">
-    <span class="mm-stock-card-signal is-${esc(stage.key)}" title="${esc(stage.label)}"></span>
+    ${mmStockKindSignal(item)}
     <div class="mm-stock-card-top">
       <div class="mm-stock-card-photo">${photo?`<img src="${esc(driveAssetUrl(photo))}" alt="${esc(item.name||item.code||'Sản phẩm')}"/>`:'<span>Chưa có ảnh</span>'}</div>
       <div class="mm-stock-card-copy"><b>${esc(item.code||'Chưa có mã')}</b><h3>${esc(item.name||mmStockCategory(item))}</h3><p>${esc(detail||item.unit||'Chưa có thông tin')}</p><strong class="mm-stock-card-price">${money(finance.sell)}</strong></div>
@@ -19188,7 +19208,7 @@ function mmStockExactDashboard(stats){
     ${ui.filterOpen?`<div class="mm-stock-filter-panel"><label>Danh mục<select data-mm-stock-category><option value="all">Tất cả danh mục</option>${categories.map(name=>`<option value="${esc(cleanSearch(name))}" ${ui.category===cleanSearch(name)?'selected':''}>${esc(name)}</option>`).join('')}</select></label><label>Dữ liệu<select data-mm-stock-review><option value="all" ${ui.review==='all'?'selected':''}>Tất cả dữ liệu</option><option value="review" ${ui.review==='review'?'selected':''}>Cần kiểm tra</option></select></label><span></span></div>`:''}
   </div>
   <div class="mm-stock-exact-main">
-    <div class="mm-stock-exact-heading"><h2>Danh sách sản phẩm</h2><span>Hiển thị ${filtered.length?start+1:0}–${Math.min(start+pageSize,filtered.length)} trong ${filtered.length} sản phẩm</span></div>
+    <div class="mm-stock-exact-heading"><div><h2>Danh sách sản phẩm</h2>${mmStockKindLegend()}</div><span>Hiển thị ${filtered.length?start+1:0}–${Math.min(start+pageSize,filtered.length)} trong ${filtered.length} sản phẩm</span></div>
     <div class="mm-stock-card-grid ${ui.view==='list'?'is-list':''}">${pageItems.length?pageItems.map(mmStockProductCard).join(''):'<div class="mm-stock-empty">Không tìm thấy sản phẩm phù hợp với bộ lọc.</div>'}</div>
     <div class="mm-stock-pagination"><button type="button" data-mm-stock-page="${ui.page-1}" ${ui.page<=1?'disabled':''}>‹</button>${pages.slice(Math.max(0,ui.page-3),Math.min(totalPages,ui.page+2)).map(page=>`<button type="button" data-mm-stock-page="${page}" class="${page===ui.page?'is-active':''}">${page}</button>`).join('')}<button type="button" data-mm-stock-page="${ui.page+1}" ${ui.page>=totalPages?'disabled':''}>›</button></div>
   </div>${mmDesktopStockAside(stats)}`;
