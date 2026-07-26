@@ -21205,6 +21205,209 @@ async function printLabelDirect(){
     return section.innerHTML;
   }
 
+  function quietPaymentSuppliers(){
+    const map=new Map();
+    (state.inputInvoices?.invoices||[]).forEach(invoice=>{
+      const name=String(invoice.seller_name||'').trim();
+      const taxCode=String(invoice.seller_tax_code||'').trim();
+      if(!name)return;
+      const tax=taxCode.replace(/\D/g,'');
+      const key=tax?`tax:${tax}`:`name:${invoiceNorm(name||'khong-ro')}`;
+      if(!map.has(key))map.set(key,{key,name,taxCode});
+    });
+    return [...map.values()].sort((a,b)=>a.name.localeCompare(b.name,'vi'));
+  }
+
+  function quietPaymentHasMatch(payment){
+    if(payment?.payment_type==='Chi')return payment.related_type==='supplier'&&!!payment.related_id;
+    return paymentInvoiceRefs(payment).length>0;
+  }
+
+  function quietPaymentRows(){
+    const filters=state.accounting?.filters||{};
+    const type=String(filters.paymentType||'all');
+    const from=String(filters.paymentDateFrom||'');
+    const to=String(filters.paymentDateTo||'');
+    const review=String(filters.paymentReview||'all');
+    const search=invoiceNorm(filters.paymentSearch||'');
+    return [...(state.accounting?.payments||[])]
+      .sort((a,b)=>String(b?.payment_date||'').localeCompare(String(a?.payment_date||''))||String(b?.created_at||'').localeCompare(String(a?.created_at||'')))
+      .filter(payment=>{
+        const date=String(payment.payment_date||'').slice(0,10);
+        if(type!=='all'&&payment.payment_type!==type)return false;
+        if(from&&date<from)return false;
+        if(to&&date>to)return false;
+        if(review==='matched'&&!quietPaymentHasMatch(payment))return false;
+        if(review==='review'&&quietPaymentHasMatch(payment))return false;
+        if(search&&!invoiceNorm([payment.related_label,payment.note,payment.method,payment.statement_source_file].join(' ')).includes(search))return false;
+        return true;
+      });
+  }
+
+  function quietPaymentTotals(rows){
+    const totalThu=rows.filter(payment=>payment.payment_type==='Thu').reduce((sum,payment)=>sum+Number(payment.amount||0),0);
+    const totalChi=rows.filter(payment=>payment.payment_type!=='Thu').reduce((sum,payment)=>sum+Number(payment.amount||0),0);
+    const statementBalance=rows.map(payment=>{
+      const direct=Number(payment.statement_balance||0);
+      if(direct)return direct;
+      const matched=String(payment.note||'').match(/Số dư:\s*([0-9.,]+)/i);
+      return matched?invoiceMoney(matched[1]):0;
+    }).find(Boolean);
+    const reviewAmount=rows.filter(payment=>!quietPaymentHasMatch(payment)).reduce((sum,payment)=>sum+Number(payment.amount||0),0);
+    return {totalThu,totalChi,balance:statementBalance??(totalThu-totalChi),reviewAmount};
+  }
+
+  function quietPaymentImport(){
+    const status=/sao kê/i.test(String(state.accounting?.syncStatus||''))?state.accounting.syncStatus:'Chưa chọn file sao kê.';
+    return `<section class="mmq-payment-import">
+      <div class="mmq-payment-import-copy">
+        <span class="mmq-payment-import-icon">${quietIcon('file',21)}</span>
+        <div><h2>Import sao kê PDF ngân hàng</h2><p>Ghi có được tạo thành Thu, Ghi nợ được tạo thành Chi theo logic hiện tại.</p></div>
+      </div>
+      <div class="mmq-payment-import-actions">
+        <label class="mmq-payment-file-button"><input id="bankStatementPdf" type="file" accept="application/pdf,.pdf"/>${quietIcon('upload',16)}Chọn PDF sao kê</label>
+        <button id="importBankStatementPdf" type="button" class="mmq-button primary">Quét PDF</button>
+      </div>
+      <p id="bankStatementStatus" class="mmq-payment-import-status">${esc(status)}</p>
+    </section>`;
+  }
+
+  function quietPaymentKpis(totals){
+    const cards=[
+      ['invoice','Tổng thu',money(totals.totalThu),'income'],
+      ['vat','Tổng chi',money(totals.totalChi),'expense'],
+      ['total','Số dư',money(totals.balance),'balance'],
+      ['review','Cần kiểm tra',money(totals.reviewAmount),'warning']
+    ];
+    return `<div class="mmq-payment-kpis">${cards.map(([icon,label,value,tone])=>`<article class="mmq-payment-kpi ${tone}">
+      <span>${quietIcon(icon,20)}</span><div><p>${esc(label)}</p><strong>${value}</strong></div>
+    </article>`).join('')}</div>`;
+  }
+
+  function quietPaymentFilters(rows){
+    const filters=state.accounting?.filters||{};
+    const dates=rows.map(payment=>String(payment.payment_date||'').slice(0,10)).filter(Boolean).sort();
+    const from=String(filters.paymentDateFrom||dates[0]||'');
+    const to=String(filters.paymentDateTo||dates.at(-1)||'');
+    const type=String(filters.paymentType||'all');
+    const review=String(filters.paymentReview||'all');
+    return `<div class="mmq-payment-filterbar">
+      <label class="mmq-payment-date-range"><span>Khoảng ngày</span><div><input data-mm-payment-filter="paymentDateFrom" type="date" value="${esc(from)}"/><i>–</i><input data-mm-payment-filter="paymentDateTo" type="date" value="${esc(to)}"/></div></label>
+      <label class="mmq-payment-filter-control"><span>Loại</span><select data-mm-payment-filter="paymentType"><option value="all" ${type==='all'?'selected':''}>Tất cả Thu/Chi</option><option value="Thu" ${type==='Thu'?'selected':''}>Thu</option><option value="Chi" ${type==='Chi'?'selected':''}>Chi</option></select></label>
+      <button data-payment-auto-link type="button" class="mmq-payment-auto-link">${quietIcon('sync',15)}Tự nhận diện nhà cung cấp</button>
+      <details class="mmq-payment-advanced">
+        <summary>${quietIcon('search',15)}Bộ lọc nâng cao</summary>
+        <div>
+          <label><span>Tìm giao dịch</span><input data-mm-payment-filter="paymentSearch" value="${esc(filters.paymentSearch||'')}" placeholder="Nội dung, file nguồn..."/></label>
+          <label><span>Đối soát</span><select data-mm-payment-filter="paymentReview"><option value="all" ${review==='all'?'selected':''}>Tất cả</option><option value="review" ${review==='review'?'selected':''}>Cần kiểm tra</option><option value="matched" ${review==='matched'?'selected':''}>Đã nhận diện</option></select></label>
+        </div>
+      </details>
+    </div>`;
+  }
+
+  function quietPaymentSupplierControl(payment){
+    const suppliers=quietPaymentSuppliers();
+    const selectedKey=payment.related_type==='supplier'?String(payment.related_id||''):'';
+    const selected=suppliers.find(supplier=>supplier.key===selectedKey);
+    const listId=`mmq-payment-suppliers-${String(payment.id||'').replace(/[^a-z0-9_-]/gi,'')}`;
+    return `<div class="mmq-payment-party ${selected?'recognized':''}">
+      <input type="search" list="${listId}" data-mm-payment-supplier="${esc(payment.id)}" value="${esc(selected?.name||'')}" placeholder="Tìm hoặc chọn nhà cung cấp"/>
+      <datalist id="${listId}">${suppliers.map(supplier=>`<option value="${esc(supplier.name)}" data-key="${esc(supplier.key)}">${esc(supplier.taxCode||'')}</option>`).join('')}</datalist>
+      <small>${selected?`${quietIcon('check',12)} Đã nhận diện nhà cung cấp`:'Chưa nhận diện nhà cung cấp'}</small>
+    </div>`;
+  }
+
+  function quietPaymentRelationControl(payment){
+    if(payment.payment_type==='Chi')return quietPaymentSupplierControl(payment);
+    const linked=quietPaymentHasMatch(payment);
+    return `<div class="mmq-payment-invoice-control ${linked?'recognized':''}">${paymentInvoiceLinkControl(payment)}</div>`;
+  }
+
+  function quietPaymentTable(rows){
+    const ui=quietUi();
+    if(!rows.length)return `<div class="mmq-payment-empty"><span>${quietIcon('invoice',23)}</span><h3>Không có giao dịch phù hợp</h3><p>Điều chỉnh khoảng ngày hoặc bộ lọc để xem dữ liệu.</p></div>`;
+    return `<div class="mmq-payment-table-wrap"><table class="mmq-payment-table">
+      <colgroup><col class="date"/><col class="type"/><col class="content"/><col class="relation"/><col class="source"/><col class="amount"/><col class="proof"/><col class="actions"/></colgroup>
+      <thead><tr><th>Ngày</th><th>Loại</th><th>Nội dung giao dịch</th><th>Hóa đơn / Nhà cung cấp</th><th>File nguồn</th><th>Số tiền</th><th>Chứng từ</th><th>Thao tác</th></tr></thead>
+      <tbody>${rows.map(payment=>{
+        const open=String(ui.paymentMenuId||'')===String(payment.id);
+        const source=payment.statement_source_file||payment.method||'—';
+        return `<tr data-mm-payment-row="${esc(payment.id)}">
+          <td><strong>${esc(compactDate(payment.payment_date))}</strong></td>
+          <td><span class="mmq-payment-type ${payment.payment_type==='Thu'?'income':'expense'}">${esc(payment.payment_type||'')}</span></td>
+          <td><div class="mmq-payment-description"><strong>${esc(paymentShortText(payment.related_label||payment.note||'Giao dịch',92))}</strong>${paymentNoteMetaHtml(payment)}</div></td>
+          <td>${quietPaymentRelationControl(payment)}</td>
+          <td><span class="mmq-payment-source" title="${esc(source)}">${esc(paymentShortText(source,44))}</span></td>
+          <td class="mmq-payment-amount">${money(payment.amount||0)}</td>
+          <td>${payment.proof_url?`<span class="mmq-payment-proof-state">${quietIcon('check',12)}Có file</span>`:'<span class="mmq-payment-no-proof">—</span>'}</td>
+          <td><div class="mmq-payment-actions">
+            <button data-open-url="${esc(payment.proof_url||'')}" type="button" class="mmq-payment-open" ${payment.proof_url?'':'disabled'}>Mở</button>
+            <button data-payment-edit="${esc(payment.id)}" type="button" class="mmq-payment-edit">Sửa</button>
+            <span class="mmq-payment-menu-wrap"><button data-mm-payment-menu="${esc(payment.id)}" type="button" class="mmq-payment-more" aria-label="Thêm thao tác">${quietIcon('more',16)}</button>${open?`<span class="mmq-payment-action-menu"><button data-payment-delete="${esc(payment.id)}" type="button">${quietIcon('trash',14)}Xóa giao dịch</button></span>`:''}</span>
+          </div></td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table></div>`;
+  }
+
+  function quietPaymentEditOptions(payment){
+    if(payment.payment_type!=='Chi')return paymentInvoiceSelectOptions(payment.related_type,payment.related_id,payment);
+    const suppliers=quietPaymentSuppliers();
+    const selected=payment.related_type==='supplier'?String(payment.related_id||''):'';
+    return `<option value="">Chưa liên kết nhà cung cấp</option>${suppliers.map(supplier=>`<option value="supplier|${esc(supplier.key)}" ${selected===supplier.key?'selected':''}>${esc(supplier.name)}${supplier.taxCode?` · ${esc(supplier.taxCode)}`:''}</option>`).join('')}`;
+  }
+
+  function quietPaymentEditDrawer(){
+    const payment=(state.accounting?.payments||[]).find(item=>String(item.id)===String(state.accounting?.editingPaymentId||''));
+    if(!payment)return'';
+    const proof=state.ui.pendingPaymentProofUrl||payment.proof_url||'';
+    return `<div class="mmq-payment-edit-layer">
+      <button data-mm-payment-close-edit class="mmq-drawer-scrim" aria-label="Đóng chỉnh sửa"></button>
+      <aside class="mmq-payment-edit-drawer" role="dialog" aria-modal="true" aria-label="Sửa giao dịch">
+        <header><div><small>Giao dịch ${esc(payment.payment_type||'')}</small><h2>Sửa giao dịch</h2><p>${esc(compactDate(payment.payment_date))} · ${money(payment.amount||0)}</p></div><button data-mm-payment-close-edit class="mmq-drawer-close">${quietIcon('close',19)}</button></header>
+        <div class="mmq-payment-edit-body">
+          <div class="mmq-payment-edit-grid">
+            <label><span>Ngày</span><input id="paymentDate" type="date" value="${esc(payment.payment_date||todayIso())}"/></label>
+            <label><span>Loại</span><select id="paymentType"><option ${payment.payment_type==='Thu'?'selected':''}>Thu</option><option ${payment.payment_type==='Chi'?'selected':''}>Chi</option></select></label>
+            <label class="wide"><span>Hóa đơn / Nhà cung cấp</span><select id="paymentRelated">${quietPaymentEditOptions(payment)}</select></label>
+            <label><span>Số tiền</span><input id="paymentAmount" inputmode="numeric" value="${esc(moneyPlain(payment.amount||0))}"/></label>
+            <label><span>File nguồn</span><input id="paymentMethod" value="${esc(payment.method||'')}"/></label>
+            <label class="wide"><span>Nội dung giao dịch</span><input id="paymentLabel" value="${esc(payment.related_label||'')}"/></label>
+            <label class="wide"><span>Ghi chú</span><textarea id="paymentNote">${esc(payment.note||'')}</textarea></label>
+          </div>
+          <section class="mmq-payment-proof-edit">
+            <div id="paymentProofPreview" tabindex="0">${proof?`<img src="${esc(driveAssetUrl(proof))}" alt="Chứng từ"/>`:`<span>${quietIcon('image',20)}Chưa có chứng từ</span>`}</div>
+            <div><label class="mmq-payment-proof-file"><input id="paymentProofFile" type="file" accept="image/png,image/jpeg,image/webp"/>Chọn chứng từ</label><button id="pastePaymentProof" type="button">Dán ảnh</button><button id="clearPaymentProof" type="button">Bỏ ảnh</button><button id="scanPaymentProof" type="button">Quét UNC</button><p id="paymentProofStatus">${proof?'Đã gắn chứng từ.':'Chưa có ảnh chứng từ.'}</p></div>
+          </section>
+          <input id="paymentProof" type="hidden" value="${esc(proof)}"/>
+        </div>
+        <footer><button id="cancelPaymentEdit" type="button" class="mmq-button">Hủy</button><button id="addPayment" type="button" class="mmq-button primary">Lưu thay đổi</button></footer>
+      </aside>
+    </div>`;
+  }
+
+  function quietPaymentsDesktop(){
+    const allPayments=[...(state.accounting?.payments||[])];
+    const rows=quietPaymentRows();
+    const totals=quietPaymentTotals(allPayments);
+    return `<section class="mm-accounting-quiet-page mmq-payments-page" data-mm-accounting-quiet-view="payments">
+      <div class="mmq-shell">
+        <header class="mmq-page-head">
+          <div><h1>Kế toán</h1><p><b>Thu/chi</b> · Theo dõi dòng tiền và liên kết giao dịch với hóa đơn.</p></div>
+          <div class="mmq-page-actions"><button id="syncAccounting" type="button" class="mmq-button">${quietIcon('sync',16)}Đồng bộ</button><button id="accountingSqlTop" type="button" class="mmq-button accent">SQL tạo bảng</button></div>
+        </header>
+        ${quietNavigation()}
+        ${quietPaymentImport()}
+        ${quietPaymentKpis(totals)}
+        <section class="mmq-payment-table-card">
+          <header class="mmq-payment-table-head"><div><h2>Bảng kê chi tiết thu chi</h2><p>${rows.length} trên ${allPayments.length} giao dịch</p></div>${quietPaymentFilters(allPayments)}</header>
+          ${quietPaymentTable(rows)}
+        </section>
+      </div>
+      ${quietPaymentEditDrawer()}
+    </section>`;
+  }
+
   function quietAccountingOtherDesktop(view){
     const meta={
       outgoing:['Bán ra','Quản lý hóa đơn đầu ra, doanh thu và trạng thái thu tiền.'],
@@ -21234,6 +21437,7 @@ async function printLabelDirect(){
     if(mobile)return quietAccountingBase.apply(this,arguments);
     const view=state.accounting?.view||'overview';
     if(view==='overview'||view==='incoming')return quietAccountingDesktop();
+    if(view==='payments')return quietPaymentsDesktop();
     return quietAccountingOtherDesktop.apply(this,[view,...arguments]);
   };
 
@@ -21408,16 +21612,71 @@ async function printLabelDirect(){
     .mmq-other-body tbody tr{transition:background .16s}.mmq-other-body tbody tr:hover{background:#FBFCFA}
     .mmq-other-body>div>.rounded-lg:first-child,.mmq-other-body>.rounded-lg{background:#fff!important}
     .mmq-other-page .mmq-page-head p b{color:#343936;font-weight:730}
+    .mmq-payments-page .mmq-page-head p b{color:#343936;font-weight:730}
+    .mmq-payment-import{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px 20px;min-height:86px;margin-bottom:16px;border:1px solid #F0DDCE;border-radius:16px;background:#FFFCF9;padding:16px 18px;box-shadow:0 8px 26px rgba(20,25,22,.02)}
+    .mmq-payment-import-copy{display:flex;align-items:center;gap:13px;min-width:0}
+    .mmq-payment-import-icon{width:42px;height:42px;display:grid;flex:0 0 42px;place-items:center;border:1px solid #ECD9C9;border-radius:12px;background:#fff;color:#C36B28}
+    .mmq-payment-import h2{font-size:14px;font-weight:760}.mmq-payment-import p{margin-top:4px;color:#7E807E;font-size:11px;font-weight:550}
+    .mmq-payment-import-actions{display:flex;align-items:center;gap:8px}.mmq-payment-file-button{height:44px;display:inline-flex;align-items:center;gap:8px;border:1px solid #E8C9B0;border-radius:10px;background:#fff;padding:0 14px;color:#B85F22;font-size:11px;font-weight:750;cursor:pointer;white-space:nowrap}.mmq-payment-file-button:hover{border-color:#D89B6C}.mmq-payment-file-button input{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+    .mmq-payment-import-status{grid-column:1/-1!important;margin:0 0 0 55px!important;color:#8C8E8C!important;font-size:9px!important}
+    .mmq-payment-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:16px}
+    .mmq-payment-kpi{min-height:102px;display:flex;align-items:center;gap:14px;border:1px solid #ECECEC;border-radius:16px;background:#fff;padding:18px 20px;box-shadow:0 8px 26px rgba(20,25,22,.025)}
+    .mmq-payment-kpi>span{width:42px;height:42px;display:grid;flex:0 0 42px;place-items:center;border:1px solid #ECEEEC;border-radius:50%;background:#FAFAF8;color:#454A47}
+    .mmq-payment-kpi p{color:#777B78;font-size:11px;font-weight:600}.mmq-payment-kpi strong{display:block;margin-top:7px;font-size:19px;line-height:1;font-weight:770;letter-spacing:-.025em;white-space:nowrap}
+    .mmq-payment-kpi.income>span,.mmq-payment-kpi.income strong{color:#2F8067}.mmq-payment-kpi.income>span{border-color:#D9EBE4;background:#F0F8F5}
+    .mmq-payment-kpi.expense>span,.mmq-payment-kpi.expense strong{color:#C36B28}.mmq-payment-kpi.expense>span{border-color:#F1DDCB;background:#FFF5EC}
+    .mmq-payment-kpi.balance>span,.mmq-payment-kpi.balance strong{color:#3D8B74}.mmq-payment-kpi.balance>span{border-color:#DCEBDF;background:#F3F9F1}
+    .mmq-payment-kpi.warning>span,.mmq-payment-kpi.warning strong{color:#B66528}.mmq-payment-kpi.warning>span{border-color:#F0E2D6;background:#FFF8F1}
+    .mmq-payment-table-card{position:relative;border:1px solid #ECECEC;border-radius:16px;background:#fff;box-shadow:0 10px 35px rgba(20,25,22,.025)}
+    .mmq-payment-table-head{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;padding:16px 18px;border-bottom:1px solid #EEEEEC}
+    .mmq-payment-table-head>div:first-child{flex:0 0 auto}.mmq-payment-table-head h2{font-size:14px;font-weight:760}.mmq-payment-table-head p{margin-top:4px;color:#8A8E8B;font-size:10px}
+    .mmq-payment-filterbar{display:flex;align-items:flex-end;justify-content:flex-end;gap:8px;min-width:0}
+    .mmq-payment-date-range,.mmq-payment-filter-control{display:grid;gap:5px}.mmq-payment-date-range>span,.mmq-payment-filter-control>span{color:#8A8D8B;font-size:8px;font-weight:730;text-transform:uppercase}.mmq-payment-date-range>div{height:40px;display:flex;align-items:center;border:1px solid #E4E6E4;border-radius:9px;background:#fff;padding:0 7px}.mmq-payment-date-range input{width:116px;height:36px;border:0;background:transparent;padding:0 4px;color:#333834;font-size:10px;font-weight:650;outline:none}.mmq-payment-date-range i{color:#A0A4A1;font-size:10px;font-style:normal}.mmq-payment-filter-control select{width:128px;height:40px;border:1px solid #E4E6E4;border-radius:9px;background:#fff;padding:0 9px;color:#333834;font-size:10px;font-weight:650;outline:none}
+    .mmq-payment-auto-link,.mmq-payment-advanced>summary{height:40px;display:flex;align-items:center;gap:7px;border:1px solid #CFE0DA;border-radius:9px;background:#F6FBF9;padding:0 11px;color:#347C66;font-size:10px;font-weight:740;white-space:nowrap;cursor:pointer}
+    .mmq-payment-advanced{position:relative}.mmq-payment-advanced>summary{border-color:#E4E6E4;background:#fff;color:#4A4F4C;list-style:none}.mmq-payment-advanced>summary::-webkit-details-marker{display:none}.mmq-payment-advanced[open]>summary{border-color:#AAC9BF;color:#347C66}.mmq-payment-advanced>div{position:absolute;right:0;top:46px;z-index:45;width:270px;display:grid;gap:10px;border:1px solid #E5E7E5;border-radius:12px;background:#fff;padding:12px;box-shadow:0 18px 45px rgba(20,25,22,.13)}.mmq-payment-advanced label{display:grid;gap:5px}.mmq-payment-advanced label span{color:#808481;font-size:9px;font-weight:700}.mmq-payment-advanced input,.mmq-payment-advanced select{height:40px;border:1px solid #E4E6E4;border-radius:9px;background:#fff;padding:0 10px;font-size:10px;font-weight:600;outline:none}
+    .mmq-payment-table-wrap{max-width:100%;overflow-x:auto;border-radius:0 0 16px 16px;scrollbar-width:thin;scrollbar-color:#D7DAD8 transparent}
+    .mmq-payment-table{width:100%;min-width:1180px;border-collapse:separate;border-spacing:0;table-layout:fixed;color:#303431;font-size:10px}.mmq-payment-table col.date{width:82px}.mmq-payment-table col.type{width:62px}.mmq-payment-table col.content{width:230px}.mmq-payment-table col.relation{width:280px}.mmq-payment-table col.source{width:180px}.mmq-payment-table col.amount{width:112px}.mmq-payment-table col.proof{width:70px}.mmq-payment-table col.actions{width:150px}
+    .mmq-payment-table th{height:42px;border-bottom:1px solid #ECEEEC;background:#FAFAF8;padding:0 10px;color:#898C89;font-size:8.5px;font-weight:760;letter-spacing:.035em;text-align:left;text-transform:uppercase;white-space:nowrap}.mmq-payment-table th:first-child,.mmq-payment-table td:first-child{padding-left:18px}.mmq-payment-table th:nth-child(6),.mmq-payment-table td:nth-child(6){text-align:right}.mmq-payment-table th:last-child,.mmq-payment-table td:last-child{padding-right:14px;text-align:right}
+    .mmq-payment-table td{height:74px;border-bottom:1px solid #F0F0EE;padding:10px;vertical-align:middle}.mmq-payment-table tbody tr:last-child td{border-bottom:0}.mmq-payment-table tbody tr{transition:background .16s}.mmq-payment-table tbody tr:hover{background:#FBFCFA}
+    .mmq-payment-type{display:inline-flex;align-items:center;justify-content:center;min-width:38px;height:27px;border:1px solid;border-radius:7px;padding:0 8px;font-size:9px;font-weight:760}.mmq-payment-type.income{border-color:#CBE2D9;background:#F0F8F5;color:#327B65}.mmq-payment-type.expense{border-color:#F0D7C2;background:#FFF6EE;color:#B86123}
+    .mmq-payment-description{max-width:220px}.mmq-payment-description>strong{display:-webkit-box;overflow:hidden;color:#333735;font-size:10px;line-height:1.45;font-weight:690;-webkit-box-orient:vertical;-webkit-line-clamp:2}.mmq-payment-description [class*="text-[11px]"]{margin-top:4px!important;color:#969A97!important;font-size:8px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .mmq-payment-party,.mmq-payment-invoice-control{display:grid;gap:4px}.mmq-payment-party input,.mmq-payment-invoice-control select{width:100%;height:36px;border:1px solid #E2E5E3;border-radius:8px;background:#fff;padding:0 9px;color:#4A4F4C;font-size:9px;font-weight:650;outline:none}.mmq-payment-party input:focus,.mmq-payment-invoice-control select:focus{border-color:#76AA99;box-shadow:0 0 0 3px rgba(61,139,116,.07)}
+    .mmq-payment-party.recognized input,.mmq-payment-invoice-control.recognized select{border-color:#B9D5CC;background:#F4FAF7;color:#347C66}.mmq-payment-party small{display:flex;align-items:center;gap:4px;color:#999D9A;font-size:7.5px;font-weight:650}.mmq-payment-party.recognized small{color:#3D8B74}
+    .mmq-payment-invoice-control>div{display:grid!important;gap:3px!important}.mmq-payment-invoice-control div>div{display:flex!important;gap:5px!important;overflow:hidden;white-space:nowrap}.mmq-payment-invoice-control div>div span{font-size:7.5px!important}.mmq-payment-invoice-control div>div span:nth-child(n+2){display:none}
+    .mmq-payment-source{display:-webkit-box;overflow:hidden;color:#555A57;font-size:9px;line-height:1.4;font-weight:600;-webkit-box-orient:vertical;-webkit-line-clamp:2}.mmq-payment-amount{color:#1E2220;font-size:10px;font-weight:770;white-space:nowrap}.mmq-payment-no-proof{color:#B0B3B1}.mmq-payment-proof-state{display:inline-flex;align-items:center;gap:4px;color:#3D8B74;font-size:8px;font-weight:720;white-space:nowrap}
+    .mmq-payment-open,.mmq-payment-edit,.mmq-payment-more{height:30px;border:1px solid #E3E6E4;border-radius:7px;background:#fff;color:#3E4541;font-size:8.5px;font-weight:740}.mmq-payment-open,.mmq-payment-edit{padding:0 9px}.mmq-payment-open{color:#347C66}.mmq-payment-more{width:30px;display:grid;place-items:center}.mmq-payment-open:hover,.mmq-payment-edit:hover,.mmq-payment-more:hover{border-color:#A9C7BD;color:#347C66}.mmq-payment-open:disabled{opacity:.35}
+    .mmq-payment-actions{display:flex;align-items:center;justify-content:flex-end;gap:5px}.mmq-payment-menu-wrap{position:relative}.mmq-payment-action-menu{position:absolute;right:0;top:36px;z-index:40;width:140px;border:1px solid #E5E7E5;border-radius:10px;background:#fff;padding:5px;box-shadow:0 16px 40px rgba(20,25,22,.13);text-align:left}.mmq-payment-action-menu button{width:100%;height:34px;display:flex;align-items:center;gap:7px;border:0;border-radius:7px;background:transparent;padding:0 8px;color:#A15346;font-size:9px;font-weight:680}.mmq-payment-action-menu button:hover{background:#FFF5F1}
+    .mmq-payment-empty{display:grid;justify-items:center;padding:60px 20px;color:#969A97;text-align:center}.mmq-payment-empty>span{width:46px;height:46px;display:grid;place-items:center;border:1px solid #E8EAE8;border-radius:13px}.mmq-payment-empty h3{margin-top:13px;color:#4A4F4C;font-size:12px;font-weight:750}.mmq-payment-empty p{margin-top:5px;font-size:10px}
+    .mmq-payment-edit-layer{position:fixed;inset:0;z-index:1100;display:flex;justify-content:flex-end}.mmq-payment-edit-drawer{position:relative;width:min(470px,96vw);height:100%;display:grid;grid-template-rows:auto minmax(0,1fr) auto;background:#fff;box-shadow:-24px 0 70px rgba(19,24,21,.14);animation:mmq-drawer-in .22s ease-out}.mmq-payment-edit-drawer>header{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;border-bottom:1px solid #ECEEEC;padding:22px 24px 18px}.mmq-payment-edit-drawer>header small{color:#3D8B74;font-size:9px;font-weight:760;text-transform:uppercase}.mmq-payment-edit-drawer>header h2{margin-top:5px;font-size:18px;font-weight:770}.mmq-payment-edit-drawer>header p{margin-top:6px;color:#858986;font-size:10px}.mmq-payment-edit-body{overflow-y:auto;padding:20px 24px}.mmq-payment-edit-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.mmq-payment-edit-grid label{display:grid;gap:6px}.mmq-payment-edit-grid label.wide{grid-column:1/-1}.mmq-payment-edit-grid label>span{color:#777B78;font-size:9px;font-weight:720}.mmq-payment-edit-grid input,.mmq-payment-edit-grid select,.mmq-payment-edit-grid textarea{width:100%;border:1px solid #E2E5E3;border-radius:9px;background:#fff;padding:0 11px;color:#303532;font-size:11px;font-weight:620;outline:none}.mmq-payment-edit-grid input,.mmq-payment-edit-grid select{height:44px}.mmq-payment-edit-grid textarea{min-height:90px;padding-block:10px;resize:vertical}.mmq-payment-edit-grid input:focus,.mmq-payment-edit-grid select:focus,.mmq-payment-edit-grid textarea:focus{border-color:#76AA99;box-shadow:0 0 0 3px rgba(61,139,116,.07)}
+    .mmq-payment-proof-edit{display:grid;grid-template-columns:90px minmax(0,1fr);gap:12px;margin-top:18px;border-top:1px solid #ECEEEC;padding-top:18px}.mmq-payment-proof-edit>div:first-child{width:90px;height:90px;display:grid;place-items:center;overflow:hidden;border:1px dashed #C9D8D3;border-radius:10px;background:#FAFCFB;color:#8B918D}.mmq-payment-proof-edit img{width:100%;height:100%;object-fit:contain}.mmq-payment-proof-edit>div:first-child span{display:grid;justify-items:center;gap:5px;font-size:8px}.mmq-payment-proof-edit>div:last-child{display:flex;align-content:flex-start;align-items:center;flex-wrap:wrap;gap:6px}.mmq-payment-proof-edit button,.mmq-payment-proof-file{height:34px;display:inline-flex;align-items:center;border:1px solid #E2E5E3;border-radius:8px;background:#fff;padding:0 9px;color:#4A4F4C;font-size:8.5px;font-weight:700;cursor:pointer}.mmq-payment-proof-file input{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}.mmq-payment-proof-edit p{width:100%;color:#8B8F8C;font-size:8px}.mmq-payment-edit-drawer>footer{display:flex;justify-content:flex-end;gap:8px;border-top:1px solid #ECEEEC;padding:14px 20px}
     @media(max-width:1180px){
       .mmq-kpis{gap:10px}.mmq-kpi{padding:16px}.mmq-kpi strong{font-size:17px}
       .mmq-dropzone{grid-template-columns:1fr}.mmq-upload-progress{grid-template-columns:repeat(3,1fr);border-left:0;border-top:1px solid #EFEFED}
       .mmq-filters{grid-template-columns:repeat(3,1fr)}
+      .mmq-payment-kpis{gap:10px}.mmq-payment-kpi{padding:15px}.mmq-payment-kpi strong{font-size:16px}
+      .mmq-payment-table-head{align-items:stretch;flex-direction:column}.mmq-payment-filterbar{justify-content:flex-start;flex-wrap:wrap}
     }
     @media(max-width:767px){.mm-accounting-quiet-page{display:none}}
   `;
   document.head.appendChild(style);
 
   document.addEventListener('click',event=>{
+    const paymentMenu=event.target.closest?.('[data-mm-payment-menu]');
+    if(paymentMenu){
+      event.preventDefault();event.stopPropagation();
+      const ui=quietUi(),id=paymentMenu.dataset.mmPaymentMenu;
+      ui.paymentMenuId=String(ui.paymentMenuId||'')===String(id)?'':id;
+      render();return;
+    }
+    const closePaymentEdit=event.target.closest?.('[data-mm-payment-close-edit]');
+    if(closePaymentEdit){
+      state.accounting.editingPaymentId='';
+      state.ui.pendingPaymentProofUrl='';
+      state.ui.pendingPaymentProofName='';
+      state.ui.pendingPaymentProofDataUrl='';
+      quietUi().paymentMenuId='';
+      saveAccounting();render();return;
+    }
     const close=event.target.closest?.('[data-mm-accounting-close-drawer]');
     if(close){
       const ui=quietUi(); ui.drawerId=''; ui.menuId=''; state.inputInvoices.editingId='';
@@ -21454,11 +21713,49 @@ async function printLabelDirect(){
     if(quietUi().menuId&&!event.target.closest?.('.mmq-action-menu')){
       quietUi().menuId='';render();
     }
+    if(quietUi().paymentMenuId&&!event.target.closest?.('.mmq-payment-action-menu')){
+      quietUi().paymentMenuId='';render();
+    }
   },true);
 
   document.addEventListener('keydown',event=>{
+    if(event.key==='Escape'&&state.accounting?.editingPaymentId){
+      state.accounting.editingPaymentId='';
+      state.ui.pendingPaymentProofUrl='';
+      state.ui.pendingPaymentProofName='';
+      state.ui.pendingPaymentProofDataUrl='';
+      saveAccounting();render();return;
+    }
     if(event.key==='Escape'&&quietUi().drawerId){
       quietUi().drawerId='';quietUi().menuId='';state.inputInvoices.editingId='';saveInputInvoices();render();
+    }
+  });
+
+  document.addEventListener('change',event=>{
+    const filter=event.target.closest?.('[data-mm-payment-filter]');
+    if(filter){
+      state.accounting.filters=state.accounting.filters||{};
+      state.accounting.filters[filter.dataset.mmPaymentFilter]=filter.value;
+      saveAccounting();render();return;
+    }
+    const supplierInput=event.target.closest?.('[data-mm-payment-supplier]');
+    if(supplierInput){
+      const payment=(state.accounting?.payments||[]).find(item=>String(item.id)===String(supplierInput.dataset.mmPaymentSupplier));
+      if(!payment)return;
+      const value=invoiceNorm(supplierInput.value);
+      const supplier=quietPaymentSuppliers().find(item=>invoiceNorm(item.name)===value||item.key===value);
+      payment.related_type=supplier?'supplier':'';
+      payment.related_id=supplier?supplier.key:'';
+      payment.updated_at=new Date().toISOString();
+      if(supplier){
+        state.accounting.filters=state.accounting.filters||{};
+        state.accounting.filters.reconcileUnit=supplier.key;
+      }
+      saveAccounting();render();
+      savePaymentRemote(payment).catch(error=>{
+        state.accounting.syncStatus='Đã chọn nhà cung cấp trên máy, chưa đồng bộ được Supabase.';
+        console.warn(error);render();
+      });
     }
   });
 
