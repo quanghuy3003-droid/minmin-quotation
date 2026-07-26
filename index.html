@@ -22241,8 +22241,8 @@ async function printLabelDirect(){
   renderWebsiteProductsTab=function renderWebsiteQuietLuxury(){
     if(window.matchMedia?.('(max-width: 767px)').matches)return mmwWebsiteBase.apply(this,arguments);
     state.website=normalizeWebsiteProducts(state.website||websiteProductsDefaults());
-    return `<section class="mmw-page" data-mm-desktop-hero><span id="websiteNew" hidden></span>
-      <header class="mmw-hero"><div><h1>Website Minmin Lifestyle</h1><p>Quản lý sản phẩm và đồng bộ dữ liệu với Website WooCommerce.</p></div><div><button data-mm-website-open type="button">${mmwIcon('external',16)}Xem Website</button><button id="uploadAllWooImages" class="primary" type="button">${mmwIcon('sync',16)}Đồng bộ toàn bộ</button></div></header>
+    return `<section class="mmw-page"><span id="websiteNew" hidden></span>
+      <header class="mmw-hero" data-mm-desktop-hero><div><h1>Website Minmin Lifestyle</h1><p>Quản lý sản phẩm và đồng bộ dữ liệu với Website WooCommerce.</p></div><div><button data-mm-website-open type="button">${mmwIcon('external',16)}Xem Website</button><button id="uploadAllWooImages" class="primary" type="button">${mmwIcon('sync',16)}Đồng bộ toàn bộ</button></div></header>
       ${mmwConnection()}${mmwKpis()}${mmwBatchSummary()}${mmwFilters()}${mmwTable()}${mmwDrawer()}
     </section>`;
   };

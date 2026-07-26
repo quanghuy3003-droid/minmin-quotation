@@ -8,6 +8,7 @@ assert.match(source,/function mmwConnection\(\)[\s\S]*Consumer Key[\s\S]*Consume
 assert.match(source,/function mmwKpis\(\)[\s\S]*Tổng sản phẩm[\s\S]*Đủ dữ liệu[\s\S]*Đang thiếu dữ liệu[\s\S]*Cần kiểm tra \/ Có thay đổi/,'Website must expose four uniform KPI cards');
 assert.match(source,/function mmwFilters\(\)[\s\S]*data-mmw-filter="search"[\s\S]*status[\s\S]*category[\s\S]*missing[\s\S]*data-mmw-advanced/,'Desktop filters must stay on the compact Website toolbar');
 assert.match(source,/function mmwTable\(\)[\s\S]*Ảnh[\s\S]*Sản phẩm[\s\S]*SKU \/ Stock[\s\S]*Trạng thái Website[\s\S]*Mức độ dữ liệu[\s\S]*Đồng bộ[\s\S]*Thao tác/,'Website products must render in the modern data table');
+assert.match(source,/<header class="mmw-hero" data-mm-desktop-hero>/,'The new Website hero must suppress the legacy duplicate desktop heading');
 assert.match(source,/function mmwDrawer\(\)[\s\S]*Thông tin[\s\S]*Media[\s\S]*Attributes[\s\S]*Website \/ SEO[\s\S]*Đồng bộ[\s\S]*Lịch sử/,'Product editing must use the six-tab right drawer');
 assert.match(source,/data-mmw-save-draft[\s\S]*data-mmw-close[\s\S]*data-mmw-complete/,'Drawer must keep its sticky draft, cancel and complete footer actions');
 assert.match(source,/if\(window\.matchMedia\?\.\('\(max-width: 767px\)'\)\.matches\)return mmwWebsiteBase/,'Mobile Website UI must delegate to the existing renderer');
