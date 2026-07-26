@@ -15,6 +15,7 @@ assert.match(source,/data-mmw-auto-name[\s\S]*Đổi tên[\s\S]*websiteAutoNameP
 assert.match(source,/data-mmw-save-draft[\s\S]*data-mmw-close[\s\S]*data-mmw-complete/,'Drawer must keep its sticky draft, cancel and complete footer actions');
 assert.match(source,/if\(window\.matchMedia\?\.\('\(max-width: 767px\)'\)\.matches\)return mmwWebsiteBase/,'Mobile Website UI must delegate to the existing renderer');
 assert.match(source,/websiteImagesPanel\(\)[\s\S]*websiteSimpleAttributeFields\(\)[\s\S]*data-website-upload-woo/,'Drawer must reuse the existing media, attribute and sync pipelines');
-assert.match(source,/\.mmw-drawer\{[\s\S]*width:min\(580px,96vw\)[\s\S]*animation:mmwSlideIn \.23s ease/,'Drawer must use the requested desktop width and subtle transition');
+assert.match(source,/\.mmw-drawer\{[\s\S]*width:min\(580px,96vw\)[\s\S]*\.mmw-drawer\.is-opening\{animation:mmwSlideIn \.23s ease/,'Drawer must animate only when it first opens');
+assert.match(source,/const mmwDesktopDrawer=[\s\S]*if\(!mmwDesktopDrawer\)render\(\)[\s\S]*ui\.drawerScroll/,'Desktop drawer edits must avoid full rerenders and preserve per-tab scroll position');
 
 console.log('website quiet luxury desktop tests passed');
