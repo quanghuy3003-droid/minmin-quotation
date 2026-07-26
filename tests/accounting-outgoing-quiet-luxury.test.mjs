@@ -68,4 +68,6 @@ test('wide invoice table scrolls inside the card without stretching the desktop 
   assert.match(patch, /\.mmso-page\{display:grid;min-width:0/);
   assert.match(patch, /\.mmso-list\{min-width:0/);
   assert.match(patch, /\.mmso-table-wrap\{width:100%;max-width:100%;overflow:auto\}/);
+  assert.match(patch, /\.mmso-table-wrap\{scrollbar-width:none;-ms-overflow-style:none\}/);
+  assert.match(patch, /\.mmso-table-wrap::\-webkit-scrollbar\{display:none;width:0;height:0\}/);
 });
