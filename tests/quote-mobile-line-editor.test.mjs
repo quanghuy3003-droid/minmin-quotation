@@ -30,7 +30,7 @@ assert.match(
 );
 assert.match(
   source,
-  /function quoteMobileLineEditor\(line\)[\s\S]*?codeSelect\('Loại đèn'[\s\S]*?codeSelect\('Kiểu hàng'[\s\S]*?leadTimeSelect\(line\)[\s\S]*?Giá NDT[\s\S]*?Cân nặng[\s\S]*?Lợi nhuận/,
+  /function quoteMobileLineEditor\(line\)[\s\S]*?codeSelect\('Loại sản phẩm'[\s\S]*?codeSelect\('Kiểu hàng'[\s\S]*?leadTimeSelect\(line\)[\s\S]*?Giá NDT[\s\S]*?Cân nặng[\s\S]*?Lợi nhuận/,
   'The supplemental section must preserve the current product and pricing hooks'
 );
 assert.match(

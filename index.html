@@ -4661,7 +4661,8 @@ const PRODUCT_TYPES = [
   { value:'PL', name:'Đèn thả', label:'Đèn thả (PL)' },
   { value:'TL', name:'Đèn bàn', label:'Đèn bàn (TL)' },
   { value:'FL', name:'Đèn sàn', label:'Đèn sàn (FL)' },
-  { value:'CD', name:'Đèn chùm', label:'Đèn chùm (CD)' }
+  { value:'CD', name:'Đèn chùm', label:'Đèn chùm (CD)' },
+  { value:'DC', name:'Đồ trang trí', label:'Đồ trang trí (DC)' }
 ];
 const STOCK_MODES = [
   { value:'OD', label:'Đặt hàng (OD)' },
@@ -6518,7 +6519,7 @@ function normalizeQuoteLineForExcelImport(line){
 
 
 function cleanSearch(v){ return String(v||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
-function inferProductType(line){ const s=cleanSearch(`${line?.name||''} ${line?.productId||''} ${line?.code||''}`); if(s.includes('tuong')||s.includes('wall'))return'WL'; if(s.includes('tha')||s.includes('pendant'))return'PL'; if(s.includes('ban')||s.includes('table'))return'TL'; if(s.includes('san')||s.includes('floor'))return'FL'; if(s.includes('chum')||s.includes('chandelier'))return'CD'; return line?.productType||'PL'; }
+function inferProductType(line){ const s=cleanSearch(`${line?.name||''} ${line?.productId||''} ${line?.code||''}`); if(s.includes('trang tri')||s.includes('decor'))return'DC'; if(s.includes('tuong')||s.includes('wall'))return'WL'; if(s.includes('tha')||s.includes('pendant'))return'PL'; if(s.includes('ban')||s.includes('table'))return'TL'; if(s.includes('san')||s.includes('floor'))return'FL'; if(s.includes('chum')||s.includes('chandelier'))return'CD'; return line?.productType||'PL'; }
 function inferStockMode(line){ const s=cleanSearch(`${line?.status||''} ${line?.code||''}`); if(s.includes('co san')||s.includes('stock')||s.includes('stk'))return'STK'; return line?.stockMode||'OD'; }
 function productTypeName(value){ return PRODUCT_TYPES.find(t=>t.value===value)?.name || ''; }
 function statusForLine(line){ if(!line.stockMode)return ''; if(line.stockMode==='STK')return 'Có sẵn'; return line.leadTime?`Đặt hàng từ ${line.leadTime}`:'Đặt hàng'; }
@@ -6588,7 +6589,7 @@ function norm(v){ return typeof v === 'string' ? v.normalize('NFC') : v; }
 function br(v){ return esc(norm(v)).replace(/\n/g,'<br>'); }
 function attrOptions(field,current){ return [...new Set([current,...field.options].filter(v=>String(v||'').trim()))].map(v=>`<option value="${esc(v)}"></option>`).join(''); }
 function renderAttributeField(line,field){ const value=line.attributes?.[field.key]||'', listId=`attr-${field.key}-${line.uid}`; return `<label class="grid min-w-0 gap-1.5"><span class="truncate text-xs font-semibold uppercase tracking-wide text-black/50">${esc(field.label)}</span><input list="${listId}" data-line-attr="${field.key}" value="${esc(value)}" placeholder="Nhập dữ liệu" class="h-10 min-w-0 rounded-md border border-black/15 bg-white px-3 text-sm outline-none placeholder:text-black/30 focus:border-mint focus:ring-4 focus:ring-mint/10"/><datalist id="${listId}">${attrOptions(field,value)}</datalist></label>`; }
-function codeSelect(label,key,line,options){ const placeholder=key==='productType'?'Chọn sản phẩm':'Chọn hình thức'; return `<label class="grid gap-1.5"><span class="text-xs font-semibold uppercase tracking-wide text-black/50">${label}</span><select data-line-code-part="${key}" class="h-11 rounded-md border border-black/15 bg-white px-3 text-sm font-medium outline-none focus:border-mint focus:ring-4 focus:ring-mint/10"><option value="" disabled ${line[key]?'':'selected'}>${placeholder}</option>${options.map(o=>`<option value="${o.value}" ${line[key]===o.value?'selected':''}>${esc(o.label)}</option>`).join('')}</select></label>`; }
+function codeSelect(label,key,line,options){ const placeholder=key==='productType'?'Chọn sản phẩm':'Chọn hình thức'; if(key==='productType')label='Loại sản phẩm'; return `<label class="grid gap-1.5"><span class="text-xs font-semibold uppercase tracking-wide text-black/50">${label}</span><select data-line-code-part="${key}" class="h-11 rounded-md border border-black/15 bg-white px-3 text-sm font-medium outline-none focus:border-mint focus:ring-4 focus:ring-mint/10"><option value="" disabled ${line[key]?'':'selected'}>${placeholder}</option>${options.map(o=>`<option value="${o.value}" ${line[key]===o.value?'selected':''}>${esc(o.label)}</option>`).join('')}</select></label>`; }
 function leadTimeSelect(line){ return `<label class="grid gap-1.5"><span class="text-xs font-semibold uppercase tracking-wide text-black/50">Thời gian</span><select data-line-code-part="leadTime" ${line.stockMode==='STK'?'disabled':''} class="h-11 rounded-md border border-black/15 bg-white px-3 text-sm font-medium outline-none focus:border-mint focus:ring-4 focus:ring-mint/10 disabled:bg-black/5 disabled:text-black/35"><option value="" disabled ${line.leadTime?'':'selected'}>Chọn thời gian</option>${DELIVERY_TIMES.map(o=>`<option value="${o.value}" ${line.leadTime===o.value?'selected':''}>${esc(o.label)}</option>`).join('')}</select></label>`; }
 function readOnlyField(label,value){ return `<label class="grid gap-1.5"><span class="text-xs font-semibold uppercase tracking-wide text-black/50">${label}</span><div class="flex h-11 items-center rounded-md border border-black/10 bg-black/5 px-3 text-sm font-semibold text-black/65">${esc(value)}</div></label>`; }
 function imageDisplayUrl(source){ const v=String(source||'').trim(); if(!v)return''; if(v.startsWith('data:image/'))return v; const driveId=v.match(/drive\.google\.com\/file\/d\/([^/]+)/)?.[1]||v.match(/[?&]id=([^&]+)/)?.[1]; if(driveId)return `https://drive.google.com/uc?export=view&id=${driveId}`; return v; }
@@ -17918,7 +17919,7 @@ function quoteMobileLineEditor(line){
     <section class="minmin-quote-mobile-line-section">
       <h2>3. Thông tin bổ sung</h2>
       <div class="minmin-quote-mobile-line-grid">
-        ${codeSelect('Loại đèn','productType',line,PRODUCT_TYPES)}
+        ${codeSelect('Loại sản phẩm','productType',line,PRODUCT_TYPES)}
         ${codeSelect('Kiểu hàng','stockMode',line,STOCK_MODES)}
         ${leadTimeSelect(line)}
         ${linePricingInput('Giá NDT','chinaPrice',line,'NDT')}
@@ -17937,6 +17938,17 @@ function quoteMobileLineEditor(line){
     </footer>
   </div>`;
 }
+document.addEventListener('change',event=>{
+  const select=event.target.closest?.('[data-line-code-part="productType"]');
+  if(!select||select.value!=='DC')return;
+  const id=select.closest?.('[data-line]')?.dataset.line;
+  const line=state.lines.find(item=>String(item.uid)===String(id));
+  if(!line)return;
+  line.attributes={...ATTRIBUTE_DEFAULTS};
+  line.attrsTouched=false;
+  saveDraft();
+  render();
+});
 const renderLineExpandedForCollapse=renderLine;
 renderLine=function(line,idx){syncLineDefaults(line);state.ui.quoteLineOpen=state.ui.quoteLineOpen||{};if(window.innerWidth<=640&&String(state.ui?.quoteMobileEditMode||'')===String(line.uid))return quoteMobileLineEditor(line);if(quoteLineReadyForCollapse(line)&&state.ui.quoteLineOpen[line.uid]!==true)return quoteLineCollapsedSummary(line,idx);const html=renderLineExpandedForCollapse(line,idx);return html.replace(`data-line="${line.uid}">`,`data-line="${line.uid}"><button data-line-collapse="${line.uid}" type="button" class="absolute right-[58px] top-1.5 z-20 h-8 rounded-md border border-black/15 bg-white px-2 text-xs font-extrabold">Thu gọn</button>`);};
 document.addEventListener('click',event=>{const open=event.target.closest?.('[data-line-expand]'),close=event.target.closest?.('[data-line-collapse]');if(!open&&!close)return;const id=(open||close).dataset.lineExpand||(open||close).dataset.lineCollapse,line=state.lines.find(item=>String(item.uid)===String(id));if(!line)return;state.ui.quoteLineOpen=state.ui.quoteLineOpen||{};if(open)state.ui.quoteLineOpen[id]=true;else if(quoteLineReadyForCollapse(line))state.ui.quoteLineOpen[id]=false;else return alert('Nhập đủ mã, tên, số lượng, đơn giá, đơn vị, kích thước và ảnh trước khi thu gọn.');saveDraft();render({force:true});});
