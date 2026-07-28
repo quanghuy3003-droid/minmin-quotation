@@ -3805,6 +3805,299 @@
           font-size: 0.8rem;
           font-weight: 700;
         }
+        .mm-mobile-sale-form {
+          display: grid;
+          gap: 0.65rem;
+          margin: 0 -0.1rem;
+          padding-bottom: calc(5.5rem + env(safe-area-inset-bottom));
+          color: #151917;
+        }
+        .mm-mobile-sale-section {
+          overflow: hidden;
+          border: 1px solid #ECECEC;
+          border-radius: 16px;
+          background: #fff;
+          box-shadow: 0 7px 24px rgba(19,24,21,.025);
+        }
+        .mm-mobile-sale-section > header,
+        .mm-mobile-sale-section > summary {
+          display: flex;
+          min-height: 48px;
+          align-items: center;
+          gap: 0.55rem;
+          padding: 0.75rem;
+          list-style: none;
+          cursor: pointer;
+          font-size: 0.82rem;
+          font-weight: 900;
+        }
+        .mm-mobile-sale-section > summary::-webkit-details-marker { display: none; }
+        .mm-mobile-sale-section > header span:first-child,
+        .mm-mobile-sale-section > summary span:first-child {
+          display: inline-flex;
+          width: 28px;
+          height: 28px;
+          flex: 0 0 28px;
+          align-items: center;
+          justify-content: center;
+          border-radius: 9px;
+          background: #EEF7F4;
+          color: #3D8B74;
+        }
+        .mm-mobile-sale-section > header svg,
+        .mm-mobile-sale-section > summary svg {
+          width: 16px;
+          height: 16px;
+          fill: none;
+          stroke: currentColor;
+          stroke-linecap: round;
+          stroke-linejoin: round;
+          stroke-width: 1.8;
+        }
+        .mm-mobile-sale-section > summary::after {
+          content: "⌄";
+          margin-left: auto;
+          color: #8A908C;
+          font-size: 1rem;
+          transition: transform .18s ease;
+        }
+        .mm-mobile-sale-section[open] > summary::after { transform: rotate(180deg); }
+        .mm-mobile-sale-body {
+          border-top: 1px solid #F0F0EE;
+          padding: 0.75rem;
+        }
+        .mm-mobile-sale-summary {
+          padding: 0 0.75rem 0.75rem;
+        }
+        .mm-mobile-sale-summary-grid {
+          display: grid;
+          grid-template-columns: repeat(3,minmax(0,1fr));
+          overflow: hidden;
+          border: 1px solid #ECECEC;
+          border-radius: 12px;
+        }
+        .mm-mobile-sale-summary-grid > div {
+          min-width: 0;
+          border-right: 1px solid #ECECEC;
+          padding: 0.65rem 0.55rem;
+        }
+        .mm-mobile-sale-summary-grid > div:last-child { border-right: 0; }
+        .mm-mobile-sale-summary-grid span,
+        .mm-mobile-sale-money-row span {
+          display: block;
+          color: #868C88;
+          font-size: 0.58rem;
+          font-weight: 800;
+        }
+        .mm-mobile-sale-summary-grid strong {
+          display: block;
+          margin-top: 0.22rem;
+          overflow: hidden;
+          font-size: 0.72rem;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .mm-mobile-sale-summary-files {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.35rem;
+          margin-top: 0.6rem;
+        }
+        .mm-mobile-sale-chip {
+          display: inline-flex;
+          min-height: 26px;
+          align-items: center;
+          border: 1px solid #E7E9E7;
+          border-radius: 999px;
+          background: #F7F8F6;
+          padding: 0 0.55rem;
+          color: #777D79;
+          font-size: 0.62rem;
+          font-weight: 850;
+        }
+        .mm-mobile-sale-chip.is-ready {
+          border-color: #D2E6DE;
+          background: #EEF7F4;
+          color: #3D8B74;
+        }
+        .mm-mobile-sale-chip.is-missing {
+          border-color: #EFDBC8;
+          background: #FFF6ED;
+          color: #A96731;
+        }
+        .mm-mobile-sale-grid {
+          display: grid;
+          grid-template-columns: repeat(2,minmax(0,1fr));
+          gap: 0.65rem;
+        }
+        .mm-mobile-sale-field {
+          display: grid;
+          min-width: 0;
+          gap: 0.3rem;
+        }
+        .mm-mobile-sale-field.is-wide { grid-column: 1 / -1; }
+        .mm-mobile-sale-field > span {
+          color: #727874;
+          font-size: 0.62rem;
+          font-weight: 800;
+        }
+        .mm-mobile-sale-field input,
+        .mm-mobile-sale-field select,
+        .mm-mobile-sale-field textarea {
+          width: 100%;
+          min-width: 0;
+          min-height: 44px;
+          border: 1px solid #E2E5E2;
+          border-radius: 10px;
+          background: #fff;
+          padding: 0 0.7rem;
+          outline: 0;
+          color: #171B18;
+          font-size: 0.75rem !important;
+          font-weight: 700;
+        }
+        .mm-mobile-sale-field textarea {
+          min-height: 76px;
+          padding-top: 0.65rem;
+          resize: vertical;
+        }
+        .mm-mobile-sale-field input:focus,
+        .mm-mobile-sale-field select:focus,
+        .mm-mobile-sale-field textarea:focus {
+          border-color: #82B5A5;
+          box-shadow: 0 0 0 3px rgba(61,139,116,.07);
+        }
+        .mm-mobile-sale-money-inputs {
+          display: grid;
+          grid-template-columns: repeat(2,minmax(0,1fr));
+          gap: 0.65rem;
+        }
+        .mm-mobile-sale-money-row {
+          display: grid;
+          grid-template-columns: repeat(3,minmax(0,1fr));
+          margin-top: 0.7rem;
+          overflow: hidden;
+          border: 1px solid #DCE9E4;
+          border-radius: 11px;
+          background: #F3F8F6;
+          text-align: center;
+        }
+        .mm-mobile-sale-money-row > div {
+          min-width: 0;
+          border-right: 1px solid #DCE9E4;
+          padding: 0.65rem 0.25rem;
+        }
+        .mm-mobile-sale-money-row > div:last-child { border-right: 0; }
+        .mm-mobile-sale-money-row strong {
+          display: block;
+          margin-top: 0.22rem;
+          overflow: hidden;
+          font-size: 0.72rem;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .mm-mobile-sale-money-row > div:last-child strong { color: #3D8B74; }
+        .mm-mobile-sale-product-list {
+          display: grid;
+          gap: 0.5rem;
+        }
+        .mm-mobile-sale-product {
+          display: grid;
+          grid-template-columns: 46px minmax(0,1fr);
+          align-items: center;
+          gap: 0.6rem;
+          border: 1px solid #ECECEC;
+          border-radius: 11px;
+          background: #FAFAF8;
+          padding: 0.5rem;
+        }
+        .mm-mobile-sale-product > span {
+          display: flex;
+          width: 46px;
+          height: 46px;
+          align-items: center;
+          justify-content: center;
+          overflow: hidden;
+          border: 1px solid #E5E7E5;
+          border-radius: 9px;
+          background: #fff;
+          color: #9A9F9B;
+        }
+        .mm-mobile-sale-product img { width: 100%; height: 100%; object-fit: contain; }
+        .mm-mobile-sale-product b,
+        .mm-mobile-sale-product small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .mm-mobile-sale-product b { font-size: 0.72rem; }
+        .mm-mobile-sale-product small { margin-top: 0.2rem; color: #7E847F; font-size: 0.62rem; font-weight: 700; }
+        .mm-mobile-sale-file-actions {
+          display: grid;
+          grid-template-columns: repeat(2,minmax(0,1fr));
+          gap: 0.5rem;
+          margin-top: 0.65rem;
+        }
+        .mm-mobile-sale-file-actions label,
+        .mm-mobile-sale-stock-button {
+          display: inline-flex;
+          min-height: 42px;
+          cursor: pointer;
+          align-items: center;
+          justify-content: center;
+          border: 1px solid #D7E7E1;
+          border-radius: 10px;
+          background: #fff;
+          color: #3D8B74;
+          font-size: 0.68rem;
+          font-weight: 850;
+        }
+        .mm-mobile-sale-stock-button {
+          width: 100%;
+          margin-bottom: 0.6rem;
+          border-color: #3D8B74;
+          background: #3D8B74;
+          color: #fff;
+        }
+        .mm-mobile-sale-empty {
+          border: 1px dashed #D9DDDA;
+          border-radius: 11px;
+          background: #FAFAF8;
+          padding: 1rem;
+          text-align: center;
+          color: #858B87;
+          font-size: 0.68rem;
+          font-weight: 750;
+        }
+        .mm-mobile-sale-footer {
+          position: fixed;
+          right: 0;
+          bottom: 0;
+          left: 0;
+          z-index: 70;
+          display: grid;
+          grid-template-columns: 1fr 1.25fr;
+          gap: 0.55rem;
+          border-top: 1px solid #ECECEC;
+          background: rgba(255,255,255,.96);
+          padding: 0.7rem 0.85rem max(0.7rem,env(safe-area-inset-bottom));
+          box-shadow: 0 -10px 28px rgba(18,24,20,.055);
+          backdrop-filter: blur(14px);
+        }
+        .mm-mobile-sale-footer button {
+          min-height: 48px;
+          border: 1px solid #DCE2DE;
+          border-radius: 11px;
+          background: #fff;
+          color: #3D8B74;
+          font-size: 0.76rem;
+          font-weight: 900;
+        }
+        .mm-mobile-sale-footer button.is-primary {
+          border-color: #171C1A;
+          background: #171C1A;
+          color: #fff;
+        }
+        @media (max-width: 359px) {
+          .mm-mobile-sale-grid,
+          .mm-mobile-sale-money-inputs { grid-template-columns: 1fr; }
+        }
       }
       /* MINMIN desktop design system — visual layer only, business logic stays untouched. */
       :root {
@@ -18952,9 +19245,164 @@ function accountingUnifiedOverview(){
     <button data-accounting-unified-review type="button" class="minmin-accounting-card mt-3 flex w-full items-center justify-between gap-3 p-3 text-left"><span><strong class="block text-sm">Hóa đơn cần kiểm tra</strong><small class="mt-1 block text-xs font-bold text-[#8a5a00]">${review} hóa đơn</small></span><span class="text-2xl text-mint">›</span></button>
     <button data-accounting-unified-report type="button" class="minmin-accounting-card mt-2 flex w-full items-center justify-between gap-3 p-3 text-left"><span><strong class="block text-sm">Báo cáo kế toán</strong><small class="mt-1 block text-xs font-semibold text-black/45">${s.outgoingCount} bán ra · ${s.incomingCount} mua vào</small></span><span class="text-2xl text-mint">›</span></button>`;
 }
+function accountingMobileSaleIcon(type){
+  const paths={
+    summary:'<path d="M5 3h10v14H5z"/><path d="M8 7h4M8 11h4"/>',
+    invoice:'<path d="M6 2h7l4 4v16H6z"/><path d="M13 2v5h5M9 12h6M9 16h6"/>',
+    money:'<circle cx="12" cy="12" r="9"/><path d="M15 8.5c-.7-.7-1.7-1-3-1-1.7 0-3 .8-3 2s1 1.8 3 2.3 3 1.2 3 2.7-1.3 2.5-3 2.5c-1.3 0-2.5-.4-3.3-1.2M12 5.5v13"/>',
+    export:'<path d="M6 2h8l4 4v16H6z"/><path d="M14 2v5h5M9 13h6M9 17h4"/>',
+    product:'<path d="m4 7 8-4 8 4-8 4z"/><path d="m4 7 8 4 8-4v10l-8 4-8-4z"/><path d="M12 11v10"/>'
+  };
+  return `<svg viewBox="0 0 24 24" aria-hidden="true">${paths[type]||paths.invoice}</svg>`;
+}
+function accountingMobileSaleField(inv,label,key,type='text',wide=false){
+  const value=type==='date'?String(inv?.[key]||''):outgoingEditValue(key,inv?.[key]??'');
+  return `<label class="mm-mobile-sale-field ${wide?'is-wide':''}"><span>${esc(label)}</span><input data-outgoing-edit="${esc(key)}" ${inv?.locked?'disabled':''} type="${esc(type)}" value="${esc(value)}"/></label>`;
+}
+function accountingMobileSaleSelect(inv,label,key,values){
+  return `<label class="mm-mobile-sale-field"><span>${esc(label)}</span><select data-outgoing-edit="${esc(key)}" ${inv?.locked?'disabled':''}>${values.map(value=>`<option value="${esc(value)}" ${String(inv?.[key]||'')===value?'selected':''}>${esc(value)}</option>`).join('')}</select></label>`;
+}
+function accountingMobileSaleCodes(value){
+  if(Array.isArray(value))return [...new Set(value.map(code=>String(code||'').trim()).filter(Boolean))];
+  const direct=String(value||'').split(/[,\n;|]+/).map(code=>code.trim()).filter(Boolean);
+  return [...new Set(direct)];
+}
+function accountingMobileSaleQty(inv,code,fallback=1){
+  const safe=String(code||'').replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  const match=String(inv?.item_summary||'').match(new RegExp(`${safe}[^;\\n,]*?(?:x|SL|sl|qty)\\s*(\\d+(?:[.,]\\d+)?)`,'i'));
+  return match?Number(String(match[1]).replace(',','.'))||fallback:Number(fallback)||1;
+}
+function accountingMobileSaleProductRows(inv){
+  const lines=Array.isArray(inv?.items_json)?inv.items_json:[];
+  const rows=[];
+  lines.forEach(line=>{
+    const codes=accountingMobileSaleCodes(line?.selected_stock_codes||line?.linked_inventory_codes||line?.linked_inventory_code||line?.stock_codes);
+    if(codes.length){
+      codes.forEach(code=>{
+        const stock=findInventoryItem(code);
+        const item=stock?normalizeInventoryItem(stock):null;
+        rows.push({
+          code,
+          name:item?.name||line?.product_name||line?.name||line?.description||code,
+          dimension:item?.dimension||line?.dimension||'',
+          quantity:Number(line?.quantity||line?.qty||1)||1,
+          image:driveAssetUrl(item?photoSourceValue(item):(line?.product_image_url||line?.image_url||line?.image||''))
+        });
+      });
+      return;
+    }
+    const name=String(line?.product_name||line?.name||line?.description||'').trim();
+    if(name)rows.push({
+      code:String(line?.sku||line?.stock_code||''),
+      name,
+      dimension:String(line?.dimension||''),
+      quantity:Number(line?.quantity||line?.qty||1)||1,
+      image:driveAssetUrl(line?.product_image_url||line?.image_url||line?.image||'')
+    });
+  });
+  if(rows.length)return rows;
+  const haystack=[inv?.order_code,inv?.item_summary,inv?.quote_file_name].filter(Boolean).join(' ');
+  const codes=[...new Set([...haystack.matchAll(/\b(?:OD|STK|TM|FTX|FX|WL|PL|TB)[A-Z0-9-]{3,}\b/gi)].map(match=>match[0]))];
+  codes.forEach(code=>{
+    const stock=findInventoryItem(code);
+    if(!stock)return;
+    const item=normalizeInventoryItem(stock);
+    rows.push({
+      code,
+      name:item.name||productTypeName(item.productType)||code,
+      dimension:item.dimension||'',
+      quantity:accountingMobileSaleQty(inv,code,1),
+      image:driveAssetUrl(photoSourceValue(item)||item.photoDataUrl||item.photoStorageUrl||'')
+    });
+  });
+  if(rows.length)return rows;
+  return String(inv?.item_summary||'').split(/[;\n]+/).map(name=>name.trim()).filter(Boolean).slice(0,6).map(name=>({code:'',name,dimension:'',quantity:1,image:''}));
+}
+function accountingMobileSaleFileChip(label,url){
+  return `<span class="mm-mobile-sale-chip ${url?'is-ready':'is-missing'}">${esc(label)}: ${url?'đã có':'chưa có'}</span>`;
+}
+function accountingMobileSaleProducts(inv){
+  const rows=accountingMobileSaleProductRows(inv);
+  if(!rows.length)return '<div class="mm-mobile-sale-empty">Chưa có sản phẩm. Chọn từ kho để thêm vào hóa đơn.</div>';
+  return `<div class="mm-mobile-sale-product-list">${rows.slice(0,8).map(row=>`<div class="mm-mobile-sale-product"><span>${row.image?`<img src="${esc(row.image)}" alt="" loading="lazy"/>`:`${accountingMobileSaleIcon('product')}`}</span><div class="min-w-0"><b>${esc(row.name||row.code||'Sản phẩm')}</b><small>${esc([row.code,row.dimension,`SL ${row.quantity}`].filter(Boolean).join(' · '))}</small></div></div>`).join('')}${rows.length>8?`<div class="mm-mobile-sale-empty">+${rows.length-8} sản phẩm khác</div>`:''}</div>`;
+}
+function accountingMobileSaleForm(source){
+  const inv=recalcOutgoingTotals(outgoingEmpty({...source,id:source?.id||''}));
+  const locked=!!inv.locked, accordion=state.ui?.accountingMobileSaleAccordion||{};
+  return `<div class="mm-mobile-sale-form">
+    <section class="mm-mobile-sale-section">
+      <header><span>${accountingMobileSaleIcon('summary')}</span><strong>1. Tóm tắt hóa đơn</strong></header>
+      <div class="mm-mobile-sale-summary">
+        <div class="mm-mobile-sale-summary-grid">
+          <div><span>Khách hàng</span><strong>${esc(inv.customer_name||'Chưa chọn')}</strong></div>
+          <div><span>Trạng thái</span><strong class="text-mint">${esc(inv.status||'Chờ xuất')}</strong></div>
+          <div><span>Ngày hóa đơn</span><strong>${esc(compactDate(inv.invoice_date||inv.request_date)||'--')}</strong></div>
+        </div>
+        <div class="mm-mobile-sale-summary-files">${accountingMobileSaleFileChip('PDF',inv.pdf_url)}${accountingMobileSaleFileChip('XML',inv.xml_url)}<span class="mm-mobile-sale-chip is-ready">Tổng: ${money(inv.total_amount)}</span></div>
+      </div>
+    </section>
+    <section class="mm-mobile-sale-section">
+      <header><span>${accountingMobileSaleIcon('invoice')}</span><strong>2. Thông tin hóa đơn</strong></header>
+      <div class="mm-mobile-sale-body"><div class="mm-mobile-sale-grid">
+        ${accountingMobileSaleField(inv,'Ngày đề nghị','request_date','date')}
+        ${accountingMobileSaleField(inv,'Ngày hóa đơn','invoice_date','date')}
+        ${accountingMobileSaleField(inv,'Hạn thanh toán','due_date','date')}
+        ${accountingMobileSaleField(inv,'Số hóa đơn','invoice_number')}
+        ${accountingMobileSaleField(inv,'Khách hàng','customer_name')}
+        ${accountingMobileSaleField(inv,'MST khách','customer_tax_code')}
+        ${accountingMobileSaleField(inv,'File báo giá','quote_file_name')}
+        ${accountingMobileSaleField(inv,'Mã đơn / báo giá','order_code')}
+      </div></div>
+    </section>
+    <section class="mm-mobile-sale-section">
+      <header><span>${accountingMobileSaleIcon('money')}</span><strong>3. Thanh toán &amp; tổng tiền</strong></header>
+      <div class="mm-mobile-sale-body">
+        <div class="mm-mobile-sale-money-inputs">
+          ${accountingMobileSaleField(inv,'Tiền hàng','goods_amount')}
+          ${accountingMobileSaleField(inv,'Giảm giá (%)','discount_percent')}
+          ${accountingMobileSaleField(inv,'Phí ship','shipping_fee')}
+          ${accountingMobileSaleField(inv,'VAT (%)','vat_rate')}
+        </div>
+        <div class="mm-mobile-sale-money-row">
+          <div><span>Trước VAT</span><strong>${money(inv.net_amount)}</strong></div>
+          <div><span>VAT</span><strong>${money(inv.vat_amount)}</strong></div>
+          <div><span>Tổng sau VAT</span><strong>${money(inv.total_amount)}</strong></div>
+        </div>
+        <div class="mm-mobile-sale-grid mt-3">${accountingMobileSaleSelect(inv,'Trạng thái','status',['Chờ xuất hóa đơn','Đã xuất hóa đơn','Đã gửi khách','Đã thanh toán','Hủy'])}${accountingMobileSaleSelect(inv,'Thanh toán','payment_status',['Chưa thanh toán','Thanh toán một phần','Đã thanh toán','Quá hạn'])}</div>
+      </div>
+    </section>
+    <details class="mm-mobile-sale-section" data-accounting-mobile-sale-accordion="invoice-output" ${accordion['invoice-output']?'open':''}>
+      <summary><span>${accountingMobileSaleIcon('export')}</span><strong>4. Thông tin xuất hóa đơn</strong></summary>
+      <div class="mm-mobile-sale-body"><div class="mm-mobile-sale-grid">
+        ${accountingMobileSaleField(inv,'Ký hiệu','invoice_series')}
+        ${accountingMobileSaleField(inv,'Mã CQT','tax_authority_code')}
+        ${accountingMobileSaleField(inv,'Địa chỉ','customer_address','text',true)}
+        ${accountingMobileSaleField(inv,'Email','customer_email')}
+        ${accountingMobileSaleField(inv,'Điện thoại','customer_phone')}
+      </div></div>
+    </details>
+    <section class="mm-mobile-sale-section">
+      <header><span>${accountingMobileSaleIcon('product')}</span><strong>5. Sản phẩm &amp; file PDF/XML</strong></header>
+      <div class="mm-mobile-sale-body">
+        <button id="createOutgoingFromInventory" type="button" class="mm-mobile-sale-stock-button" ${locked?'disabled':''}>Chọn sản phẩm từ kho</button>
+        ${accountingMobileSaleProducts(inv)}
+        <div class="mm-mobile-sale-summary-files">${accountingMobileSaleFileChip('PDF',inv.pdf_url)}${accountingMobileSaleFileChip('XML',inv.xml_url)}</div>
+        <div class="mm-mobile-sale-file-actions">
+          <label>Chọn PDF<input data-outgoing-file="pdf" ${locked?'disabled':''} type="file" accept="application/pdf,.pdf" class="hidden"/></label>
+          <label>Chọn XML<input data-outgoing-file="xml" ${locked?'disabled':''} type="file" accept=".xml,text/xml,application/xml" class="hidden"/></label>
+        </div>
+        <details class="mt-2" data-accounting-mobile-sale-accordion="product-note" ${accordion['product-note']?'open':''}>
+          <summary class="cursor-pointer py-2 text-xs font-black text-mint">Ghi chú sản phẩm</summary>
+          <label class="mm-mobile-sale-field"><textarea data-outgoing-edit="item_summary" ${locked?'disabled':''}>${esc(inv.item_summary||'')}</textarea></label>
+        </details>
+      </div>
+    </section>
+    <footer class="mm-mobile-sale-footer"><button id="saveOutgoingInvoice" type="button">Lưu nháp</button><button data-accounting-mobile-sale-complete type="button" class="is-primary">Hoàn tất</button></footer>
+  </div>`;
+}
 function accountingUnifiedSales(){
   const panel=state.ui?.accountingMobilePanel||'', selected=state.accounting?.outgoingInvoices?.find(inv=>String(inv.id)===String(state.ui?.accountingMobileDetailId||state.accounting.editingOutgoingId||''));
-  if(panel==='sale-edit'&&selected)return `${accountingUnifiedHead(selected.invoice_number?'Chỉnh sửa bán hàng':'Tạo bán hàng','Thông tin hóa đơn và sản phẩm','sales')}<div class="minmin-accounting-detail">${outgoingForm(selected)}</div>`;
+  if(panel==='sale-edit'&&selected)return `${accountingUnifiedHead(selected.invoice_number?'Chỉnh sửa bán hàng':'Tạo bán hàng','Thông tin hóa đơn và sản phẩm','sales')}<div class="minmin-accounting-detail">${accountingMobileSaleForm(selected)}</div>`;
   if(panel==='sale-detail'&&selected){
     const paid=outgoingPaid(selected), linked=accountingUnifiedSaleLinked(selected);
     return `${accountingUnifiedHead('Chi tiết đơn hàng',selected.customer_name||'Khách hàng','sales')}
@@ -19071,6 +19519,17 @@ document.addEventListener('click',event=>{
   const saleEdit=event.target.closest?.('[data-accounting-unified-sale-edit]');
   if(saleEdit){state.accounting.editingOutgoingId=saleEdit.dataset.accountingUnifiedSaleEdit;state.ui.accountingMobileDetailId=saleEdit.dataset.accountingUnifiedSaleEdit;state.ui.accountingMobilePanel='sale-edit';saveAccounting();render({force:true});return;}
   if(event.target.closest?.('[data-accounting-unified-new-sale]')){const inv=outgoingEmpty();state.accounting.outgoingInvoices.unshift(inv);state.accounting.editingOutgoingId=inv.id;state.ui.accountingMobileDetailId=inv.id;state.ui.accountingMobilePanel='sale-edit';saveAccounting();render({force:true});return;}
+  if(event.target.closest?.('[data-accounting-mobile-sale-complete]')){
+    const inv=state.accounting?.outgoingInvoices?.find(item=>String(item.id)===String(state.accounting.editingOutgoingId||state.ui?.accountingMobileDetailId||''));
+    if(inv?.locked){alert('Hóa đơn đang khóa. Hãy mở khóa trước khi hoàn tất.');return;}
+    document.getElementById('saveOutgoingInvoice')?.click();
+    state.ui.accountingMobilePanel='';
+    state.ui.accountingMobileDetailId='';
+    state.accounting.editingOutgoingId='';
+    saveAccounting();
+    render({force:true});
+    return;
+  }
   if(event.target.closest?.('[data-accounting-unified-reconcile]')){state.accounting.view='payments';state.accounting.filters.paymentType='all';state.ui.accountingMobilePanel='';render({force:true});return;}
   const purchaseDetail=event.target.closest?.('[data-accounting-unified-purchase-detail]');
   if(purchaseDetail){state.inputInvoices.editingId=purchaseDetail.dataset.accountingUnifiedPurchaseDetail;state.ui.accountingMobileDetailId=purchaseDetail.dataset.accountingUnifiedPurchaseDetail;state.ui.accountingMobilePanel='purchase-detail';saveInputInvoices();render({force:true});return;}
@@ -19082,6 +19541,13 @@ document.addEventListener('click',event=>{
   if(paymentEdit){const payment=state.accounting.payments.find(item=>String(item.id)===String(paymentEdit.dataset.accountingUnifiedPaymentEdit));if(!payment)return;state.accounting.editingPaymentId=payment.id;state.ui.pendingPaymentProofUrl=payment.proof_url||'';state.ui.accountingMobilePanel='payment-form';render({force:true});return;}
   if(event.target.closest?.('[data-accounting-unified-submit-payment]')){document.getElementById('addPayment')?.click();}
 });
+document.addEventListener('toggle',event=>{
+  const details=event.target.closest?.('[data-accounting-mobile-sale-accordion]');
+  if(!details)return;
+  state.ui=state.ui||{};
+  state.ui.accountingMobileSaleAccordion=state.ui.accountingMobileSaleAccordion||{};
+  state.ui.accountingMobileSaleAccordion[details.dataset.accountingMobileSaleAccordion]=details.open;
+},true);
 
 /* MINMIN DESKTOP WORKSPACE 2026-07-24
    Presentation-only enhancement. It consumes the existing state and delegates every
