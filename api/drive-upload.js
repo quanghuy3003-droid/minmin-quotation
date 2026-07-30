@@ -4,6 +4,13 @@ function normalizeEndpoint(value) {
   return match ? `https://script.google.com/macros/s/${match[1]}/exec` : raw;
 }
 
+function allowedOrigin(origin) {
+  if (!origin) return true;
+  if (/^https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?$/i.test(origin)) return true;
+  if (origin === "https://minmin-quotation-s74k.vercel.app") return true;
+  return /^https:\/\/minmin-quotation-[a-z0-9-]+\.vercel\.app$/i.test(origin);
+}
+
 function readJsonBody(req) {
   return new Promise((resolve, reject) => {
     let body = "";
@@ -26,22 +33,41 @@ function readJsonBody(req) {
 }
 
 module.exports = async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST,OPTIONS");
+  const origin = String(req.headers?.origin || "");
+  if (!allowedOrigin(origin)) {
+    return res.status(403).json({ ok: false, error: "Nguồn gọi upload không hợp lệ." });
+  }
+  if (origin) res.setHeader("Access-Control-Allow-Origin", origin);
+  res.setHeader("Vary", "Origin");
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   if (req.method === "OPTIONS") return res.status(204).end();
+  if (req.method === "GET") {
+    return res.status(200).json({
+      ok: true,
+      provider: "google-drive",
+      configured: Boolean(process.env.DRIVE_UPLOAD_ENDPOINT && process.env.DRIVE_UPLOAD_TOKEN)
+    });
+  }
   if (req.method !== "POST") return res.status(405).json({ ok: false, error: "Chỉ hỗ trợ upload bằng POST." });
 
   try {
     const body = await readJsonBody(req);
-    const endpoint = normalizeEndpoint(body.endpoint);
-    const payload = body.payload || {};
+    const endpoint = normalizeEndpoint(process.env.DRIVE_UPLOAD_ENDPOINT || body.endpoint);
+    const uploadToken = String(process.env.DRIVE_UPLOAD_TOKEN || "");
+    const payload = {
+      ...(body.payload || {}),
+      uploadToken
+    };
 
     if (!/^https:\/\/script\.google\.com\/macros\/s\/[^/?#]+\/exec$/i.test(endpoint)) {
       return res.status(400).json({
         ok: false,
-        error: "Google Drive Web App URL chưa đúng. Cần URL dạng https://script.google.com/macros/s/.../exec."
+        error: "Google Drive chưa được cấu hình trên máy chủ."
       });
+    }
+    if (!uploadToken) {
+      return res.status(503).json({ ok: false, error: "Google Drive chưa có mã bảo vệ upload." });
     }
     if (!payload.dataUrl || !payload.fileName) {
       return res.status(400).json({ ok: false, error: "Thiếu file upload." });
@@ -69,7 +95,10 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    return res.status(driveRes.ok && data.ok ? 200 : 502).json(data);
+    if (!driveRes.ok || !data.ok) {
+      return res.status(502).json({ ok: false, error: data.error || `Google Drive lỗi ${driveRes.status}` });
+    }
+    return res.status(200).json(data);
   } catch (error) {
     return res.status(500).json({
       ok: false,

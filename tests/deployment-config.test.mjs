@@ -29,7 +29,9 @@ const response={
   end(){return this;}
 };
 await handler({method:'GET'},response);
-assert.equal(response.statusCode,405,'The Vercel function must initialize and reject unsupported methods cleanly');
-assert.equal(response.body?.ok,false);
+assert.equal(response.statusCode,200,'The Drive upload health check must initialize cleanly');
+assert.equal(response.body?.ok,true);
+assert.equal(response.body?.provider,'google-drive');
+assert.equal(response.body?.configured,false);
 
 console.log('Vercel deployment configuration checks passed.');

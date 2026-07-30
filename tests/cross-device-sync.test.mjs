@@ -11,7 +11,7 @@ function section(start,end){
   return html.slice(from,to);
 }
 
-assert.match(html,/const WORKING_STATE_SYNC_INTERVAL_MS=4000/,'Cross-device content polling must stay responsive');
+assert.match(html,/const WORKING_STATE_SYNC_INTERVAL_MS=30000/,'Cross-device polling must keep the reduced-bandwidth interval');
 assert.match(
   section('async function syncAppInBackground','window.__minminBackgroundSync'),
   /includeChildData=options\.includeChildData!==false/,

@@ -1,94 +1,133 @@
 const MINMIN_ROOT_FOLDER = "MINMIN App Storage";
+const MINMIN_UPLOAD_TOKEN = "__MINMIN_UPLOAD_TOKEN__";
+const MINMIN_MAX_BYTES = 10 * 1024 * 1024;
 
 function doGet() {
-  return jsonOutput({
-    ok: true,
-    message: "Minmin Drive upload endpoint is ready."
-  });
+  return json_({ ok: true, name: "MINMIN Drive Upload", version: 2 });
 }
 
-function doPost(e) {
+function doPost(event) {
   try {
-    const isFormUpload = !!(e && e.parameter && e.parameter.payload);
-    const payload = isFormUpload
-      ? JSON.parse(e.parameter.payload || "{}")
-      : JSON.parse((e && e.postData && e.postData.contents) || "{}");
-    const dataUrl = String(payload.dataUrl || "");
-    const parsed = parseDataUrl(dataUrl);
-    const kind = safeFolderName(payload.kind || "files");
-    const code = safeFolderName(payload.code || "uncoded");
+    const payload = JSON.parse(event && event.postData && event.postData.contents || "{}");
+    if (!MINMIN_UPLOAD_TOKEN || MINMIN_UPLOAD_TOKEN.indexOf("__MINMIN_") === 0) {
+      throw new Error("Chưa cấu hình mã bảo vệ upload.");
+    }
+    if (String(payload.uploadToken || "") !== MINMIN_UPLOAD_TOKEN) {
+      throw new Error("Không có quyền upload.");
+    }
+
+    const requestId = safeKey_(payload.requestId || Utilities.getUuid());
+    const cache = CacheService.getScriptCache();
+    const cached = cache.get(requestId);
+    if (cached) return json_(JSON.parse(cached));
+
+    const parsed = parseDataUrl_(String(payload.dataUrl || ""));
+    if (parsed.bytes.length > MINMIN_MAX_BYTES) {
+      throw new Error("File vượt 10 MB. Hãy nén hoặc chia nhỏ file.");
+    }
+
+    const kind = safeFolderName_(payload.kind || "files");
+    const code = safeFolderName_(payload.code || "uncoded");
+    const fileName = safeFileName_(payload.fileName || `${kind}-${Date.now()}`);
     const folderPath = String(payload.folderPath || `${kind}/${code}`)
       .split("/")
-      .map(safeFolderName)
+      .map(safeFolderName_)
       .filter(Boolean);
-    const fileName = safeFileName(payload.fileName || `${kind}-${Date.now()}`);
 
-    const root = getOrCreateFolder(DriveApp.getRootFolder(), MINMIN_ROOT_FOLDER);
-    const targetFolder = folderPath.reduce((parent, name) => getOrCreateFolder(parent, name), root);
-    const blob = Utilities.newBlob(parsed.bytes, payload.mimeType || parsed.mimeType, fileName);
-    const file = targetFolder.createFile(blob);
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    const lock = LockService.getScriptLock();
+    lock.waitLock(20000);
+    let file;
+    try {
+      const root = getOrCreateFolder_(DriveApp.getRootFolder(), MINMIN_ROOT_FOLDER);
+      const targetFolder = folderPath.reduce(
+        (parent, name) => getOrCreateFolder_(parent, name),
+        root
+      );
+      const blob = Utilities.newBlob(
+        parsed.bytes,
+        payload.mimeType || parsed.mimeType,
+        fileName
+      );
+      file = targetFolder.createFile(blob);
+      file.setDescription(`MINMIN upload ${requestId}`);
+      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    } finally {
+      lock.releaseLock();
+    }
+
+    if (file.getSharingAccess() !== DriveApp.Access.ANYONE_WITH_LINK) {
+      file.setTrashed(true);
+      throw new Error("Google Drive chưa cho phép chia sẻ file bằng liên kết.");
+    }
 
     const fileId = file.getId();
+    const mimeType = file.getMimeType() || parsed.mimeType;
+    const isImage = /^image\//i.test(mimeType);
+    const viewUrl = `https://drive.google.com/file/d/${fileId}/view`;
+    const imageUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w1600`;
     const result = {
       ok: true,
+      provider: "google-drive",
+      bucket: "drive",
       fileId,
+      fileName: file.getName(),
       name: file.getName(),
+      mimeType,
+      fileType: mimeType,
+      size: file.getSize(),
       folderPath: `${MINMIN_ROOT_FOLDER}/${folderPath.join("/")}`,
-      mimeType: payload.mimeType || parsed.mimeType,
-      viewUrl: file.getUrl(),
+      storagePath: `${MINMIN_ROOT_FOLDER}/${folderPath.join("/")}/${file.getName()}`,
+      viewUrl,
+      imageUrl: isImage ? imageUrl : "",
+      publicUrl: isImage ? imageUrl : viewUrl,
+      url: isImage ? imageUrl : viewUrl,
       downloadUrl: `https://drive.google.com/uc?export=download&id=${fileId}`,
-      imageUrl: `https://drive.google.com/uc?export=view&id=${fileId}`
+      uploadedAt: new Date().toISOString()
     };
-    return isFormUpload ? htmlMessage(e.parameter.requestId || "", result) : jsonOutput(result);
-  } catch (err) {
-    const result = {
+    cache.put(requestId, JSON.stringify(result), 21600);
+    return json_(result);
+  } catch (error) {
+    return json_({
       ok: false,
-      error: err && err.message ? err.message : String(err)
-    };
-    return e && e.parameter && e.parameter.payload ? htmlMessage(e.parameter.requestId || "", result) : jsonOutput(result);
+      error: String(error && error.message || error || "Upload thất bại.")
+    });
   }
 }
 
-function parseDataUrl(dataUrl) {
+function parseDataUrl_(dataUrl) {
   const match = dataUrl.match(/^data:([^;,]+)?(;base64)?,(.*)$/);
-  if (!match) throw new Error("File upload không đúng định dạng data URL.");
+  if (!match) throw new Error("File upload không đúng định dạng.");
   const mimeType = match[1] || "application/octet-stream";
   const body = match[3] || "";
-  const bytes = match[2] ? Utilities.base64Decode(body) : Utilities.newBlob(decodeURIComponent(body)).getBytes();
+  const bytes = match[2]
+    ? Utilities.base64Decode(body)
+    : Utilities.newBlob(decodeURIComponent(body)).getBytes();
   return { mimeType, bytes };
 }
 
-function getOrCreateFolder(parent, name) {
+function getOrCreateFolder_(parent, name) {
   const folders = parent.getFoldersByName(name);
   return folders.hasNext() ? folders.next() : parent.createFolder(name);
 }
 
-function safeFolderName(value) {
+function safeKey_(value) {
+  return String(value || "").replace(/[^a-zA-Z0-9._-]/g, "").slice(0, 120);
+}
+
+function safeFolderName_(value) {
   return String(value || "files")
-    .replace(/[\\/:*?"<>|#%{}~&]+/g, "-")
-    .replace(/\s+/g, " ")
-    .trim()
+    .replace(/[\\/:*?"<>|#%{}~&]/g, "-")
     .slice(0, 80) || "files";
 }
 
-function safeFileName(value) {
+function safeFileName_(value) {
   return String(value || "file")
-    .replace(/[\\/:*?"<>|#%{}~&]+/g, "-")
-    .replace(/\s+/g, " ")
-    .trim()
+    .replace(/[\\/:*?"<>|#%{}~&]/g, "-")
     .slice(0, 160) || "file";
 }
 
-function jsonOutput(data) {
+function json_(data) {
   return ContentService
     .createTextOutput(JSON.stringify(data))
     .setMimeType(ContentService.MimeType.JSON);
-}
-
-function htmlMessage(requestId, data) {
-  const message = JSON.stringify({ requestId, data }).replace(/</g, "\\u003c");
-  return HtmlService.createHtmlOutput(
-    `<!doctype html><meta charset="utf-8"><script>window.parent.postMessage(${message},"*");</script>`
-  ).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
