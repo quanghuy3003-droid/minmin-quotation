@@ -5992,7 +5992,9 @@ function storageImageBlob(canvas,type,quality){
 }
 async function optimizeStorageUploadFile(file,kind=''){
   if(!file||!/^image\/(?:jpeg|png|webp)$/i.test(String(file.type||'')))return file;
-  const settings=['payment-proof'].includes(kind)?{maxEdge:1600,quality:0.76}:{maxEdge:1200,quality:0.72};
+  const settings=['payment-proof'].includes(kind)
+    ?{maxEdge:1200,quality:0.68}
+    :(['product'].includes(kind)?{maxEdge:1000,quality:0.68}:{maxEdge:800,quality:0.60});
   let objectUrl='';
   try{
     objectUrl=URL.createObjectURL(file);
@@ -6311,8 +6313,8 @@ let workingStateChannel=null;
 let backgroundSyncInFlight=false;
 let backgroundSyncTimer=null;
 let workingStateSyncTimer=null;
-const BACKGROUND_SYNC_INTERVAL_MS=60000;
-const WORKING_STATE_SYNC_INTERVAL_MS=4000;
+const BACKGROUND_SYNC_INTERVAL_MS=10*60*1000;
+const WORKING_STATE_SYNC_INTERVAL_MS=30000;
 let inventoryImportLockUntil=0;
 function appHasActiveEditor(){
   const active=document.activeElement;
@@ -9117,7 +9119,7 @@ function setRootHtml(html){
   }
   __minminRootRendering=true;
   try{
-    html=String(html||'').replace(/<img(?![^>]*\bloading=)/gi,'<img loading="lazy" decoding="async"');
+    html=String(html||'').replace(/<img(?![^>]*\bloading=)/gi,'<img loading="lazy" decoding="async" fetchpriority="low"');
     if(activeInside){
       try{
         const tag=String(active.tagName||'').toUpperCase();
