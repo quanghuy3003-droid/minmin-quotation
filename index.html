@@ -5987,12 +5987,56 @@ function storageObjectPath(kind,code,file){
   return [kind||'file',todayIso(),safeCode,`${Date.now()}-${Math.random().toString(16).slice(2,8)}-${base}${ext}`].join('/');
 }
 function storagePublicUrl(bucket,path){ return `${SUPABASE_URL}/storage/v1/object/public/${encodeURIComponent(bucket)}/${String(path||'').split('/').map(encodeURIComponent).join('/')}`; }
+function storageImageBlob(canvas,type,quality){
+  return new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error('Không tạo được ảnh tối ưu.')),type,quality));
+}
+async function optimizeStorageUploadFile(file,kind=''){
+  if(!file||!/^image\/(?:jpeg|png|webp)$/i.test(String(file.type||'')))return file;
+  const settings=['payment-proof'].includes(kind)?{maxEdge:1600,quality:0.76}:{maxEdge:1200,quality:0.72};
+  let objectUrl='';
+  try{
+    objectUrl=URL.createObjectURL(file);
+    const image=await new Promise((resolve,reject)=>{
+      const img=new Image();
+      img.onload=()=>resolve(img);
+      img.onerror=()=>reject(new Error('Không đọc được ảnh để tối ưu.'));
+      img.src=objectUrl;
+    });
+    const sourceWidth=image.naturalWidth||image.width,sourceHeight=image.naturalHeight||image.height;
+    if(!sourceWidth||!sourceHeight)return file;
+    const scale=Math.min(1,settings.maxEdge/Math.max(sourceWidth,sourceHeight));
+    const width=Math.max(1,Math.round(sourceWidth*scale)),height=Math.max(1,Math.round(sourceHeight*scale));
+    const canvas=document.createElement('canvas');
+    canvas.width=width; canvas.height=height;
+    const context=canvas.getContext('2d');
+    context.fillStyle='#fff';
+    context.fillRect(0,0,width,height);
+    context.imageSmoothingEnabled=true;
+    context.imageSmoothingQuality='high';
+    context.drawImage(image,0,0,sourceWidth,sourceHeight,0,0,width,height);
+    let type='image/webp',extension='webp';
+    let blob=await storageImageBlob(canvas,type,settings.quality).catch(()=>null);
+    if(!blob||blob.type!=='image/webp'){
+      type='image/jpeg'; extension='jpg';
+      blob=await storageImageBlob(canvas,type,settings.quality);
+    }
+    if(!blob||blob.size>=file.size&&scale===1)return file;
+    const base=storageSafePart(String(file.name||'image').replace(/\.[^.]+$/,''));
+    return new File([blob],`${base}.${extension}`,{type,lastModified:Date.now()});
+  }catch(error){
+    console.warn('Image optimization skipped:',error);
+    return file;
+  }finally{
+    if(objectUrl)URL.revokeObjectURL(objectUrl);
+  }
+}
 async function uploadFileToSupabaseStorage(file,kind,code=''){
   if(!SUPABASE_URL||!SUPABASE_ANON_KEY)throw new Error('Chưa cấu hình Supabase.');
   if(!file)throw new Error('Không có file để upload.');
+  file=await optimizeStorageUploadFile(file,kind);
   if(file.size>50*1024*1024)throw new Error('File vượt 50MB. Gói Supabase hiện tại chỉ cho phép 50MB/file.');
   const bucket=supabaseStorageBucket(kind), path=storageObjectPath(kind,code,file), encodedPath=String(path).split('/').map(encodeURIComponent).join('/');
-  const res=await fetch(`${SUPABASE_URL}/storage/v1/object/${encodeURIComponent(bucket)}/${encodedPath}`,{method:'POST',headers:supabaseHeaders({'Content-Type':file.type||'application/octet-stream','x-upsert':'true'}),body:file});
+  const res=await fetch(`${SUPABASE_URL}/storage/v1/object/${encodeURIComponent(bucket)}/${encodedPath}`,{method:'POST',headers:supabaseHeaders({'Content-Type':file.type||'application/octet-stream','Cache-Control':'public, max-age=31536000, immutable','x-upsert':'true'}),body:file});
   const text=await res.text().catch(()=>'');
   let data={};
   try{ data=text?JSON.parse(text):{}; }catch{ data={message:text}; }
@@ -9073,6 +9117,7 @@ function setRootHtml(html){
   }
   __minminRootRendering=true;
   try{
+    html=String(html||'').replace(/<img(?![^>]*\bloading=)/gi,'<img loading="lazy" decoding="async"');
     if(activeInside){
       try{
         const tag=String(active.tagName||'').toUpperCase();
