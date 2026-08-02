@@ -11,7 +11,8 @@ function section(start,end){
   return html.slice(from,to);
 }
 
-assert.match(html,/const WORKING_STATE_SYNC_INTERVAL_MS=30000/,'Cross-device polling must keep the reduced-bandwidth interval');
+assert.match(html,/const WORKING_STATE_SYNC_INTERVAL_MS=60\*1000/,'Cross-device polling must keep the low-bandwidth one-minute interval');
+assert.match(html,/const BACKGROUND_SYNC_INTERVAL_MS=30\*60\*1000/,'Heavy child-table reconciliation must be limited to every thirty minutes');
 assert.match(
   section('async function syncAppInBackground','window.__minminBackgroundSync'),
   /includeChildData=options\.includeChildData!==false/,
@@ -34,6 +35,9 @@ const saver=section('function scheduleWorkingStateSave','function inputInvoiceTo
 assert.match(saver,/workingStateDirtyDomains/,'Local unsaved content must be protected from remote pulls');
 assert.match(saver,/mergeWorkingStateForSave/,'A save must merge its changed module with the latest remote snapshot');
 assert.match(saver,/fetchWorkingStateFromSupabase/,'A save must check the latest remote snapshot before writing');
+assert.match(html,/fetchWorkingStateMetaFromSupabase[\s\S]*?select=id,updated_at,device_id/,'Background checks must request metadata without downloading the full snapshot');
+assert.match(html,/auto\?await fetchWorkingStateMetaFromSupabase\(\):await fetchWorkingStateFromSupabase\(\)/,'Automatic polling must use the metadata-first path');
+assert.match(saver,/remoteRow=workingStateRemoteVersion[\s\S]*?\?\{updated_at:workingStateRemoteVersion,data:null\}/,'Normal saves must use optimistic versioning without first downloading the full snapshot');
 assert.match(saver,/updated_at=eq\./,'Concurrent saves must use an optimistic version check');
 assert.match(saver,/attempt<3/,'A conflicting save must refetch and retry its merge');
 assert.match(saver,/notifyWorkingStatePeers/,'Successful saves must notify other open tabs');

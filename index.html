@@ -6331,8 +6331,8 @@ let workingStateChannel=null;
 let backgroundSyncInFlight=false;
 let backgroundSyncTimer=null;
 let workingStateSyncTimer=null;
-const BACKGROUND_SYNC_INTERVAL_MS=10*60*1000;
-const WORKING_STATE_SYNC_INTERVAL_MS=30000;
+const BACKGROUND_SYNC_INTERVAL_MS=30*60*1000;
+const WORKING_STATE_SYNC_INTERVAL_MS=60*1000;
 let inventoryImportLockUntil=0;
 function appHasActiveEditor(){
   const active=document.activeElement;
@@ -6419,14 +6419,27 @@ async function fetchWorkingStateFromSupabase(){
   const rows=await supabaseRequest(`/rest/v1/app_working_state?id=eq.${encodeURIComponent(WORKING_STATE_REMOTE_ID)}&select=id,data,updated_at,device_id&limit=1`);
   return Array.isArray(rows)&&rows[0]?rows[0]:null;
 }
+async function fetchWorkingStateMetaFromSupabase(){
+  const rows=await supabaseRequest(`/rest/v1/app_working_state?id=eq.${encodeURIComponent(WORKING_STATE_REMOTE_ID)}&select=id,updated_at,device_id&limit=1`);
+  return Array.isArray(rows)&&rows[0]?rows[0]:null;
+}
 async function loadWorkingStateFromSupabase(options={}){
   const auto=!!options.auto, activityToken=options.activityToken;
   if(inventoryImportLocked()){ workingStateReady=true; return false; }
   if(auto&&(workingStateDirtyDomains.size||workingStateSaveInFlight))return false;
   try{
     if(!auto)state.status='Đang tải dữ liệu làm việc cuối từ Supabase...';
-    const row=await fetchWorkingStateFromSupabase();
+    let row=auto?await fetchWorkingStateMetaFromSupabase():await fetchWorkingStateFromSupabase();
     if(auto&&backgroundSyncShouldYield(activityToken))return false;
+    if(auto){
+      const metaVersion=String(row?.updated_at||'');
+      if(metaVersion&&workingStateRemoteVersion&&metaVersion<=workingStateRemoteVersion){
+        workingStateReady=true;
+        return false;
+      }
+      if(row)row=await fetchWorkingStateFromSupabase();
+      if(backgroundSyncShouldYield(activityToken))return false;
+    }
     if(row?.data){
       const remoteVersion=String(row.updated_at||row.data.savedAt||'');
       if(auto&&remoteVersion&&workingStateRemoteVersion&&remoteVersion<=workingStateRemoteVersion){
@@ -6501,7 +6514,12 @@ async function saveWorkingStateToSupabase(options={}){
     const localSnapshot=workingStateSnapshot();
     let snapshot=localSnapshot;
     try{
-      let remoteRow=options.skipRemoteMerge?null:await fetchWorkingStateFromSupabase().catch(()=>null);
+      let remoteRow=null;
+      if(!options.skipRemoteMerge){
+        remoteRow=workingStateRemoteVersion
+          ?{updated_at:workingStateRemoteVersion,data:null}
+          :await fetchWorkingStateFromSupabase().catch(()=>null);
+      }
       let saved=false;
       for(let attempt=0;attempt<3&&!saved;attempt++){
         snapshot=remoteRow?.data?mergeWorkingStateForSave(remoteRow.data,localSnapshot,domains):localSnapshot;
