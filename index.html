@@ -9378,7 +9378,58 @@ function dataUrlFromClipboardText(text){ const raw=String(text||'').trim(); if(r
 async function imageFileFromPasteEvent(e){ const items=[...(e.clipboardData?.items||[])]; for(const it of items){ if(String(it.type||'').startsWith('image/')){ const file=it.getAsFile(); if(file)return file; } } const files=[...(e.clipboardData?.files||[])]; return files.find(f=>String(f.type||'').startsWith('image/')) || null; }
 async function handlePasteImage(e,fallbackUid=''){ const uid=activeLineUid(fallbackUid); if(!uid)return false; const file=await imageFileFromPasteEvent(e); if(file){ e?.preventDefault?.(); return attachImageToLine(uid,file); } const html=e?.clipboardData?.getData?.('text/html'), text=e?.clipboardData?.getData?.('text/plain'), dataUrl=dataUrlFromClipboardText(html)||dataUrlFromClipboardText(text); if(dataUrl){ e?.preventDefault?.(); return attachImageDataToLine(uid,dataUrl); } return false; }
 async function pasteImageFromClipboard(uid){ uid=activeLineUid(uid); if(!uid)return alert('Anh bấm vào ô ảnh của sản phẩm trước rồi dán lại nhé.'); try{ if(!navigator.clipboard?.read) throw new Error('Trình duyệt chưa cho đọc clipboard.'); const items=await navigator.clipboard.read(); for(const item of items){ const imageType=item.types.find(t=>String(t).startsWith('image/')); if(imageType){ const blob=await item.getType(imageType); return attachImageToLine(uid,new File([blob],'lightshot-image.png',{type:imageType})); } const htmlType=item.types.find(t=>t==='text/html'||t==='text/plain'); if(htmlType){ const blob=await item.getType(htmlType), text=await blob.text(), dataUrl=dataUrlFromClipboardText(text); if(dataUrl)return attachImageDataToLine(uid,dataUrl); } } alert('Clipboard chưa có ảnh. Anh chụp bằng Lightshot xong bấm Copy, rồi quay lại bấm Dán ảnh.'); }catch(e){ alert('Chrome/Safari đang chặn đọc clipboard. Anh bấm vào ô ảnh rồi nhấn Cmd+V, hoặc dùng nút Choose File.'); } }
-async function imageSourceToDataUrl(source){ source=imageDisplayUrl(source); if(!source)return''; if(String(source).startsWith('data:image/'))return source; if(!/^https?:\/\//i.test(source))return''; const res=await fetch(source); if(!res.ok)throw new Error('Không tải được ảnh: '+source); const blob=await res.blob(); const data=await new Promise((resolve,reject)=>{const r=new FileReader(); r.onload=()=>resolve(r.result); r.onerror=reject; r.readAsDataURL(blob);}); return cropImageToSquare(data); }
+function quoteLineImageCandidates(line){
+  const attrs=line?.attributes||{}, values=[
+    line?.photoDataUrl,line?.photo_data_url,line?.photoDriveUrl,line?.photo_drive_url,
+    attrs._photoDriveUrl,line?.photoStorageUrl,line?.photo_storage_url,
+    attrs._photoStorageUrl,line?.photo
+  ];
+  const driveId=line?.photoDriveId||line?.photo_drive_id||attrs._photoDriveId||'';
+  if(driveId)values.push(driveFileUrl(driveId));
+  const inventoryKey=String(attrs._inventorySourceKey||line?.linked_inventory_code||line?.inventory_code||line?.code||'').trim();
+  const inventoryItem=inventoryKey&&typeof findInventoryItem==='function'?findInventoryItem(inventoryKey):null;
+  if(inventoryItem){
+    if(typeof mmStockImageCandidates==='function')values.push(...mmStockImageCandidates(inventoryItem));
+    else values.push(photoSourceValue(inventoryItem),inventoryItem.photoDataUrl,inventoryItem.photoStorageUrl,inventoryItem.photoDriveUrl);
+  }
+  const normalized=values.map(value=>imageDisplayUrl(value)).filter(Boolean);
+  const priority=value=>String(value).startsWith('data:image/')?0:/drive\.google\.com|googleusercontent\.com/i.test(value)?1:/supabase\.co/i.test(value)?3:2;
+  return [...new Set(normalized)].sort((a,b)=>priority(a)-priority(b));
+}
+async function fetchPdfImageBlob(source){
+  const attempts=[source,`/api/image-proxy?url=${encodeURIComponent(source)}`];
+  let lastError;
+  for(const url of attempts){
+    const controller=new AbortController(), timeout=setTimeout(()=>controller.abort(),6500);
+    try{
+      const res=await fetch(url,{signal:controller.signal,headers:{Accept:'image/*'}});
+      if(!res.ok)throw new Error(`HTTP ${res.status}`);
+      const blob=await res.blob(), type=String(blob.type||res.headers.get('content-type')||'');
+      if(!/^image\//i.test(type))throw new Error('Phản hồi không phải hình ảnh.');
+      return blob;
+    }catch(error){lastError=error;}
+    finally{clearTimeout(timeout);}
+  }
+  throw lastError||new Error('Không tải được ảnh.');
+}
+async function imageSourceToDataUrl(source){
+  source=imageDisplayUrl(source);
+  if(!source)return'';
+  if(String(source).startsWith('data:image/'))return source;
+  if(!/^https?:\/\//i.test(source))return'';
+  const blob=await fetchPdfImageBlob(source);
+  const data=await new Promise((resolve,reject)=>{const r=new FileReader(); r.onload=()=>resolve(r.result); r.onerror=reject; r.readAsDataURL(blob);});
+  return cropImageToSquare(data);
+}
+async function quoteLineImageDataUrl(line,size=240){
+  for(const source of quoteLineImageCandidates(line)){
+    try{
+      const data=String(source).startsWith('data:image/')?source:await imageSourceToDataUrl(source);
+      if(data)return cropImageToSquare(data,size);
+    }catch(error){console.warn('Không tải được một nguồn ảnh báo giá:',source,error);}
+  }
+  return'';
+}
 function imageExtension(dataUrl){const m=String(dataUrl||'').match(/^data:image\/([^;]+)/)?.[1]||'png'; return (m.includes('jpeg')||m.includes('jpg'))?'jpeg':'png';}
 function bytesToBase64(bytes){ let out=''; const chunk=0x8000; for(let i=0;i<bytes.length;i+=chunk)out+=String.fromCharCode(...bytes.subarray(i,i+chunk)); return btoa(out); }
 function excelImageDataUrl(wb,imageId){
@@ -9724,7 +9775,7 @@ async function exportMobilePdfVector(options={}){
   const lines=state.lines.filter(l=>l.name),images=[];
   updateMobilePdfProgress(22,'Đang chuẩn bị ảnh sản phẩm...');
   for(let i=0;i<lines.length;i++){
-    try{const src=lines[i].photoDataUrl||lines[i].photo,data=src?(String(src).startsWith('data:image/')?src:await imageSourceToDataUrl(src)):'';images[i]=data?await cropImageToSquare(data,240):'';}catch{images[i]='';}
+    images[i]=await quoteLineImageDataUrl(lines[i],240);
     updateMobilePdfProgress(22+Math.round((i+1)/Math.max(lines.length,1)*18),`Đang chuẩn bị ảnh ${i+1}/${lines.length}...`);
   }
   const t=totals(),moneyCell=v=>moneyPlain(v),shipAmount=Number(parseInputMoney(state.info.shipPriceText||0))*Number(state.info.shipQty||0);
@@ -9811,12 +9862,7 @@ async function exportPdfA4(options={}){
   report(15,'Đang xử lý hình ảnh sản phẩm...');
   const {jsPDF}=window.jspdf, t=totals(), productLines=state.lines.filter(l=>l.name), moneyCell=v=>moneyPlain(v);
   async function pdfImage(line){
-    const source=line.photoDataUrl||line.photo;
-    if(!source)return'';
-    try{
-      const data=String(source).startsWith('data:image/')?source:await imageSourceToDataUrl(source);
-      return await cropImageToSquare(data,isMobilePdfDevice()?320:900);
-    }catch{return'';}
+    return quoteLineImageDataUrl(line,isMobilePdfDevice()?320:900);
   }
   let processedImages=0;
   const imgs=await Promise.all(productLines.map(async line=>{
@@ -19638,8 +19684,47 @@ document.addEventListener('toggle',event=>{
 function mmDesktopCurrency(value){
   return new Intl.NumberFormat('vi-VN').format(Math.round(Number(value)||0))+' đ';
 }
+function mmStockWebsiteProducts(item){
+  const products=Array.isArray(state.website?.products)?state.website.products:[];
+  const code=cleanSearch(item?.code||item?.barcodeId||'');
+  if(!code)return[];
+  return products.filter(product=>{
+    const stockCode=cleanSearch(product?.stock_code||'');
+    const sku=cleanSearch(product?.sku||'');
+    return stockCode===code||sku===code;
+  });
+}
+function mmStockImageCandidates(item){
+  if(!item)return[];
+  const attrs=item.attributes||{};
+  const candidates=[
+    item.photoDataUrl,item.photo_data_url,item.photoStorageUrl,item.photo_storage_url,
+    attrs._photoStorageUrl,item.photoDriveUrl,item.photo_drive_url,attrs._photoDriveUrl,
+    item.photo,item.image_url,item.image
+  ];
+  mmStockWebsiteProducts(item).forEach(product=>{
+    candidates.push(product.featured_image_url,...(product.gallery_image_urls||[]));
+  });
+  return [...new Set(candidates.map(value=>driveAssetUrl(value)).filter(Boolean))];
+}
+function mmStockImageMarkup(item,alt='',className=''){
+  const candidates=mmStockImageCandidates(item);
+  if(!candidates.length)return'';
+  return `<img src="${esc(candidates[0])}" alt="${esc(alt)}" class="${esc(className)}" data-mm-stock-image-fallbacks="${esc(JSON.stringify(candidates.slice(1)))}"/>`;
+}
+function mmRestoreStockImage(image){
+  if(!image?.matches?.('[data-mm-stock-image-fallbacks]'))return;
+  let fallbacks=[];
+  try{fallbacks=JSON.parse(image.dataset.mmStockImageFallbacks||'[]');}catch{}
+  const next=fallbacks.shift();
+  image.dataset.mmStockImageFallbacks=JSON.stringify(fallbacks);
+  if(next){image.src=next;return;}
+  image.hidden=true;
+  image.parentElement?.classList.add('mm-stock-image-unavailable');
+}
+document.addEventListener('error',event=>mmRestoreStockImage(event.target),true);
 function mmDesktopImage(item){
-  return item?.photoDataUrl||item?.photo_data_url||item?.photo||item?.image_url||item?.image||'';
+  return mmStockImageCandidates(item)[0]||'';
 }
 function mmDesktopInventoryStage(item){
   return String(item?.stage||item?.status||item?.inventory_stage||'').toLowerCase();
@@ -19737,7 +19822,7 @@ function mmStockProductCard(item){
   return `<article class="mm-stock-product-card" data-mm-stock-key="${esc(key)}">
     ${mmStockKindSignal(item)}
     <div class="mm-stock-card-top">
-      <div class="mm-stock-card-photo">${photo?`<img src="${esc(driveAssetUrl(photo))}" alt="${esc(item.name||item.code||'Sản phẩm')}"/>`:'<span>Chưa có ảnh</span>'}</div>
+      <div class="mm-stock-card-photo">${photo?mmStockImageMarkup(item,item.name||item.code||'Sản phẩm'):'<span>Chưa có ảnh</span>'}</div>
       <div class="mm-stock-card-copy"><b>${esc(item.code||'Chưa có mã')}</b><h3>${esc(item.name||mmStockCategory(item))}</h3><p>${esc(detail||item.unit||'Chưa có thông tin')}</p><strong class="mm-stock-card-price">${money(finance.sell)}</strong></div>
     </div>
     <div class="mm-stock-card-meta"><div><span>Tồn kho</span><strong>${Number(item.quantity||0)} ${esc(item.unit||'cái')}</strong></div><div><span>Phụ trách</span><strong>${esc(mmStockOwner(item))}</strong></div></div>
@@ -19757,7 +19842,7 @@ function mmDesktopStockAside(stats){
     <div class="flex items-center justify-between gap-3"><h2>Tồn kho theo danh mục</h2><button type="button" data-mm-stock-filter-reset class="text-[10px] font-extrabold text-mint">Xem tất cả</button></div>
     <div class="mt-2">${categories.length?categories.map(([name,count])=>`<button type="button" data-mm-stock-category-shortcut="${esc(cleanSearch(name))}" class="block w-full py-2 text-left"><div class="flex items-center justify-between gap-3 text-xs font-bold"><span>${esc(name)}</span><small>${count} sản phẩm</small></div><div class="mm-progress"><i style="width:${Math.max(8,Math.round(count/max*100))}%"></i></div></button>`).join(''):'<p class="py-4 text-xs text-black/45">Chưa có dữ liệu tồn kho.</p>'}</div>
     <div class="mt-5 flex items-center justify-between"><h2>Sắp hết hàng</h2><small>${low.length} sản phẩm</small></div>
-    <div>${low.length?low.map(item=>`<button type="button" data-mm-stock-open="${esc(mmStockItemKey(item))}" class="mm-desktop-side-row w-full text-left">${mmDesktopImage(item)?`<img src="${esc(driveAssetUrl(mmDesktopImage(item)))}" alt=""/>`:'<span class="h-[42px] rounded-lg bg-black/5"></span>'}<span><b>${esc(item.code||item.name||'Sản phẩm')}</b><small>${esc(item.name||mmStockCategory(item))} · Tồn ${Number(item.quantity||0)}</small></span><strong class="text-xs text-[#b34b45]">${Number(item.quantity||0)<=0?'Hết hàng':'Cần nhập'}</strong></button>`).join(''):'<p class="py-4 text-xs text-black/45">Không có sản phẩm sắp hết.</p>'}</div>
+    <div>${low.length?low.map(item=>`<button type="button" data-mm-stock-open="${esc(mmStockItemKey(item))}" class="mm-desktop-side-row w-full text-left">${mmDesktopImage(item)?mmStockImageMarkup(item,''):'<span class="h-[42px] rounded-lg bg-black/5"></span>'}<span><b>${esc(item.code||item.name||'Sản phẩm')}</b><small>${esc(item.name||mmStockCategory(item))} · Tồn ${Number(item.quantity||0)}</small></span><strong class="text-xs text-[#b34b45]">${Number(item.quantity||0)<=0?'Hết hàng':'Cần nhập'}</strong></button>`).join(''):'<p class="py-4 text-xs text-black/45">Không có sản phẩm sắp hết.</p>'}</div>
   </aside>`;
 }
 function mmStockExactDashboard(stats){
@@ -19786,7 +19871,7 @@ function mmStockExactDashboard(stats){
 function mmStockPickerRows(items,mode){
   return `<div class="mm-stock-picker">${items.length?items.map(item=>{
     const photo=mmDesktopImage(item), key=mmStockItemKey(item);
-    return `<div class="mm-stock-picker-row">${photo?`<img src="${esc(driveAssetUrl(photo))}" alt=""/>`:'<span class="mm-stock-picker-placeholder"></span>'}<span><b>${esc(item.code||'Chưa có mã')} · ${esc(item.name||mmStockCategory(item))}</b><small>${money(item.price)} · Tồn ${Number(item.quantity||0)}</small></span>${mode==='audit'?`<input data-mm-stock-audit-qty="${esc(key)}" type="number" min="0" value="${Number(item.quantity||0)}" aria-label="Số lượng kiểm kê ${esc(item.code||'')}"/>`:''}<button type="button" ${mode==='audit'?`data-mm-stock-audit-save="${esc(key)}"`:`data-mm-stock-picker-open="${esc(key)}"`}>${mode==='audit'?'Cập nhật':'Chọn sản phẩm'}</button></div>`;
+    return `<div class="mm-stock-picker-row">${photo?mmStockImageMarkup(item,''):'<span class="mm-stock-picker-placeholder"></span>'}<span><b>${esc(item.code||'Chưa có mã')} · ${esc(item.name||mmStockCategory(item))}</b><small>${money(item.price)} · Tồn ${Number(item.quantity||0)}</small></span>${mode==='audit'?`<input data-mm-stock-audit-qty="${esc(key)}" type="number" min="0" value="${Number(item.quantity||0)}" aria-label="Số lượng kiểm kê ${esc(item.code||'')}"/>`:''}<button type="button" ${mode==='audit'?`data-mm-stock-audit-save="${esc(key)}"`:`data-mm-stock-picker-open="${esc(key)}"`}>${mode==='audit'?'Cập nhật':'Chọn sản phẩm'}</button></div>`;
   }).join(''):'<div class="mm-stock-empty">Không có sản phẩm phù hợp.</div>'}</div>`;
 }
 function mmStockEditPanel(item){
@@ -19801,7 +19886,7 @@ function mmStockEditPanel(item){
     ${invoiceControl('Hóa đơn đầu ra','saleInvoiceDataUrl','saleInvoiceName','sale-invoice',!!item.saleInvoiceDataUrl,item.saleInvoiceName)}
   </div>`;
   return `<div class="mm-stock-edit-shell">
-    <div class="mm-stock-edit-hero">${photo?`<img src="${esc(driveAssetUrl(photo))}" alt=""/>`:'<span class="mm-stock-edit-placeholder"></span>'}<div><span class="mm-stock-status is-${esc(stage.key)}">${esc(stage.label)}</span><h2>${esc(item.name||mmStockCategory(item))}</h2><p>${esc(item.code||'Chưa có mã')} · Tồn ${Number(item.quantity||0)} ${esc(item.unit||'sản phẩm')}</p><strong class="mm-stock-card-price">${money(item.price)}</strong></div></div>
+    <div class="mm-stock-edit-hero">${photo?mmStockImageMarkup(item,''):'<span class="mm-stock-edit-placeholder"></span>'}<div><span class="mm-stock-status is-${esc(stage.key)}">${esc(stage.label)}</span><h2>${esc(item.name||mmStockCategory(item))}</h2><p>${esc(item.code||'Chưa có mã')} · Tồn ${Number(item.quantity||0)} ${esc(item.unit||'sản phẩm')}</p><strong class="mm-stock-card-price">${money(item.price)}</strong></div></div>
     <div class="mm-stock-edit-grid">
       <label>Tên sản phẩm<input data-mm-stock-edit-field="name" data-key="${esc(key)}" value="${esc(item.name||'')}"/></label>
       <label>Loại đèn<select data-mm-stock-edit-field="productType" data-key="${esc(key)}">${productOptions}</select></label>
