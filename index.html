@@ -23011,6 +23011,126 @@ async function printLabelDirect(){
   document.head.appendChild(style);
 })();
 
+/* MINMIN PATCH 2026-08-05: Google Drive cross-device state sync. */
+(function enableGoogleDriveStateSync(){
+  const DRIVE_STATE_API='/api/drive-state';
+
+  async function driveStateRequest(payload){
+    const response=await fetch(DRIVE_STATE_API,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(payload)
+    });
+    const text=await response.text().catch(()=>'');
+    let data={};
+    try{ data=text?JSON.parse(text):{}; }catch{}
+    if(response.status===409&&data.conflict)return data;
+    if(!response.ok||!data.ok)throw new Error(data.error||`Google Drive lỗi ${response.status}`);
+    return data;
+  }
+
+  fetchWorkingStateFromSupabase=async function(){
+    const result=await driveStateRequest({action:'state.get'});
+    const remote=result.state;
+    if(!remote?.data)return null;
+    return {
+      data:remote.data,
+      updated_at:remote.updatedAt||remote.data.savedAt||'',
+      device_id:remote.deviceId||'',
+      version:remote.version||''
+    };
+  };
+
+  writeWorkingStateRemote=async function(snapshot,remoteRow,options={}){
+    const result=await driveStateRequest({
+      action:'state.put',
+      data:snapshot,
+      deviceId:getDeviceId(),
+      expectedVersion:options.skipRemoteMerge?'':(remoteRow?.version||'')
+    });
+    if(result.conflict)return false;
+    if(result.state?.updatedAt)workingStateRemoteVersion=result.state.updatedAt;
+    return true;
+  };
+
+  const loadFromDrive=loadWorkingStateFromSupabase;
+  loadWorkingStateFromSupabase=async function(options={}){
+    if(!options.auto)state.status='Đang tải dữ liệu mới nhất từ Google Drive...';
+    const changed=await loadFromDrive(options);
+    if(changed){
+      state.status='Đã khôi phục dữ liệu mới nhất từ Google Drive.';
+      if(state.inventory)state.inventory.syncStatus='Đã đồng bộ kho từ Google Drive.';
+      if(state.inputInvoices)state.inputInvoices.syncStatus='Đã đồng bộ hóa đơn từ Google Drive.';
+      if(state.accounting)state.accounting.syncStatus='Đã đồng bộ kế toán từ Google Drive.';
+    }else if(!options.auto&&/Supabase|working state/i.test(String(state.status||''))){
+      state.status='Google Drive chưa có dữ liệu mới; app đang dùng cache trên máy này.';
+    }
+    return changed;
+  };
+
+  const saveToDrive=saveWorkingStateToSupabase;
+  saveWorkingStateToSupabase=async function(options={}){
+    const saved=await saveToDrive(options);
+    if(saved){
+      state.status='Đã đồng bộ dữ liệu giữa các máy qua Google Drive.';
+      if(state.inventory)state.inventory.syncStatus='Đã đồng bộ dữ liệu lên Google Drive.';
+      if(state.inputInvoices)state.inputInvoices.syncStatus='Đã đồng bộ dữ liệu lên Google Drive.';
+      if(state.accounting)state.accounting.syncStatus='Đã đồng bộ dữ liệu lên Google Drive.';
+    }else{
+      state.status='Chưa đồng bộ được Google Drive; app vẫn giữ cache trên máy này.';
+    }
+    return saved;
+  };
+
+  async function markDriveDomainDirty(domain){
+    scheduleWorkingStateSave(120,domain);
+    return true;
+  }
+  saveInputInvoiceRemote=()=>markDriveDomainDirty('inputInvoices');
+  saveInputInvoiceItemsRemote=()=>markDriveDomainDirty('inputInvoices');
+  saveInputInvoiceFileRemote=()=>markDriveDomainDirty('inputInvoices');
+  deleteInputInvoiceRemote=()=>markDriveDomainDirty('inputInvoices');
+  saveOutgoingInvoiceRemote=()=>markDriveDomainDirty('accounting');
+  deleteOutgoingInvoiceRemote=()=>markDriveDomainDirty('accounting');
+  savePaymentRemote=()=>markDriveDomainDirty('accounting');
+  deletePaymentRemote=()=>markDriveDomainDirty('accounting');
+  saveInventoryItemRemote=()=>markDriveDomainDirty('inventory');
+  insertInventoryMovementRemote=()=>markDriveDomainDirty('inventory');
+  deleteInventoryItemRemote=()=>markDriveDomainDirty('inventory');
+  deleteInventoryMovementRemote=()=>markDriveDomainDirty('inventory');
+
+  async function syncDriveNow(){
+    if(workingStateDirtyDomains.size)await saveWorkingStateToSupabase();
+    const changed=await loadWorkingStateFromSupabase({auto:false});
+    render();
+    return changed;
+  }
+  syncInventoryFromSupabase=syncDriveNow;
+  syncInputInvoicesFromSupabase=syncDriveNow;
+  syncAccountingFromSupabase=syncDriveNow;
+
+  syncAppInBackground=async function(options={}){
+    const force=!!options.force;
+    if(backgroundSyncInFlight||document.visibilityState!=='visible'||appHasActiveEditor())return false;
+    if(!force&&Date.now()-appLastActivity<1200)return false;
+    if(options.includeWorkingState===false)return false;
+    backgroundSyncInFlight=true;
+    const activityToken=appLastActivity;
+    try{
+      const changed=await loadWorkingStateFromSupabase({auto:true,activityToken});
+      if(changed&&!backgroundSyncShouldYield(activityToken))render();
+      return !!changed;
+    }catch(error){
+      console.warn('Google Drive background sync failed:',error);
+      return false;
+    }finally{
+      backgroundSyncInFlight=false;
+    }
+  };
+  window.__minminBackgroundSync=syncAppInBackground;
+  window.__minminDriveStateRequest=driveStateRequest;
+})();
+
 initApp();
     </script>
   </body>

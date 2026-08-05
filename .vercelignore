@@ -11,4 +11,5 @@
 /api/*
 !/api/drive-upload.js
 !/api/image-proxy.js
+!/api/drive-state.js
 !/api/excel-to-pdf.js

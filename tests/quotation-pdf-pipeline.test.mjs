@@ -39,7 +39,8 @@ const activePdfPipeline=source.slice(source.indexOf('async function exportQuotat
 assert.doesNotMatch(activePdfPipeline,/excel-to-pdf|Microsoft Graph|buildQuotationWorkbookForPdf/,'Active quotation PDF actions must not depend on Microsoft Graph');
 assert.match(source,/id="mobilePdfPercent"[\s\S]*?id="mobilePdfBar"/,'Mobile PDF export must display a numeric percentage and progress bar');
 assert.match(source,/function updateMobilePdfProgress\(percent,label\)[\s\S]*?Math\.round/,'Mobile PDF progress must update with real phase percentages');
-assert.match(source,/cropImageToSquare\(data,isMobilePdfDevice\(\)\?320:900\)/,'Mobile PDF images must be downsampled before page rasterization');
+assert.match(source,/quoteLineImageDataUrl\(line,isMobilePdfDevice\(\)\?320:900\)/,'Mobile PDF images must be downsampled before page rasterization');
+assert.match(source,/function quoteLineImageDataUrl\(line,size=240\)[\s\S]*?cropImageToSquare\(data,size\)/,'Drive-backed quotation images must retain the requested PDF downsample size');
 assert.match(source,/scale:isMobilePdfDevice\(\)\?\.75:2\.35[\s\S]*?imageTimeout:5000/,'iPhone page canvases must stay within an A4-sized memory budget');
 assert.match(source,/pdf\.addImage\(canvas,'JPEG'[\s\S]*?canvas\.width=1;canvas\.height=1/,'Each page canvas must be released immediately after PDF encoding');
 assert.match(source,/Trang \$\{i\+1\} xử lý quá lâu[\s\S]*?30000/,'A stalled page render must time out instead of freezing forever');

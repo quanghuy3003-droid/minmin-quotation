@@ -9,6 +9,9 @@
     "api/image-proxy.js": {
       "maxDuration": 30
     },
+    "api/drive-state.js": {
+      "maxDuration": 60
+    },
     "api/excel-to-pdf.js": {
       "maxDuration": 60
     }

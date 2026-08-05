@@ -1,9 +1,12 @@
 const MINMIN_ROOT_FOLDER = "MINMIN App Storage";
 const MINMIN_UPLOAD_TOKEN = "__MINMIN_UPLOAD_TOKEN__";
 const MINMIN_MAX_BYTES = 10 * 1024 * 1024;
+const MINMIN_STATE_FOLDER = "App Sync";
+const MINMIN_STATE_FILE = "minmin-current-state.json";
+const MINMIN_MAX_STATE_CHARS = 8 * 1024 * 1024;
 
 function doGet() {
-  return json_({ ok: true, name: "MINMIN Drive Upload", version: 2 });
+  return json_({ ok: true, name: "MINMIN Drive Storage", version: 3, stateSync: true });
 }
 
 function doPost(event) {
@@ -15,6 +18,9 @@ function doPost(event) {
     if (String(payload.uploadToken || "") !== MINMIN_UPLOAD_TOKEN) {
       throw new Error("Không có quyền upload.");
     }
+
+    if (payload.action === "state.get") return getWorkingState_();
+    if (payload.action === "state.put") return putWorkingState_(payload);
 
     const requestId = safeKey_(payload.requestId || Utilities.getUuid());
     const cache = CacheService.getScriptCache();
@@ -91,6 +97,60 @@ function doPost(event) {
       ok: false,
       error: String(error && error.message || error || "Upload thất bại.")
     });
+  }
+}
+
+function stateFile_() {
+  const root = getOrCreateFolder_(DriveApp.getRootFolder(), MINMIN_ROOT_FOLDER);
+  const folder = getOrCreateFolder_(root, MINMIN_STATE_FOLDER);
+  const files = folder.getFilesByName(MINMIN_STATE_FILE);
+  return { folder, file: files.hasNext() ? files.next() : null };
+}
+
+function readWorkingState_() {
+  const entry = stateFile_();
+  if (!entry.file) return null;
+  const text = entry.file.getBlob().getDataAsString("UTF-8");
+  if (!text) return null;
+  const record = JSON.parse(text);
+  return record && typeof record === "object" ? record : null;
+}
+
+function getWorkingState_() {
+  return json_({ ok: true, provider: "google-drive", state: readWorkingState_() });
+}
+
+function putWorkingState_(payload) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    const current = readWorkingState_();
+    const expectedVersion = String(payload.expectedVersion || "");
+    if (expectedVersion && current && expectedVersion !== String(current.version || "")) {
+      return json_({ ok: false, conflict: true, provider: "google-drive", state: current });
+    }
+    const data = payload.data;
+    if (!data || typeof data !== "object") throw new Error("Thiếu dữ liệu đồng bộ.");
+    const encoded = JSON.stringify(data);
+    if (encoded.length > MINMIN_MAX_STATE_CHARS) throw new Error("Dữ liệu đồng bộ vượt 8 MB.");
+    const record = {
+      version: Utilities.getUuid(),
+      updatedAt: new Date().toISOString(),
+      deviceId: String(payload.deviceId || ""),
+      data
+    };
+    const content = JSON.stringify(record);
+    const entry = stateFile_();
+    const file = entry.file || entry.folder.createFile(
+      MINMIN_STATE_FILE,
+      content,
+      MimeType.PLAIN_TEXT
+    );
+    if (entry.file) file.setContent(content);
+    file.setDescription("MINMIN cross-device working state. Private Drive file.");
+    return json_({ ok: true, provider: "google-drive", state: record });
+  } finally {
+    lock.releaseLock();
   }
 }
 
