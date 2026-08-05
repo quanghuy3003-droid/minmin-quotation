@@ -20690,6 +20690,28 @@ document.addEventListener('change',event=>{
     document.body.appendChild(modal);
   }
 
+  function minminWooDriveFileId(url){
+    const value=String(url||'');
+    return value.match(/drive\.google\.com\/file\/d\/([^/?#]+)/)?.[1]||value.match(/[?&]id=([^&#]+)/)?.[1]||'';
+  }
+  function minminWooImageExtension(product,url){
+    const format=String(product?.websiteImageSizes?.[url]?.format||'').toLowerCase();
+    if(format.includes('jpeg')||format.includes('jpg'))return 'jpg';
+    if(format.includes('png'))return 'png';
+    if(format.includes('gif'))return 'gif';
+    if(format.includes('webp'))return 'webp';
+    const extension=(String(url||'').split(/[?#]/)[0].match(/\.([a-z0-9]+)$/i)||[])[1]?.toLowerCase();
+    return ['jpg','jpeg','png','gif','webp'].includes(extension)?(extension==='jpeg'?'jpg':extension):'webp';
+  }
+  function minminWooImageSource(product,url,index){
+    const driveId=minminWooDriveFileId(url);
+    if(!driveId)return url;
+    const extension=minminWooImageExtension(product,url);
+    const base=storageSafePart(`${product?.sku||'product'}-${index+1}`);
+    const origin=location.origin&&location.origin!=='null'?location.origin:'';
+    return `${origin}/woo-image/${encodeURIComponent(`${base}.${extension}`)}?id=${encodeURIComponent(driveId)}`;
+  }
+
   async function minminSyncProduct(id,options={}){
     if(!websiteWooReady())throw new Error('Chưa nhập đủ Website URL, Consumer Key và Consumer Secret.');
     let item=minminWebsiteLive(id);
@@ -20729,7 +20751,8 @@ document.addEventListener('change',event=>{
           item=minminWebsiteLive(id);
           if(!item.wooProductId)throw new Error('Chưa có mã sản phẩm WooCommerce để cập nhật ảnh.');
           const urls=[...new Set([item.featured_image_url,...(item.gallery_image_urls||[])].map(websiteUrlOnly).filter(Boolean))];
-          const data=await minminWebsiteWithTimeout(wooRequest(`products/${item.wooProductId}`,{method:'PUT',timeoutMs:90000,body:JSON.stringify({images:urls.map(src=>({src}))})}),95000,`Tải ${urls.length} ảnh`);
+          const wooImages=urls.map((url,imageIndex)=>({src:minminWooImageSource(item,url,imageIndex),name:`${item.sku||'product'}-${imageIndex+1}`}));
+          const data=await minminWebsiteWithTimeout(wooRequest(`products/${item.wooProductId}`,{method:'PUT',timeoutMs:90000,body:JSON.stringify({images:wooImages})}),95000,`Tải ${urls.length} ảnh`);
           if(urls.length&&(!Array.isArray(data?.images)||data.images.length<urls.length))throw new Error(`WooCommerce chỉ xác nhận ${data?.images?.length||0}/${urls.length} ảnh.`);
           if(!urls.length&&Array.isArray(data?.images)&&data.images.length)throw new Error('WooCommerce chưa xóa hết ảnh cũ.');
           const syncedAt=new Date().toISOString();

@@ -39,7 +39,7 @@ test('deleted synchronized images are retained as pending delete until Woo confi
   assert.match(patch,/websitePendingDeleteUrls/);
   assert.match(patch,/function minminPendingDeletes/);
   assert.match(patch,/websitePendingDeleteUrls:minminPendingDeletes/);
-  assert.match(patch,/JSON\.stringify\(\{images:urls\.map\(src=>\(\{src\}\)\)\}\)/);
+  assert.match(patch,/JSON\.stringify\(\{images:wooImages\}\)/);
   assert.match(patch,/wooImageSignature:websiteImageSignature\(item\),websitePendingDeleteUrls:\[\]/);
 });
 
@@ -48,8 +48,16 @@ test('single product synchronization is full, step based and retryable',()=>{
   assert.match(patch,/websiteSyncRetrySteps:steps\.slice\(index\)/);
   assert.match(patch,/retryOnly&&item\.websiteSyncRetrySteps\.length/);
   assert.match(patch,/minminWooFastPayload\(item,\{includeImages:false,includeCategories:true/);
-  assert.match(patch,/body:JSON\.stringify\(\{images:urls\.map/);
+  assert.match(patch,/body:JSON\.stringify\(\{images:wooImages\}\)/);
   assert.match(patch,/Đồng bộ đầy đủ nội dung, thuộc tính, giá, ảnh đại diện và Gallery/);
+});
+
+test('Google Drive images use a Woo-safe proxy URL with a real image extension',()=>{
+  assert.match(patch,/function minminWooDriveFileId\(url\)/);
+  assert.match(patch,/function minminWooImageExtension\(product,url\)/);
+  assert.match(patch,/\/woo-image\/\$\{encodeURIComponent\(\`\$\{base\}\.\$\{extension\}\`\)\}/);
+  assert.match(patch,/const wooImages=urls\.map/);
+  assert.match(patch,/src:minminWooImageSource\(item,url,imageIndex\)/);
 });
 
 test('every remote synchronization step has a finite timeout and contextual error',()=>{

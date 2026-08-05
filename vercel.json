@@ -12,11 +12,18 @@
     "api/drive-state.js": {
       "maxDuration": 60
     },
+    "api/woo-image.js": {
+      "maxDuration": 60
+    },
     "api/excel-to-pdf.js": {
       "maxDuration": 60
     }
   },
   "rewrites": [
+    {
+      "source": "/woo-image/:file",
+      "destination": "/api/woo-image?file=:file"
+    },
     {
       "source": "/",
       "destination": "/index"

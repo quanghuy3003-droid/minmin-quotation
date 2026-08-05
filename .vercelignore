@@ -12,4 +12,5 @@
 !/api/drive-upload.js
 !/api/image-proxy.js
 !/api/drive-state.js
+!/api/woo-image.js
 !/api/excel-to-pdf.js
