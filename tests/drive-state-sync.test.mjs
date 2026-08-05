@@ -23,6 +23,12 @@ assert.match(appsScript,/payload\.action === "state\.put"/);
 assert.match(appsScript,/MINMIN_STATE_FILE = "minmin-current-state\.json"/);
 assert.match(appsScript,/expectedVersion && current/);
 assert.match(appsScript,/file\.setContent\(content\)/);
+assert.match(appsScript,/MINMIN_BACKUP_FOLDER = "Weekly Backups"/);
+assert.match(appsScript,/Utilities\.formatDate\(date, timeZone, "yyyy\.MM\.dd"\)/);
+assert.match(appsScript,/`\$\{dateKey\}-\$\{MINMIN_BACKUP_BASENAME\}\.zip`/);
+assert.match(appsScript,/Utilities\.zip\(\[stateBlob, infoBlob\], fileName\)/);
+assert.match(appsScript,/backup = ensureWeeklyBackup_\(record\)/);
+assert.match(appsScript,/function createWeeklyBackupNow\(\)/);
 const stateSection=appsScript.slice(appsScript.indexOf('function stateFile_'),appsScript.indexOf('function parseDataUrl_'));
 assert.doesNotMatch(stateSection,/setSharing\(/,'The private state file must not be shared publicly');
 

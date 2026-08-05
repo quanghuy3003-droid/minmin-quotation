@@ -4,6 +4,9 @@ const MINMIN_MAX_BYTES = 10 * 1024 * 1024;
 const MINMIN_STATE_FOLDER = "App Sync";
 const MINMIN_STATE_FILE = "minmin-current-state.json";
 const MINMIN_MAX_STATE_CHARS = 8 * 1024 * 1024;
+const MINMIN_BACKUP_FOLDER = "Weekly Backups";
+const MINMIN_BACKUP_BASENAME = "MinminAppBCK";
+const MINMIN_BACKUP_WEEK_PROPERTY = "MINMIN_LAST_BACKUP_WEEK";
 
 function doGet() {
   return json_({ ok: true, name: "MINMIN Drive Storage", version: 3, stateSync: true });
@@ -148,10 +151,110 @@ function putWorkingState_(payload) {
     );
     if (entry.file) file.setContent(content);
     file.setDescription("MINMIN cross-device working state. Private Drive file.");
-    return json_({ ok: true, provider: "google-drive", state: record });
+    let backup;
+    try {
+      backup = ensureWeeklyBackup_(record);
+    } catch (backupError) {
+      console.error("MINMIN weekly backup failed", backupError);
+      backup = {
+        ok: false,
+        created: false,
+        error: String(backupError && backupError.message || backupError || "Backup failed.")
+      };
+    }
+    return json_({ ok: true, provider: "google-drive", state: record, backup });
   } finally {
     lock.releaseLock();
   }
+}
+
+function weeklyBackupFolder_() {
+  const entry = stateFile_();
+  return getOrCreateFolder_(entry.folder, MINMIN_BACKUP_FOLDER);
+}
+
+function weeklyBackupWeekKey_(date, timeZone) {
+  return Utilities.formatDate(date, timeZone, "YYYY-'W'ww");
+}
+
+function weeklyBackupFileName_(date, timeZone) {
+  const dateKey = Utilities.formatDate(date, timeZone, "yyyy.MM.dd");
+  return `${dateKey}-${MINMIN_BACKUP_BASENAME}.zip`;
+}
+
+function findWeeklyBackup_(folder, weekKey) {
+  const description = `MINMIN weekly backup ${weekKey}`;
+  const files = folder.getFiles();
+  while (files.hasNext()) {
+    const file = files.next();
+    if (String(file.getDescription() || "") === description) return file;
+  }
+  return null;
+}
+
+function ensureWeeklyBackup_(record) {
+  if (!record || typeof record !== "object") throw new Error("Không có dữ liệu để backup.");
+  const now = new Date();
+  const timeZone = Session.getScriptTimeZone() || "Asia/Bangkok";
+  const weekKey = weeklyBackupWeekKey_(now, timeZone);
+  const properties = PropertiesService.getScriptProperties();
+  if (properties.getProperty(MINMIN_BACKUP_WEEK_PROPERTY) === weekKey) {
+    return { ok: true, created: false, weekKey };
+  }
+
+  const folder = weeklyBackupFolder_();
+  const existing = findWeeklyBackup_(folder, weekKey);
+  if (existing) {
+    properties.setProperty(MINMIN_BACKUP_WEEK_PROPERTY, weekKey);
+    return {
+      ok: true,
+      created: false,
+      weekKey,
+      fileId: existing.getId(),
+      fileName: existing.getName(),
+      size: existing.getSize()
+    };
+  }
+
+  const fileName = weeklyBackupFileName_(now, timeZone);
+  const info = {
+    format: 1,
+    fileName,
+    weekKey,
+    createdAt: now.toISOString(),
+    stateVersion: String(record.version || ""),
+    stateUpdatedAt: String(record.updatedAt || ""),
+    deviceId: String(record.deviceId || ""),
+    domains: Object.keys(record.data || {})
+  };
+  const stateBlob = Utilities.newBlob(
+    JSON.stringify(record, null, 2),
+    "application/json",
+    MINMIN_STATE_FILE
+  );
+  const infoBlob = Utilities.newBlob(
+    JSON.stringify(info, null, 2),
+    "application/json",
+    "backup-info.json"
+  );
+  const archive = Utilities.zip([stateBlob, infoBlob], fileName);
+  const file = folder.createFile(archive);
+  file.setDescription(`MINMIN weekly backup ${weekKey}`);
+  properties.setProperty(MINMIN_BACKUP_WEEK_PROPERTY, weekKey);
+  return {
+    ok: true,
+    created: true,
+    weekKey,
+    fileId: file.getId(),
+    fileName: file.getName(),
+    size: file.getSize()
+  };
+}
+
+function createWeeklyBackupNow() {
+  const current = readWorkingState_();
+  if (!current) throw new Error("Chưa có dữ liệu đồng bộ để backup.");
+  return ensureWeeklyBackup_(current);
 }
 
 function parseDataUrl_(dataUrl) {
