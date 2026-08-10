@@ -4595,6 +4595,7 @@
           position: relative;
           display: grid;
           min-width: 0;
+          overflow: hidden;
           gap: 12px;
           border: 1px solid var(--mm-line);
           border-radius: 14px;
@@ -4634,13 +4635,13 @@
         .mm-stock-kind-legend i { width: 7px; height: 7px; flex: 0 0 auto; border-radius: 999px; }
         .mm-stock-card-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 7px 14px; border-top: 1px solid rgba(17,24,32,.07); padding-top: 10px; }
         .mm-stock-card-meta div { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 8px; color: var(--mm-muted); font-size: 10px; font-weight: 700; }
-        .mm-stock-card-meta strong { min-width: 0; overflow: hidden; color: var(--mm-ink); font-size: 10px; font-weight: 850; text-overflow: ellipsis; white-space: nowrap; }
-        .mm-stock-card-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-        .mm-stock-status { display: inline-flex; min-height: 30px; align-items: center; border-radius: 8px; padding: 0 9px; font-size: 10px; font-weight: 850; }
+        .mm-stock-card-meta strong { min-width: 0; max-width: 62%; overflow: hidden; color: var(--mm-ink); font-size: 10px; font-weight: 850; text-align: right; text-overflow: ellipsis; white-space: nowrap; }
+        .mm-stock-card-footer { display: grid; min-width: 0; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 8px; }
+        .mm-stock-status { display: inline-flex; min-width: 0; min-height: 30px; align-items: center; overflow: hidden; border-radius: 8px; padding: 0 9px; font-size: 10px; font-weight: 850; text-overflow: ellipsis; white-space: nowrap; }
         .mm-stock-status.is-stock { background: var(--mm-green-soft); color: var(--mm-green); }
         .mm-stock-status.is-production { background: #fff6e4; color: #a86a00; }
         .mm-stock-status.is-sold { background: #fff0ef; color: #c24640; }
-        .mm-stock-card-actions { display: flex; gap: 7px; }
+        .mm-stock-card-actions { display: flex; flex: 0 0 auto; gap: 7px; }
         .mm-stock-card-actions button {
           display: inline-flex;
           width: 34px;
@@ -4654,10 +4655,10 @@
           font-size: 15px;
           font-weight: 900;
         }
-        .mm-stock-card-actions button:last-child { border-color: rgba(17,132,95,.22); background: var(--mm-green-soft); color: var(--mm-green); }
-        .mm-stock-accessory-add { display: flex; align-items: center; gap: 6px; }
-        .mm-stock-accessory-add input { width: 58px; height: 34px; border: 1px solid var(--mm-line); border-radius: 9px; padding: 0 8px; font-size: 11px; font-weight: 850; text-align: center; }
-        .mm-stock-accessory-add button { min-height: 34px; border: 1px solid rgba(17,132,95,.22); border-radius: 9px; background: var(--mm-green-soft); padding: 0 10px; color: var(--mm-green); font-size: 10px; font-weight: 900; white-space: nowrap; }
+        .mm-stock-card-actions [data-mm-stock-quick] { border-color: rgba(17,132,95,.22); background: var(--mm-green-soft); color: var(--mm-green); }
+        .mm-stock-accessory-add { display: grid; width: 100%; min-width: 0; grid-column: 1 / -1; grid-template-columns: 64px minmax(0,1fr); align-items: center; gap: 7px; padding-top: 2px; }
+        .mm-stock-accessory-add input { width: 100%; min-width: 0; height: 34px; border: 1px solid var(--mm-line); border-radius: 9px; padding: 0 8px; font-size: 11px; font-weight: 850; text-align: center; }
+        .mm-stock-accessory-add button { min-width: 0; min-height: 34px; overflow: hidden; border: 1px solid rgba(17,132,95,.22); border-radius: 9px; background: var(--mm-green-soft); padding: 0 8px; color: var(--mm-green); font-size: 10px; font-weight: 900; text-overflow: ellipsis; white-space: nowrap; }
         .mm-stock-card-grid.is-list { grid-template-columns: 1fr; }
         .mm-stock-card-grid.is-list .mm-stock-product-card { grid-template-columns: minmax(290px,1.4fr) minmax(240px,.8fr) auto; align-items: center; }
         .mm-stock-card-grid.is-list .mm-stock-card-top { grid-template-columns: 64px minmax(0,1fr); }
@@ -19823,15 +19824,17 @@ function mmStockProductCard(item){
   const photo=mmDesktopImage(item);
   const detail=[mmStockCategory(item),attrs.color,item.dimension].filter(Boolean).join(' · ');
   const duration=inventoryTotalDays(item);
-  const accessoryAdd=item.productType==='AC'?`<div class="mm-stock-accessory-add"><input data-mm-stock-accessory-qty="${esc(key)}" type="number" min="1" value="1" aria-label="Số lượng phụ kiện nhập thêm"/><button type="button" data-mm-stock-accessory-add="${esc(key)}">＋ Nhập thêm</button></div>`:'';
-  return `<article class="mm-stock-product-card" data-mm-stock-key="${esc(key)}">
+  const isAccessory=item.productType==='AC';
+  const accessoryAdd=isAccessory?`<div class="mm-stock-accessory-add"><input data-mm-stock-accessory-qty="${esc(key)}" type="number" min="1" value="1" aria-label="Số lượng phụ kiện nhập thêm"/><button type="button" data-mm-stock-accessory-add="${esc(key)}">＋ Nhập thêm</button></div>`:'';
+  const quickAction=isAccessory?'':`<button type="button" data-mm-stock-quick="${esc(key)}" aria-label="Thao tác kho ${esc(item.code||'sản phẩm')}">＋</button>`;
+  return `<article class="mm-stock-product-card ${isAccessory?'is-accessory':''}" data-mm-stock-key="${esc(key)}">
     ${mmStockKindSignal(item)}
     <div class="mm-stock-card-top">
       <div class="mm-stock-card-photo">${photo?mmStockImageMarkup(item,item.name||item.code||'Sản phẩm'):'<span>Chưa có ảnh</span>'}</div>
       <div class="mm-stock-card-copy"><b>${esc(item.code||'Chưa có mã')}</b><h3>${esc(item.name||mmStockCategory(item))}</h3><p>${esc(detail||item.unit||'Chưa có thông tin')}</p><strong class="mm-stock-card-price">${money(finance.sell)}</strong></div>
     </div>
     <div class="mm-stock-card-meta"><div><span>Tồn kho</span><strong>${Number(item.quantity||0)} ${esc(item.unit||'cái')}</strong></div><div><span>Phụ trách</span><strong>${esc(mmStockOwner(item))}</strong></div></div>
-    <div class="mm-stock-card-footer"><span class="mm-stock-status is-${esc(stage.key)}">${duration.total==null?'':`${duration.total} ngày · `}${esc(stage.label)}</span>${accessoryAdd}<div class="mm-stock-card-actions"><button type="button" data-mm-stock-open="${esc(key)}" aria-label="Chỉnh sửa ${esc(item.code||'sản phẩm')}">${mmStockDesktopIcon('more')}</button><button type="button" data-mm-stock-quick="${esc(key)}" aria-label="Thao tác kho ${esc(item.code||'sản phẩm')}">＋</button></div></div>
+    <div class="mm-stock-card-footer"><span class="mm-stock-status is-${esc(stage.key)}">${duration.total==null?'':`${duration.total} ngày · `}${esc(stage.label)}</span><div class="mm-stock-card-actions"><button type="button" data-mm-stock-open="${esc(key)}" aria-label="Chỉnh sửa ${esc(item.code||'sản phẩm')}">${mmStockDesktopIcon('more')}</button>${quickAction}</div>${accessoryAdd}</div>
   </article>`;
 }
 function mmDesktopStockAside(stats){
