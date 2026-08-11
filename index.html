@@ -5070,6 +5070,14 @@ function websiteProductsDefaults(){ return {search:'',statusFilter:'',categoryFi
 function slugifyWebsite(v){ return String(v||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,''); }
 function websiteMoneyNumber(v){ return Number(String(v??'').replace(/[^\d.-]/g,''))||0; }
 function websiteUrlOnly(value){ const v=driveStoredValue(value); return v&&/^https?:\/\//i.test(v)?v:''; }
+function websiteFreshProductUrl(productOrUrl){
+  const product=productOrUrl&&typeof productOrUrl==='object'?productOrUrl:null;
+  const raw=String(product?(product.wooProductUrl||product.website_product_url||''):productOrUrl||'');
+  if(!raw)return'';
+  const stamp=Date.parse(product?.websitePublicRefreshAt||product?.wooImageSyncedAt||product?.wooUploadedAt||product?.updated_at||'')||Date.now();
+  try{ const url=new URL(raw); url.searchParams.set('minmin_refresh',String(stamp)); return url.toString(); }
+  catch{ return `${raw}${raw.includes('?')?'&':'?'}minmin_refresh=${encodeURIComponent(stamp)}`; }
+}
 function websiteImageSignature(product={}){
   const raw=product||{};
   return [...new Set([
@@ -18973,14 +18981,14 @@ function websiteMobileProductRows(){
   const rows=websiteMobileFilteredProducts();
   if(!rows.length)return `<div class="p-6 text-center text-sm font-bold text-black/40">Không có sản phẩm phù hợp.</div>`;
   return rows.map(p=>{
-    const image=p.featured_image_url||p.gallery_image_urls?.[0]||'';
+    const image=driveAssetUrl(p.featured_image_url||p.gallery_image_urls?.[0]||'');
     const published=p.website_status==='Đã đăng website'||!!p.wooProductId;
     const pendingImages=websiteImagesNeedSync(p)||String(p.wooStatus||'')==='Chưa đồng bộ ảnh';
     const error=/lỗi|error/i.test(String(p.wooStatus||''));
     const missing=websiteMissingFields(p).length>0;
     const syncing=websiteProductSyncing(p), fullySynced=websiteProductFullySynced(p), progress=Math.max(0,Math.min(100,Number(p.wooProgress||0)));
     const status=syncing?`Đang đồng bộ ${progress}%`:error?'Đồng bộ lỗi':pendingImages?'Chưa đồng bộ ảnh':!fullySynced?'Chưa đồng bộ':missing?'Thiếu dữ liệu':'';
-    const productUrl=p.wooProductUrl||p.website_product_url||'';
+    const productUrl=websiteFreshProductUrl(p);
     const syncBadge=fullySynced?`<span class="minmin-website-sync-check" title="Đã đồng bộ đầy đủ dữ liệu và ảnh lên WooCommerce">${websiteMobileIcon('check')}<span>Đã đồng bộ</span></span>`:'';
     const statusNote=status?`<span class="minmin-website-product-status">${esc(status)}</span>${syncing?`<span class="minmin-website-product-progress" aria-label="Tiến độ đồng bộ ${progress}%"><i style="width:${progress}%"></i></span>`:''}`:'';
     return `<div class="minmin-website-product-row text-left">
@@ -19019,7 +19027,7 @@ function websiteMobileDetailContent(p){
   const tab=state.ui.websiteMobileDetailTab;
   if(tab==='images'){
     const images=[p.featured_image_url,...(p.gallery_image_urls||[])].filter(Boolean);
-    return `<div class="p-3"><div class="minmin-website-gallery">${images.map(url=>`<img src="${esc(url)}" alt="Ảnh sản phẩm"/>`).join('')||'<span class="col-span-4 py-6 text-center text-xs font-bold text-black/40">Chưa có ảnh sản phẩm</span>'}</div></div>`;
+    return `<div class="p-3"><div class="minmin-website-gallery">${images.map(url=>`<img src="${esc(driveAssetUrl(url))}" alt="Ảnh sản phẩm"/>`).join('')||'<span class="col-span-4 py-6 text-center text-xs font-bold text-black/40">Chưa có ảnh sản phẩm</span>'}</div></div>`;
   }
   if(tab==='attributes'){
     return `<div class="minmin-website-info-list">${WEBSITE_SIMPLE_ATTRIBUTES.map(([label,key])=>`<div class="minmin-website-info-row"><span>${esc(label)}</span><strong>${esc(p[key]||'Chưa nhập')}</strong></div>`).join('')}</div>`;
@@ -19038,9 +19046,9 @@ function websiteMobileDate(value){
 function websiteMobileDetail(){
   const p=(state.website.products||[]).find(item=>String(item.id)===String(state.ui.websiteMobileDetailId));
   if(!p){state.ui.websiteMobileView='list';return websiteMobileList();}
-  const image=p.featured_image_url||p.gallery_image_urls?.[0]||'';
+  const image=driveAssetUrl(p.featured_image_url||p.gallery_image_urls?.[0]||'');
   const tabs=[['info','Thông tin'],['images','Ảnh'],['attributes','Thuộc tính'],['preview','Xem trước']];
-  const productUrl=p.wooProductUrl||p.website_product_url;
+  const productUrl=websiteFreshProductUrl(p);
   return `<section class="minmin-website-mobile-view">${websiteMobileSubheader('Chi tiết sản phẩm','list')}<div class="minmin-website-mobile-content">
     <div class="minmin-website-card"><div class="minmin-website-detail-hero"><div class="minmin-website-detail-photo">${image?`<img src="${esc(image)}" alt="${esc(p.product_name_en||p.sku)}"/>`:'<span class="flex h-full items-center justify-center text-xs font-bold text-black/35">Chưa có ảnh</span>'}</div><div class="minmin-website-detail-meta"><span class="minmin-website-badge">${p.website_status==='Đã đăng website'||p.wooProductId?'✓ Đã đăng':'Bản nháp'}</span><span>Woo ID: ${esc(p.wooProductId||'--')}</span><span>Cập nhật:<br>${esc(websiteMobileDate(p.updated_at||p.created_at))}</span>${productUrl?`<a href="${esc(productUrl)}" target="_blank" rel="noopener" class="minmin-website-secondary">Xem website ${websiteMobileIcon('external')}</a>`:''}</div></div>
       <div class="minmin-website-detail-tabs">${tabs.map(([key,label])=>`<button data-website-mobile-detail-tab="${key}" type="button" class="${state.ui.websiteMobileDetailTab===key?'is-active':''}">${label}</button>`).join('')}</div>${websiteMobileDetailContent(p)}
@@ -19069,12 +19077,12 @@ function websiteMobileWizardBody(){
   }
   if(step===2){
     const gallery=p.gallery_image_urls||[];
-    return `<div class="minmin-website-form"><strong class="text-base">Ảnh đại diện</strong><p class="text-[11px] font-bold text-black/45">Ảnh chụp điện thoại được tự động crop vuông và nén còn 900×900 trước khi tải lên.</p><div class="minmin-website-upload-grid"><label class="minmin-website-upload">${p.featured_image_url?`<img src="${esc(p.featured_image_url)}" alt="Ảnh đại diện"/>`:`<span>${websiteMobileIcon('upload')}<small class="mt-2 block">Chọn ảnh đại diện</small></span>`}<input data-website-mobile-featured type="file" accept="image/*" class="hidden"/></label><div class="minmin-website-upload">${p.featured_image_url?`<img src="${esc(p.featured_image_url)}" alt="Xem trước"/>`:'<span class="text-xs font-bold text-black/35">Ảnh xem trước</span>'}</div></div>${p.featured_image_url?'<button data-website-mobile-recrop type="button" class="minmin-website-secondary">Cắt lại ảnh đại diện</button>':''}<strong class="mt-2 text-base">Gallery sản phẩm</strong><div class="minmin-website-gallery">${gallery.map(url=>`<img src="${esc(url)}" alt="Ảnh gallery"/>`).join('')}<label class="flex aspect-square cursor-pointer items-center justify-center rounded-md border border-dashed border-black/20 bg-white text-2xl">+<input data-website-mobile-gallery type="file" accept="image/*" multiple class="hidden"/></label></div></div>`;
+    return `<div class="minmin-website-form"><strong class="text-base">Ảnh đại diện</strong><p class="text-[11px] font-bold text-black/45">Ảnh chụp điện thoại được tự động crop vuông và nén còn 900×900 trước khi tải lên.</p><div class="minmin-website-upload-grid"><label class="minmin-website-upload">${p.featured_image_url?`<img src="${esc(driveAssetUrl(p.featured_image_url))}" alt="Ảnh đại diện"/>`:`<span>${websiteMobileIcon('upload')}<small class="mt-2 block">Chọn ảnh đại diện</small></span>`}<input data-website-mobile-featured type="file" accept="image/*" class="hidden"/></label><div class="minmin-website-upload">${p.featured_image_url?`<img src="${esc(driveAssetUrl(p.featured_image_url))}" alt="Xem trước"/>`:'<span class="text-xs font-bold text-black/35">Ảnh xem trước</span>'}</div></div>${p.featured_image_url?'<button data-website-mobile-recrop type="button" class="minmin-website-secondary">Cắt lại ảnh đại diện</button>':''}<strong class="mt-2 text-base">Gallery sản phẩm</strong><div class="minmin-website-gallery">${gallery.map(url=>`<img src="${esc(driveAssetUrl(url))}" alt="Ảnh gallery"/>`).join('')}<label class="flex aspect-square cursor-pointer items-center justify-center rounded-md border border-dashed border-black/20 bg-white text-2xl">+<input data-website-mobile-gallery type="file" accept="image/*" multiple class="hidden"/></label></div></div>`;
   }
   if(step===3){
     return `<div class="minmin-website-form">${WEBSITE_SIMPLE_ATTRIBUTES.map(([label,key])=>websiteMobileField(label,key)).join('')}<label>Mô tả ngắn<textarea data-website-mobile-field="short_description" placeholder="Mô tả sản phẩm">${esc(p.short_description||'')}</textarea></label></div>`;
   }
-  const image=p.featured_image_url||p.gallery_image_urls?.[0]||'';
+  const image=driveAssetUrl(p.featured_image_url||p.gallery_image_urls?.[0]||'');
   const missing=websiteMissingFields(p);
   return `<div class="minmin-website-form"><div class="minmin-website-card overflow-hidden">${image?`<img src="${esc(image)}" alt="${esc(p.product_name_en||p.sku)}" class="aspect-square w-full object-cover"/>`:'<div class="minmin-website-preview-placeholder">Chưa có ảnh sản phẩm</div>'}<div class="p-3"><h2 class="text-xl font-black">${esc(p.product_name_en||p.product_name_vi||'Tên sản phẩm')}</h2><p class="mt-1 text-xs text-black/50">${esc(p.sku||'Chưa có SKU')} · ${esc(websiteCategoryLabel(p.category)||'Chưa có danh mục')}</p><strong class="mt-3 block text-xl text-mint">${money(websiteMoneyNumber(p.sale_price)||websiteMoneyNumber(p.regular_price))}</strong><p class="mt-3 text-sm leading-6 text-black/60">${esc(p.short_description||'Chưa có mô tả.')}</p>${missing.length?`<div class="mt-3 rounded-md bg-[#fff6da] p-2 text-xs font-bold text-[#9a6500]">Còn thiếu: ${esc(missing.join(', '))}</div>`:'<div class="mt-3 rounded-md bg-mint/10 p-2 text-xs font-bold text-mint">Đủ dữ liệu cơ bản để đồng bộ.</div>'}</div></div></div>`;
 }
@@ -20409,6 +20417,7 @@ document.addEventListener('change',event=>{
     product.websiteSyncedSignature=String(raw.websiteSyncedSignature||'');
     product.websiteLastOptimization=raw.websiteLastOptimization&&typeof raw.websiteLastOptimization==='object'?{...raw.websiteLastOptimization}:null;
     product.websiteImageSizes=raw.websiteImageSizes&&typeof raw.websiteImageSizes==='object'?{...raw.websiteImageSizes}:{};
+    product.websitePublicRefreshAt=String(raw.websitePublicRefreshAt||'');
     return product;
   };
 
@@ -20777,7 +20786,7 @@ document.addEventListener('change',event=>{
           if(urls.length&&(!Array.isArray(data?.images)||data.images.length<urls.length))throw new Error(`WooCommerce chỉ xác nhận ${data?.images?.length||0}/${urls.length} ảnh.`);
           if(!urls.length&&Array.isArray(data?.images)&&data.images.length)throw new Error('WooCommerce chưa xóa hết ảnh cũ.');
           const syncedAt=new Date().toISOString();
-          minminWebsitePatch(item.id,{wooImageSyncedAt:syncedAt,wooImageSignature:websiteImageSignature(item),websitePendingDeleteUrls:[]},false);
+          minminWebsitePatch(item.id,{wooImageSyncedAt:syncedAt,wooImageSignature:websiteImageSignature(item),websitePendingDeleteUrls:[],websitePublicRefreshAt:syncedAt},false);
         }
         completed++;
         minminWebsitePatch(item.id,{websiteSyncRetrySteps:steps.slice(index+1),wooProgress:Math.round((completed/steps.length)*100)},true);
@@ -22822,7 +22831,7 @@ async function printLabelDirect(){
     </section>`;
   }
   function mmwProductMenu(product){
-    const ui=mmwUi(),open=String(ui.menuId||'')===String(product.id),url=product.wooProductUrl||product.website_product_url||'';
+    const ui=mmwUi(),open=String(ui.menuId||'')===String(product.id),url=websiteFreshProductUrl(product);
     return `<div class="mmw-row-menu">
       <button data-mmw-menu="${esc(product.id)}" type="button" aria-label="Thêm thao tác">${mmwIcon('more',16)}</button>
       ${open?`<div class="mmw-menu-popover">
@@ -22873,7 +22882,7 @@ async function printLabelDirect(){
     return `<div class="mmw-drawer-section"><header><div><h3>Product Attributes</h3><p>Giữ nguyên mapping WooCommerce hiện tại.</p></div></header><details open><summary>Thông số sản phẩm <span>${mmwIcon('chevron',15)}</span></summary><div class="mmw-form-grid">${websiteSimpleAttributeFields()}</div></details></div>`;
   }
   function mmwSeoTab(){
-    const p=normalizeWebsiteProduct(state.website.current||{}),url=p.wooProductUrl||p.website_product_url||'';
+    const p=normalizeWebsiteProduct(state.website.current||{}),url=websiteFreshProductUrl(p);
     return `<div class="mmw-form-grid">
       <div class="wide">${websiteField('Website URL','website_product_url')}</div>
       ${websiteField('Slug','slug')}
