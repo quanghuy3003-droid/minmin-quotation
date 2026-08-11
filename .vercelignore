@@ -13,4 +13,5 @@
 !/api/image-proxy.js
 !/api/drive-state.js
 !/api/woo-image.js
+!/api/app-version.js
 !/api/excel-to-pdf.js

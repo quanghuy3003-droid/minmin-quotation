@@ -23198,6 +23198,48 @@ async function printLabelDirect(){
   window.__minminDriveStateRequest=driveStateRequest;
 })();
 
+/* Keep long-lived mobile tabs on the latest production deployment. */
+(function installMinminDeploymentRefresh(){
+  const storageKey='minmin-app-deployment-version-v1';
+  let lastCheckAt=0;
+  let checkInFlight=false;
+
+  async function checkAppDeploymentVersion(force=false){
+    if(checkInFlight||(!force&&Date.now()-lastCheckAt<10000))return false;
+    checkInFlight=true;
+    lastCheckAt=Date.now();
+    try{
+      const response=await fetch(`/api/app-version?ts=${Date.now()}`,{
+        cache:'no-store',
+        headers:{Accept:'application/json'}
+      });
+      if(!response.ok)return false;
+      const payload=await response.json();
+      const current=String(payload?.version||'');
+      if(!current||current==='local')return false;
+      const previous=String(localStorage.getItem(storageKey)||'');
+      localStorage.setItem(storageKey,current);
+      if(previous&&previous!==current){
+        location.reload();
+        return true;
+      }
+      return false;
+    }catch(error){
+      console.warn('App version check failed:',error);
+      return false;
+    }finally{
+      checkInFlight=false;
+    }
+  }
+
+  window.__minminCheckAppVersion=checkAppDeploymentVersion;
+  window.addEventListener('pageshow',()=>checkAppDeploymentVersion(true));
+  document.addEventListener('visibilitychange',()=>{
+    if(document.visibilityState==='visible')checkAppDeploymentVersion(true);
+  });
+  checkAppDeploymentVersion(true);
+})();
+
 initApp();
     </script>
   </body>
