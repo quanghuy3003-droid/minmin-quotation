@@ -5507,7 +5507,16 @@ async function importWooProductsToWebsite(){
     const key=String(p.wooProductId||p.sku||p.id);
     const old=byKey.get(key)||existing.find(x=>x.sku&&p.sku&&x.sku===p.sku);
     if(old){
+      const priorityUrls=[...(old.websitePriorityGalleryUrls||[])];
+      const localImages=priorityUrls.length?{
+        featured_image_url:old.featured_image_url,
+        gallery_image_urls:[...(old.gallery_image_urls||[])],
+        websitePriorityGalleryUrls:priorityUrls,
+        imageUpdatedAt:old.imageUpdatedAt,
+        wooStatus:old.wooStatus
+      }:null;
       Object.assign(old,{...p,id:old.id||p.id,created_at:old.created_at||p.created_at});
+      if(localImages)Object.assign(old,localImages);
     }else{
       existing.push(p);
     }
@@ -20418,6 +20427,7 @@ document.addEventListener('change',event=>{
     product.websiteLastOptimization=raw.websiteLastOptimization&&typeof raw.websiteLastOptimization==='object'?{...raw.websiteLastOptimization}:null;
     product.websiteImageSizes=raw.websiteImageSizes&&typeof raw.websiteImageSizes==='object'?{...raw.websiteImageSizes}:{};
     product.websitePublicRefreshAt=String(raw.websitePublicRefreshAt||'');
+    product.websitePriorityGalleryUrls=[...new Set((Array.isArray(raw.websitePriorityGalleryUrls)?raw.websitePriorityGalleryUrls:[]).map(websiteUrlOnly).filter(Boolean))];
     return product;
   };
 
@@ -20630,7 +20640,7 @@ document.addEventListener('change',event=>{
     }
     next=[...uploadedUrls,...next.filter(url=>!uploadedUrls.includes(url))];
     const record={beforeBytes:beforeTotal,afterBytes:afterTotal,before:minminFormatBytes(beforeTotal),after:minminFormatBytes(afterTotal),index:selected.length,total:selected.length,at:new Date().toISOString()};
-    websiteSetCurrent({gallery_image_urls:next,websiteImageSizes:sizes,websiteLastOptimization:record,imageUpdatedAt:new Date().toISOString(),websiteSyncPhase:'',websiteSyncStep:'',websiteSyncError:'',wooStatus:p.wooProductId?'Có thay đổi':'Chưa đồng bộ',wooProgress:0});
+    websiteSetCurrent({gallery_image_urls:next,websitePriorityGalleryUrls:[...new Set([...uploadedUrls,...(p.websitePriorityGalleryUrls||[])])],websiteImageSizes:sizes,websiteLastOptimization:record,imageUpdatedAt:new Date().toISOString(),websiteSyncPhase:'',websiteSyncStep:'',websiteSyncError:'',wooStatus:p.wooProductId?'Có thay đổi':'Chưa đồng bộ',wooProgress:0});
     saveWebsiteProducts();
   };
 
@@ -20745,7 +20755,8 @@ document.addEventListener('change',event=>{
 
   function minminPrioritizeNewWebsiteGallery(item){
     const product=normalizeWebsiteProduct(item), gallery=[...new Set(product.gallery_image_urls||[])];
-    const isFreshUpload=url=>/drive\.google\.com|googleusercontent\.com|supabase\.co/i.test(String(url||''));
+    const priority=new Set(product.websitePriorityGalleryUrls||[]);
+    const isFreshUpload=url=>priority.has(url)||/drive\.google\.com|googleusercontent\.com|supabase\.co/i.test(String(url||''));
     const ordered=[...gallery.filter(isFreshUpload),...gallery.filter(url=>!isFreshUpload(url))];
     if(ordered.join('|')!==gallery.join('|')){
       item.gallery_image_urls=ordered;
@@ -20800,7 +20811,7 @@ document.addEventListener('change',event=>{
           if(urls.length&&(!Array.isArray(data?.images)||data.images.length<urls.length))throw new Error(`WooCommerce chỉ xác nhận ${data?.images?.length||0}/${urls.length} ảnh.`);
           if(!urls.length&&Array.isArray(data?.images)&&data.images.length)throw new Error('WooCommerce chưa xóa hết ảnh cũ.');
           const syncedAt=new Date().toISOString();
-          minminWebsitePatch(item.id,{wooImageSyncedAt:syncedAt,wooImageSignature:websiteImageSignature(item),websitePendingDeleteUrls:[],websitePublicRefreshAt:syncedAt},false);
+          minminWebsitePatch(item.id,{wooImageSyncedAt:syncedAt,wooImageSignature:websiteImageSignature(item),websitePendingDeleteUrls:[],websitePriorityGalleryUrls:[],websitePublicRefreshAt:syncedAt},false);
         }
         completed++;
         minminWebsitePatch(item.id,{websiteSyncRetrySteps:steps.slice(index+1),wooProgress:Math.round((completed/steps.length)*100)},true);
@@ -20867,6 +20878,63 @@ document.addEventListener('change',event=>{
       __minminWooSyncRunning=false;
     }
   }
+
+  let minminPriorityRepairRunning=false;
+  function minminWooImageFileKey(url){
+    try{return decodeURIComponent(new URL(String(url||'')).pathname.split('/').pop()||'').toLowerCase();}
+    catch{return String(url||'').split(/[?#]/)[0].split('/').pop().toLowerCase();}
+  }
+  async function minminApplyPendingWooImageOrder(){
+    if(minminPriorityRepairRunning||!websiteWooReady())return false;
+    state.website=normalizeWebsiteProducts(state.website||websiteProductsDefaults());
+    const item=(state.website.products||[]).find(product=>product.wooProductId&&(product.websitePriorityGalleryUrls||[]).length);
+    if(!item)return false;
+    minminPriorityRepairRunning=true;
+    try{
+      const remote=await wooRequest(`products/${item.wooProductId}`,{method:'GET',timeoutMs:45000});
+      const images=Array.isArray(remote?.images)?remote.images.filter(image=>image?.id&&image?.src):[];
+      if(images.length<2)return false;
+      const featuredKey=minminWooImageFileKey(item.featured_image_url);
+      const priorityKeys=new Set((item.websitePriorityGalleryUrls||[]).map(minminWooImageFileKey).filter(Boolean));
+      const featured=images.find(image=>minminWooImageFileKey(image.src)===featuredKey)||images[0];
+      const priorityImages=images.filter(image=>image.id!==featured.id&&priorityKeys.has(minminWooImageFileKey(image.src)));
+      if(!priorityImages.length)return false;
+      const priorityIds=new Set(priorityImages.map(image=>image.id));
+      const ordered=[featured,...priorityImages,...images.filter(image=>image.id!==featured.id&&!priorityIds.has(image.id))];
+      const before=images.map(image=>image.id).join('|'),after=ordered.map(image=>image.id).join('|');
+      const updated=before===after?remote:await wooRequest(`products/${item.wooProductId}`,{method:'PUT',timeoutMs:60000,body:JSON.stringify({images:ordered.map(image=>({id:image.id}))})});
+      const resultImages=Array.isArray(updated?.images)&&updated.images.length?updated.images:ordered;
+      const syncedAt=new Date().toISOString();
+      minminWebsitePatch(item.id,{
+        featured_image_url:resultImages[0]?.src||item.featured_image_url,
+        gallery_image_urls:resultImages.slice(1).map(image=>image.src).filter(Boolean),
+        websitePriorityGalleryUrls:[],
+        imageUpdatedAt:syncedAt,
+        wooImageSyncedAt:syncedAt,
+        wooImageSignature:websiteImageSignature({featured_image_url:resultImages[0]?.src||'',gallery_image_urls:resultImages.slice(1).map(image=>image.src)}),
+        websitePublicRefreshAt:syncedAt,
+        websiteSyncPhase:'complete',
+        websiteSyncStep:'',
+        websiteSyncError:'',
+        wooStatus:'Hoàn tất',
+        wooProgress:100
+      },true);
+      saveWebsiteProducts();
+      return true;
+    }catch(error){
+      console.error('Woo image order repair failed:',error);
+      minminWebsitePatch(item.id,{websiteSyncPhase:'error',websiteSyncStep:'images',websiteSyncError:String(error?.message||error),wooStatus:'Lỗi sắp xếp ảnh'},true);
+      return false;
+    }finally{
+      minminPriorityRepairRunning=false;
+    }
+  }
+  window.__minminApplyPendingWooImageOrder=minminApplyPendingWooImageOrder;
+  window.addEventListener('pageshow',()=>setTimeout(minminApplyPendingWooImageOrder,1500));
+  document.addEventListener('visibilitychange',()=>{
+    if(document.visibilityState==='visible')setTimeout(minminApplyPendingWooImageOrder,1500);
+  });
+
   uploadWebsiteProductToWoo=function(id,options={}){
     const item=minminWebsiteLive(id);
     return minminSyncProduct(id,{force:options.force!==false,retryOnly:item?.websiteSyncPhase==='error'||!!options.retryOnly});
@@ -23186,6 +23254,7 @@ async function printLabelDirect(){
     try{
       const changed=await loadWorkingStateFromSupabase({auto:true,activityToken});
       if(changed&&!backgroundSyncShouldYield(activityToken))render();
+      if(changed)setTimeout(()=>window.__minminApplyPendingWooImageOrder?.(),0);
       return !!changed;
     }catch(error){
       console.warn('Google Drive background sync failed:',error);
@@ -23238,6 +23307,7 @@ async function printLabelDirect(){
     if(document.visibilityState==='visible')checkAppDeploymentVersion(true);
   });
   checkAppDeploymentVersion(true);
+  setInterval(()=>checkAppDeploymentVersion(),60000);
 })();
 
 initApp();
