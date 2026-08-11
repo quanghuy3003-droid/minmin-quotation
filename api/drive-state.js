@@ -31,6 +31,13 @@ function readJsonBody(req) {
   });
 }
 
+function containsReplacementCharacter(value) {
+  if (typeof value === "string") return value.includes("\uFFFD");
+  if (Array.isArray(value)) return value.some(containsReplacementCharacter);
+  if (value && typeof value === "object") return Object.values(value).some(containsReplacementCharacter);
+  return false;
+}
+
 module.exports = async function handler(req, res) {
   const origin = String(req.headers?.origin || "");
   if (req.method !== "GET" && (!origin || !allowedOrigin(origin))) {
@@ -59,6 +66,12 @@ module.exports = async function handler(req, res) {
     const action = String(body.action || "");
     if (!["state.get", "state.put"].includes(action)) {
       return res.status(400).json({ ok: false, error: "Tác vụ đồng bộ không hợp lệ." });
+    }
+    if (action === "state.put" && containsReplacementCharacter(body.data)) {
+      return res.status(400).json({
+        ok: false,
+        error: "Dữ liệu chứa ký tự lỗi mã hóa. App đã chặn ghi đè để bảo vệ bản UTF-8 trên Google Drive."
+      });
     }
     const endpoint = normalizeEndpoint(process.env.DRIVE_UPLOAD_ENDPOINT);
     const uploadToken = String(process.env.DRIVE_UPLOAD_TOKEN || "");

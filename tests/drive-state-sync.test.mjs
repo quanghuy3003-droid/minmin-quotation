@@ -36,6 +36,8 @@ assert.match(api,/Cache-Control", "no-store"/);
 assert.match(api,/\["state\.get", "state\.put"\]/);
 assert.match(api,/DRIVE_UPLOAD_TOKEN/);
 assert.match(api,/req\.method !== "GET" && \(!origin \|\| !allowedOrigin\(origin\)\)/);
+assert.match(api,/containsReplacementCharacter\(body\.data\)/,'The state API must reject lossy replacement characters before they overwrite Drive');
+assert.match(html,/headers:\{'Content-Type':'application\/json; charset=utf-8'\}/,'The app must declare UTF-8 explicitly when writing Drive state');
 
 const require=createRequire(import.meta.url);
 const handler=require(fileURLToPath(new URL('api/drive-state.js',root)));

@@ -23153,7 +23153,7 @@ async function printLabelDirect(){
   async function driveStateRequest(payload){
     const response=await fetch(DRIVE_STATE_API,{
       method:'POST',
-      headers:{'Content-Type':'application/json'},
+      headers:{'Content-Type':'application/json; charset=utf-8'},
       body:JSON.stringify(payload)
     });
     const text=await response.text().catch(()=>'');
