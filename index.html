@@ -20610,7 +20610,7 @@ document.addEventListener('change',event=>{
   uploadWebsiteGallery=async function(files){
     const selected=[...(files||[])].filter(file=>String(file.type||'').startsWith('image/'));
     if(!selected.length)return;
-    let p=normalizeWebsiteProduct(state.website?.current||{}), next=[...(p.gallery_image_urls||[])],sizes={...(p.websiteImageSizes||{})};
+    let p=normalizeWebsiteProduct(state.website?.current||{}), next=[...(p.gallery_image_urls||[])],uploadedUrls=[],sizes={...(p.websiteImageSizes||{})};
     let beforeTotal=0,afterTotal=0;
     for(let index=0;index<selected.length;index++){
       minminCurrentImageStatus({websiteSyncPhase:'optimizing',websiteSyncStep:'gallery',wooStatus:`Đang tối ưu ảnh ${index+1}/${selected.length}`,wooProgress:Math.round((index/selected.length)*50)});
@@ -20621,13 +20621,14 @@ document.addEventListener('change',event=>{
         const uploaded=await minminWebsiteWithTimeout(uploadFileToSupabaseStorage(optimized.file,'product',p.sku||'website-gallery'),60000,`Tải ảnh ${index+1}/${selected.length}`);
         const url=uploaded?.publicUrl||uploaded?.viewUrl||uploaded?.downloadUrl||uploaded?.url||'';
         if(!url)throw new Error(`Storage không trả về URL ảnh ${index+1}/${selected.length}.`);
-        if(!next.includes(url))next.push(url);
+        if(!uploadedUrls.includes(url))uploadedUrls.push(url);
         sizes[url]=minminOptimizationRecord(optimized,index+1,selected.length);
       }catch(error){
         minminCurrentImageStatus({gallery_image_urls:next,websiteImageSizes:sizes,websiteSyncPhase:'error',websiteSyncStep:'gallery',websiteSyncError:String(error?.message||error),wooStatus:'Lỗi',wooProgress:0});
         throw error;
       }
     }
+    next=[...uploadedUrls,...next.filter(url=>!uploadedUrls.includes(url))];
     const record={beforeBytes:beforeTotal,afterBytes:afterTotal,before:minminFormatBytes(beforeTotal),after:minminFormatBytes(afterTotal),index:selected.length,total:selected.length,at:new Date().toISOString()};
     websiteSetCurrent({gallery_image_urls:next,websiteImageSizes:sizes,websiteLastOptimization:record,imageUpdatedAt:new Date().toISOString(),websiteSyncPhase:'',websiteSyncStep:'',websiteSyncError:'',wooStatus:p.wooProductId?'Có thay đổi':'Chưa đồng bộ',wooProgress:0});
     saveWebsiteProducts();
@@ -20742,10 +20743,23 @@ document.addEventListener('change',event=>{
     return `${origin}/woo-image/${encodeURIComponent(`${base}.${extension}`)}?id=${encodeURIComponent(driveId)}`;
   }
 
+  function minminPrioritizeNewWebsiteGallery(item){
+    const product=normalizeWebsiteProduct(item), gallery=[...new Set(product.gallery_image_urls||[])];
+    const isFreshUpload=url=>/drive\.google\.com|googleusercontent\.com|supabase\.co/i.test(String(url||''));
+    const ordered=[...gallery.filter(isFreshUpload),...gallery.filter(url=>!isFreshUpload(url))];
+    if(ordered.join('|')!==gallery.join('|')){
+      item.gallery_image_urls=ordered;
+      item.imageUpdatedAt=new Date().toISOString();
+      saveWebsiteProducts();
+    }
+    return item;
+  }
+
   async function minminSyncProduct(id,options={}){
     if(!websiteWooReady())throw new Error('Chưa nhập đủ Website URL, Consumer Key và Consumer Secret.');
     let item=minminWebsiteLive(id);
     if(!item)throw new Error('Không tìm thấy sản phẩm Website.');
+    item=minminPrioritizeNewWebsiteGallery(item);
     const force=options.force!==false, retryOnly=!!options.retryOnly;
     let steps;
     if(retryOnly&&item.websiteSyncRetrySteps.length)steps=[...item.websiteSyncRetrySteps];
