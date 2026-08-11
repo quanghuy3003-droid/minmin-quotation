@@ -23310,7 +23310,7 @@ async function printLabelDirect(){
   setInterval(()=>checkAppDeploymentVersion(),60000);
 })();
 
-initApp();
+initApp().then(()=>setTimeout(()=>window.__minminApplyPendingWooImageOrder?.(),500));
     </script>
   </body>
 </html>
