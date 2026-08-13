@@ -4911,6 +4911,90 @@
           font-size: 11px;
         }
       }
+      /* Minmin tools: editorial black/ivory, mint actions, compact mobile flow. */
+      body { background: #f4f3ee; color: #17202a; }
+      main > section:has([data-tool-view]) {
+        padding-top: 22px;
+        padding-bottom: 0;
+      }
+      main > section:has([data-tool-view]) > div {
+        border: 0;
+        border-radius: 20px;
+        box-shadow: 0 10px 34px rgba(23, 32, 42, .07);
+        padding: 22px;
+      }
+      main > section:has([data-tool-view]) h1 {
+        font-family: Georgia, 'Times New Roman', serif;
+        font-size: 30px;
+        letter-spacing: -.025em;
+      }
+      [data-tool-view] { border-radius: 999px !important; padding-inline: 20px !important; }
+      main > section:has(#pinNew1) > div {
+        border: 0;
+        border-radius: 20px;
+        box-shadow: 0 10px 34px rgba(23, 32, 42, .07);
+        padding: 22px;
+      }
+      main > section:has([data-price]) {
+        align-items: start;
+        gap: 18px;
+        padding-top: 18px;
+        padding-bottom: 48px;
+      }
+      main > section:has([data-price]) > div > div,
+      main > section:has([data-price]) > aside {
+        border: 0;
+        border-radius: 20px;
+        box-shadow: 0 10px 34px rgba(23, 32, 42, .07);
+      }
+      main > section:has([data-price]) > div > div { padding: 22px; }
+      main > section:has([data-price]) > div > div:first-child h2 {
+        font-family: Georgia, 'Times New Roman', serif;
+        font-size: 22px;
+        letter-spacing: -.02em;
+      }
+      label:has(> div > [data-price]) {
+        border: 1px solid rgba(31, 138, 112, .18) !important;
+        border-radius: 14px !important;
+        background: #eef7f3 !important;
+        padding: 12px !important;
+      }
+      label:has(> div > [data-price]) > div { border-radius: 10px !important; }
+      aside:has([data-apply-price]) {
+        background: #17202a;
+        padding: 22px;
+      }
+      aside:has([data-apply-price]) > p:first-child { color: rgba(255,255,255,.55); letter-spacing: .12em; }
+      aside:has([data-apply-price]) > p:nth-child(2) { font-family: Georgia, 'Times New Roman', serif; font-size: 30px; }
+      [data-apply-price] { border-radius: 999px !important; min-height: 44px; }
+
+      @media (max-width: 640px) {
+        .minmin-app-logo { padding-block: 12px !important; }
+        .minmin-app-logo img { height: 38px !important; }
+        main > section:has([data-tool-view]),
+        main > section:has([data-price]) { padding-inline: 14px !important; }
+        main > section:has([data-tool-view]) > div,
+        main > section:has(#pinNew1) > div,
+        main > section:has([data-price]) > div > div,
+        main > section:has([data-price]) > aside { border-radius: 18px !important; }
+        main > section:has([data-tool-view]) > div { padding: 18px !important; }
+        main > section:has([data-tool-view]) h1 { font-size: 27px !important; }
+        main > section:has([data-tool-view]) p { font-size: 13px !important; line-height: 1.45; }
+        main > section:has(#pinNew1) { margin-top: 10px !important; }
+        main > section:has(#pinNew1) > div { padding: 18px !important; }
+        main > section:has(#pinNew1) > div > div:first-child { display: grid; grid-template-columns: 1fr auto; align-items: center; }
+        main > section:has(#pinNew1) [data-app-lock] { height: 38px !important; border-radius: 999px !important; }
+        main > section:has([data-price]) { display: flex !important; flex-direction: column; padding-top: 14px !important; }
+        main > section:has([data-price]) > aside { order: -1; padding: 18px !important; }
+        main > section:has([data-price]) > div { gap: 12px !important; }
+        main > section:has([data-price]) > div > div { padding: 18px !important; }
+        main > section:has([data-price]) > div > div:first-child h2 { font-size: 21px !important; }
+        main > section:has([data-price]) > div > div:first-child > p { font-size: 13px !important; line-height: 1.45; }
+        label:has(> div > [data-price]) { padding: 10px !important; }
+        aside:has([data-apply-price]) > p:nth-child(2) { font-size: 29px !important; }
+        aside:has([data-apply-price]) > .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        aside:has([data-apply-price]) > .grid > div:last-child { grid-column: 1 / -1; }
+      }
     </style>
   </head>
   <body class="min-h-screen bg-[#F7F7F2] font-sans text-ink">
