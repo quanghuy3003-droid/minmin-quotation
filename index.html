@@ -4749,6 +4749,67 @@
         .mm-stock-entry-editor { display: block !important; margin: 0 !important; border-radius: 14px !important; box-shadow: none !important; }
         .mm-stock-entry-editor .minmin-stock-list,
         .mm-stock-entry-editor .minmin-stock-history { display: none !important; }
+        .mm-stock-modal.is-stock-entry-modal {
+          width: min(1360px,calc(100vw - 48px));
+          border-color: #ECECEC;
+          border-radius: 18px;
+          background: #FAFAF8;
+        }
+        .is-stock-entry-modal .mm-stock-modal-head { min-height: 64px; border-color: #ECECEC; padding: 0 28px; }
+        .is-stock-entry-modal .mm-stock-modal-head strong { font-size: 19px; }
+        .is-stock-entry-modal .mm-stock-modal-close { display: inline-flex; min-height: 42px; align-items: center; gap: 7px; border: 0; background: transparent; color: #4D5350; font-size: 11px; }
+        .is-stock-entry-modal .mm-stock-modal-body { padding: 20px 28px 28px; }
+        .mm-stock-entry-editor {
+          overflow: visible !important;
+          border: 0 !important;
+          border-radius: 0 !important;
+          background: transparent !important;
+          padding: 0 !important;
+        }
+        .mm-stock-entry-editor .mm-stock-entry-top { display: flex !important; align-items: center !important; gap: 18px !important; padding: 0 0 16px; }
+        .mm-stock-entry-editor .mm-stock-entry-top > div:first-child { margin-right: auto; }
+        .mm-stock-entry-editor .mm-stock-entry-top h2 { margin: 0; font-size: 20px; font-weight: 900; }
+        .mm-stock-entry-editor .mm-stock-entry-top p { margin-top: 5px; color: #777D79; font-size: 11px; font-weight: 650; }
+        .mm-stock-entry-editor .mm-stock-entry-top button,
+        .mm-stock-entry-editor .mm-stock-entry-top label { display: inline-flex; height: 44px !important; cursor: pointer; align-items: center; justify-content: center; border-radius: 10px !important; padding: 0 15px !important; font-size: 11px !important; font-weight: 850 !important; }
+        .mm-stock-entry-editor .mm-stock-entry-top [data-toggle="stockInputCollapsed"] { border: 1px solid #E3E6E4 !important; background: #fff !important; color: #313734 !important; }
+        .mm-stock-entry-editor .mm-stock-entry-top label { border: 1px solid #EDD6B7 !important; background: #FFF9F0 !important; color: #A6651C !important; }
+        .mm-stock-entry-editor .mm-stock-entry-top #stockAdd { border: 1px solid #3D8B74 !important; background: #3D8B74 !important; color: #fff !important; box-shadow: 0 6px 16px rgba(61,139,116,.16); }
+        .mm-stock-entry-editor [data-stock-entry-fields] { gap: 12px !important; margin-top: 0 !important; }
+        .mm-stock-entry-editor .mm-stock-entry-note { margin: 0 !important; border: 1px solid #D5E6E0 !important; border-radius: 9px !important; background: #F4F9F7 !important; padding: 10px 14px !important; color: #3D7D69 !important; font-size: 10px !important; }
+        .mm-stock-entry-editor .mm-stock-entry-section {
+          margin: 0 !important;
+          border: 1px solid #ECECEC !important;
+          border-radius: 16px !important;
+          background: #fff !important;
+          padding: 17px 20px !important;
+          box-shadow: 0 2px 10px rgba(20,27,23,.02);
+        }
+        .mm-stock-entry-editor .mm-stock-entry-section > h3,
+        .mm-stock-entry-editor .mm-stock-entry-section-title { display: flex; min-height: 24px; align-items: center; gap: 9px; margin: 0 0 12px !important; color: #222724; font-size: 14px !important; font-weight: 900 !important; }
+        .mm-stock-entry-editor .mm-stock-entry-section-title { justify-content: space-between; }
+        .mm-stock-entry-editor .mm-stock-entry-section-title h3 { display: flex; align-items: center; gap: 9px; margin: 0; font-size: 14px; font-weight: 900; }
+        .mm-stock-entry-editor .mm-stock-entry-section-icon { display: inline-flex; width: 24px; height: 24px; flex: 0 0 auto; align-items: center; justify-content: center; color: #39413D; }
+        .mm-stock-entry-editor .mm-stock-entry-section-title > span:last-child { color: #8A908C !important; font-size: 9px !important; font-weight: 650 !important; }
+        .mm-stock-entry-editor .mm-stock-entry-grid { display: grid !important; grid-template-columns: repeat(3,minmax(0,1fr)) !important; gap: 11px 16px !important; }
+        .mm-stock-entry-editor .mm-stock-entry-grid label { min-width: 0; gap: 6px !important; }
+        .mm-stock-entry-editor .mm-stock-entry-grid label > span:first-child { color: #5F6661 !important; font-size: 9px !important; font-weight: 800 !important; letter-spacing: 0 !important; text-transform: none !important; }
+        .mm-stock-entry-editor .mm-stock-entry-grid input:not([type="file"]),
+        .mm-stock-entry-editor .mm-stock-entry-grid select { width: 100%; min-width: 0; height: 46px !important; border: 1px solid #E2E4E2 !important; border-radius: 9px !important; background: #fff !important; padding: 0 13px !important; color: #222724 !important; font-size: 12px !important; font-weight: 650 !important; }
+        .mm-stock-entry-editor .mm-stock-entry-qr { display: flex !important; min-height: 46px; align-items: center; justify-content: space-between; gap: 10px; border: 1px dashed #B9D8CE !important; border-radius: 9px !important; background: #F7FBF9 !important; padding: 0 14px !important; color: #3D8B74 !important; font-size: 10px !important; font-weight: 850 !important; }
+        .mm-stock-entry-editor .mm-stock-entry-media-grid { display: grid !important; grid-template-columns: 170px repeat(3,minmax(0,1fr)) !important; gap: 11px !important; }
+        .mm-stock-entry-editor .mm-stock-entry-preview,
+        .mm-stock-entry-editor .mm-stock-upload-card { display: grid !important; min-width: 0; align-content: start; gap: 9px !important; border: 1px solid #E7E9E7 !important; border-radius: 11px !important; background: #FCFCFB !important; padding: 11px !important; }
+        .mm-stock-entry-editor .mm-stock-entry-preview > span:first-child,
+        .mm-stock-entry-editor .mm-stock-upload-card > span:first-child { color: #555C57 !important; font-size: 10px !important; font-weight: 800 !important; letter-spacing: 0 !important; text-transform: none !important; }
+        .mm-stock-entry-editor .mm-stock-entry-preview > div { width: 100% !important; max-width: none !important; height: 94px !important; aspect-ratio: auto !important; border-color: #CFD7D2 !important; background: #fff !important; }
+        .mm-stock-entry-editor .mm-stock-upload-card input[type="file"] { display: none !important; }
+        .mm-stock-entry-editor .mm-stock-upload-action { display: inline-flex; width: 100%; min-height: 44px; cursor: pointer; align-items: center; justify-content: center; gap: 7px; border: 1px solid #DDE1DE; border-radius: 9px; background: #fff; color: #262C28; font-size: 10px; font-weight: 850; }
+        .mm-stock-entry-editor .mm-stock-upload-card > span:not(:first-child):not(.mm-stock-upload-action) { display: inline-flex !important; width: fit-content !important; min-height: 27px !important; align-items: center; overflow: hidden; border-radius: 7px !important; padding: 0 9px !important; font-size: 9px !important; font-weight: 800 !important; text-overflow: ellipsis; white-space: nowrap; }
+        .mm-stock-entry-editor .mm-stock-upload-card.is-warning { border-style: dashed !important; border-color: #EEDCC5 !important; background: #FFFBF5 !important; }
+        @media (max-width: 1120px) {
+          .mm-stock-entry-editor .mm-stock-entry-media-grid { grid-template-columns: repeat(2,minmax(0,1fr)) !important; }
+        }
         .mm-stock-picker { display: grid; gap: 9px; }
         .mm-stock-picker-row { display: grid; grid-template-columns: 52px minmax(0,1fr) auto auto; align-items: center; gap: 12px; border: 1px solid var(--mm-line); border-radius: 12px; background: #fff; padding: 9px; }
         .mm-stock-picker-row img,.mm-stock-picker-placeholder { width: 52px; height: 52px; border: 1px solid var(--mm-line); border-radius: 9px; object-fit: contain; background: #f7f8fa; }
@@ -19939,6 +20000,12 @@ function mmStockDesktopIcon(name){
   const paths={
     plus:'<path d="M12 5v14M5 12h14"/>',
     minus:'<path d="M5 12h14"/>',
+    close:'<path d="M6 6l12 12M18 6 6 18"/>',
+    info:'<rect x="5" y="4" width="14" height="16" rx="2"/><path d="M9 9h6M9 13h6M9 17h4"/>',
+    clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    camera:'<path d="M5 7h3l1.5-2h5L16 7h3a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z"/><circle cx="12" cy="13" r="3.5"/>',
+    settings:'<path d="M4 7h10M18 7h2M4 17h2M10 17h10M14 4v6M7 14v6"/>',
+    upload:'<path d="M12 16V4M7 9l5-5 5 5"/><path d="M5 14v5h14v-5"/>',
     audit:'<rect x="5" y="4" width="14" height="16" rx="2"/><path d="M9 9h6M9 13h6M9 17h4"/>',
     more:'<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
     filter:'<path d="M4 6h16M7 12h10M10 18h4"/>',
@@ -20125,6 +20192,76 @@ function mmStockEditPanel(item){
     </div>
   </div>`;
 }
+function mmPrepareStockEntryEditor(editor,modal){
+  if(!editor||!modal)return;
+  modal.classList.add('is-stock-entry-modal');
+  editor.classList.add('mm-stock-entry-editor');
+  editor.setAttribute('data-mm-stock-entry-redesign','');
+  editor.firstElementChild?.classList.add('mm-stock-entry-top');
+  const host=editor.querySelector('[data-stock-entry-fields]');
+  if(!host)return;
+  const note=host.firstElementChild;
+  if(note&&!note.querySelector('h3'))note.classList.add('mm-stock-entry-note');
+  const panelFor=heading=>{
+    let node=heading?.parentElement;
+    while(node&&node!==host){
+      if(node.classList.contains('rounded-md')&&node.classList.contains('border'))return node;
+      node=node.parentElement;
+    }
+    return null;
+  };
+  const definitions=[
+    ['Thông tin chính','main','info'],
+    ['Giá và thời gian','time','clock'],
+    ['Ảnh và hóa đơn','media','camera'],
+    ['Thuộc tính đèn','attributes','settings']
+  ];
+  definitions.forEach(([title,key,icon])=>{
+    const heading=[...editor.querySelectorAll('h3')].find(node=>node.textContent.trim()===title);
+    const panel=panelFor(heading);
+    if(!heading||!panel)return;
+    panel.classList.add('mm-stock-entry-section');
+    panel.dataset.mmStockEntrySection=key;
+    if(key==='attributes'&&panel.parentElement!==host)host.appendChild(panel);
+    if(!heading.querySelector('.mm-stock-entry-section-icon'))heading.insertAdjacentHTML('afterbegin',`<span class="mm-stock-entry-section-icon">${mmStockDesktopIcon(icon)}</span>`);
+    if(key==='attributes')heading.parentElement?.classList.add('mm-stock-entry-section-title');
+    const grid=[...panel.children].find(child=>child.querySelector?.('[data-inventory-draft],[data-inventory-attr],#stockPhoto'));
+    grid?.classList.add('mm-stock-entry-grid');
+    if(key==='media')grid?.classList.add('mm-stock-entry-media-grid');
+  });
+  const media=host.querySelector('[data-mm-stock-entry-section="media"]');
+  const mediaGrid=media?.querySelector('.mm-stock-entry-media-grid');
+  if(mediaGrid){
+    const children=[...mediaGrid.children];
+    children[0]?.classList.add('mm-stock-entry-preview');
+    children.slice(1).forEach(card=>{
+      card.classList.add('mm-stock-upload-card');
+      if(card.tagName!=='LABEL')card.classList.add('is-warning');
+    });
+  }
+  const uploads=[
+    ['stockPhoto','Chọn ảnh'],
+    ['stockSaleInvoice','Chọn file PDF'],
+    ['stockInvoice','Chọn file PDF']
+  ];
+  uploads.forEach(([id,label])=>{
+    const input=editor.querySelector(`#${id}`), card=input?.closest('label');
+    if(!input||!card)return;
+    card.classList.add('mm-stock-upload-card');
+    input.classList.add('mm-stock-entry-file-input');
+    if(!card.querySelector('.mm-stock-upload-action'))input.insertAdjacentHTML('beforebegin',`<span class="mm-stock-upload-action">${mmStockDesktopIcon('upload')}${esc(label)}</span>`);
+  });
+  const qr=[...editor.querySelectorAll('div')].find(node=>node.textContent.trim()==='Tự tạo theo mã hàng');
+  if(qr){
+    const label=qr.previousElementSibling?.textContent?.trim()||'Mã QR sản phẩm';
+    qr.previousElementSibling?.remove();
+    qr.classList.add('mm-stock-entry-qr');
+    qr.innerHTML=`<span>${esc(label)}</span><strong>${mmStockDesktopIcon('plus')}Tự tạo theo mã hàng</strong>`;
+    qr.querySelector('strong')?.setAttribute('style','display:inline-flex;align-items:center;gap:6px');
+  }
+  const close=modal.querySelector('[data-mm-stock-modal-close]');
+  if(close)close.innerHTML=`${mmStockDesktopIcon('close')}<span>Đóng</span>`;
+}
 function mmMountStockDesktopModal(stockWrap){
   document.querySelector('.mm-stock-modal-overlay')?.remove();
   const mode=String(state.ui?.desktopStockModal||'');
@@ -20155,7 +20292,10 @@ function mmMountStockDesktopModal(stockWrap){
   overlay.setAttribute('aria-modal','true');
   overlay.setAttribute('aria-label',title);
   overlay.innerHTML=`<section class="mm-stock-modal"><header class="mm-stock-modal-head"><strong>${esc(title)}</strong><button type="button" class="mm-stock-modal-close" data-mm-stock-modal-close>Đóng</button></header><div class="mm-stock-modal-body">${body}</div></section>`;
-  if(movedTarget)overlay.querySelector('.mm-stock-modal-body').appendChild(movedTarget);
+  if(movedTarget){
+    overlay.querySelector('.mm-stock-modal-body').appendChild(movedTarget);
+    mmPrepareStockEntryEditor(movedTarget,overlay.querySelector('.mm-stock-modal'));
+  }
   document.body.appendChild(overlay);
 }
 function mmQuoteExactDashboard(){
