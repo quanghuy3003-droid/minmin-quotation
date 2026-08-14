@@ -7,8 +7,14 @@ const source=await readFile(new URL('../index.html',import.meta.url),'utf8');
 test('legacy Excel import replaces file-name-only photo metadata with embedded images',()=>{
   assert.match(source,/function isRenderableImageSource\(value\)[\s\S]*?\^data:image/);
   assert.match(source,/function applyExcelPhotoFallback\(line,image\)[\s\S]*?Object\.assign\(line,normalizePhotoRefs\(line\)\)/);
-  assert.match(source,/if\(!isRenderableImageSource\(current\)\)[\s\S]*?line\.photo=''[\s\S]*?line\.photoDataUrl=''/);
-  assert.match(source,/if\(!isRenderableImageSource\(photoSourceValue\(line\)\)&&isRenderableImageSource\(image\)\)[\s\S]*?line\.photoDataUrl=image;[\s\S]*?line\.photo=image;/);
+  assert.match(source,/if\(!isRenderableImageSource\(current\)\|\|replaceWithEmbedded\)[\s\S]*?line\.photo=''[\s\S]*?line\.photoDataUrl=''/);
+  assert.match(source,/if\(replaceWithEmbedded\)[\s\S]*?line\.photoDataUrl=embeddedImage;[\s\S]*?line\.photo=embeddedImage;/);
+});
+
+test('embedded workbook images replace obsolete Supabase URLs but preserve Drive URLs',()=>{
+  assert.match(source,/function isLegacySupabaseImageSource\(value\)[\s\S]*?supabase\\\.\(\?:co\|in\)/);
+  assert.match(source,/const replaceWithEmbedded=!!embeddedImage&&\(!isRenderableImageSource\(current\)\|\|isLegacySupabaseImageSource\(current\)\)/);
+  assert.doesNotMatch(source,/replaceWithEmbedded=.*drive\.google/i);
 });
 
 test('ExcelJS public image API is preferred when decoding workbook media',()=>{

@@ -9542,6 +9542,10 @@ function isRenderableImageSource(value){
   const source=String(value||'').trim();
   return /^data:image\//i.test(source)||/^blob:/i.test(source)||/^https?:\/\//i.test(source)||/^\/\//.test(source)||/^\/(?!\/)/.test(source);
 }
+function isLegacySupabaseImageSource(value){
+  const source=String(value||'').trim();
+  return /supabase\.(?:co|in)/i.test(source)||(typeof SUPABASE_URL==='string'&&source.startsWith(SUPABASE_URL));
+}
 function excelImageDataUrl(wb,imageId){
   const mediaList=wb?.model?.media||wb?.media||[];
   let media='';
@@ -9590,7 +9594,9 @@ function productImageFromMap(imageMap,index,rowNumber){
 function applyExcelPhotoFallback(line,image){
   Object.assign(line,normalizePhotoRefs(line));
   const current=photoSourceValue(line);
-  if(!isRenderableImageSource(current)){
+  const embeddedImage=/^data:image\//i.test(String(image||'').trim())?image:'';
+  const replaceWithEmbedded=!!embeddedImage&&(!isRenderableImageSource(current)||isLegacySupabaseImageSource(current));
+  if(!isRenderableImageSource(current)||replaceWithEmbedded){
     line.photo='';
     line.photoDataUrl='';
     line.photoStorageUrl='';
@@ -9600,9 +9606,9 @@ function applyExcelPhotoFallback(line,image){
     line.photoDriveId='';
     line.attributes={...(line.attributes||{}),_photoDriveId:'',_photoDriveUrl:'',_photoStoragePath:'',_photoStorageBucket:'',_photoStorageUrl:''};
   }
-  if(!isRenderableImageSource(photoSourceValue(line))&&isRenderableImageSource(image)){
-    line.photoDataUrl=image;
-    line.photo=image;
+  if(replaceWithEmbedded){
+    line.photoDataUrl=embeddedImage;
+    line.photo=embeddedImage;
     line.photoStorageUrl='';
     line.photoStoragePath='';
     line.photoStorageBucket='';
