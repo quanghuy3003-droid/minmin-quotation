@@ -9538,9 +9538,15 @@ async function quoteLineImageDataUrl(line,size=240){
 }
 function imageExtension(dataUrl){const m=String(dataUrl||'').match(/^data:image\/([^;]+)/)?.[1]||'png'; return (m.includes('jpeg')||m.includes('jpg'))?'jpeg':'png';}
 function bytesToBase64(bytes){ let out=''; const chunk=0x8000; for(let i=0;i<bytes.length;i+=chunk)out+=String.fromCharCode(...bytes.subarray(i,i+chunk)); return btoa(out); }
+function isRenderableImageSource(value){
+  const source=String(value||'').trim();
+  return /^data:image\//i.test(source)||/^blob:/i.test(source)||/^https?:\/\//i.test(source)||/^\/\//.test(source)||/^\/(?!\/)/.test(source);
+}
 function excelImageDataUrl(wb,imageId){
   const mediaList=wb?.model?.media||wb?.media||[];
-  const media=mediaList.find?.((m,i)=>m.index===imageId||m.imageId===imageId||i===imageId)||mediaList[imageId]||mediaList.find?.((m,i)=>i+1===imageId)||mediaList[imageId-1];
+  let media='';
+  try{ media=typeof wb?.getImage==='function'?wb.getImage(imageId):''; }catch{}
+  media=media||mediaList.find?.((m,i)=>String(m.index)===String(imageId)||String(m.imageId)===String(imageId)||String(i)===String(imageId))||mediaList[imageId]||mediaList.find?.((m,i)=>i+1===Number(imageId))||mediaList[Number(imageId)-1];
   if(!media)return'';
   const ext=String(media.extension||media.type||'png').toLowerCase().replace('jpeg','jpg');
   const mime=ext.includes('jpg')?'image/jpeg':ext.includes('gif')?'image/gif':ext.includes('webp')?'image/webp':'image/png';
@@ -9582,9 +9588,21 @@ function productImageFromMap(imageMap,index,rowNumber){
   return imageMap.get(index)||'';
 }
 function applyExcelPhotoFallback(line,image){
-  normalizePhotoRefs(line);
-  if(!photoSourceValue(line)&&image){
+  Object.assign(line,normalizePhotoRefs(line));
+  const current=photoSourceValue(line);
+  if(!isRenderableImageSource(current)){
+    line.photo='';
+    line.photoDataUrl='';
+    line.photoStorageUrl='';
+    line.photoStoragePath='';
+    line.photoStorageBucket='';
+    line.photoDriveUrl='';
+    line.photoDriveId='';
+    line.attributes={...(line.attributes||{}),_photoDriveId:'',_photoDriveUrl:'',_photoStoragePath:'',_photoStorageBucket:'',_photoStorageUrl:''};
+  }
+  if(!isRenderableImageSource(photoSourceValue(line))&&isRenderableImageSource(image)){
     line.photoDataUrl=image;
+    line.photo=image;
     line.photoStorageUrl='';
     line.photoStoragePath='';
     line.photoStorageBucket='';
