@@ -4576,98 +4576,115 @@
         }
         .mm-stock-exact-heading {
           display: flex;
-          min-height: 54px;
+          min-height: 82px;
           align-items: center;
           justify-content: space-between;
           gap: 16px;
           border-bottom: 1px solid var(--mm-line);
-          padding: 0 16px;
+          padding: 14px 20px;
         }
-        .mm-stock-exact-heading h2 { margin: 0; font-size: 15px; font-weight: 900; }
+        .mm-stock-exact-heading h2 { margin: 0; font-size: 20px; font-weight: 900; }
         .mm-stock-exact-heading span { color: var(--mm-muted); font-size: 11px; font-weight: 700; }
         .mm-stock-card-grid {
           display: grid;
           grid-template-columns: repeat(2,minmax(0,1fr));
-          gap: 14px;
-          padding: 14px;
+          gap: 16px;
+          padding: 18px;
         }
         .mm-stock-product-card {
           position: relative;
           display: grid;
           min-width: 0;
           overflow: hidden;
-          gap: 12px;
+          gap: 14px;
           border: 1px solid var(--mm-line);
-          border-radius: 14px;
+          border-radius: 16px;
           background: #fff;
-          padding: 12px;
+          padding: 16px;
+          box-shadow: 0 4px 14px rgba(17,24,32,.035);
           transition: transform 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
         }
         .mm-stock-product-card:hover { transform: translateY(-1px); border-color: rgba(17,132,95,.28); box-shadow: 0 10px 24px rgba(17,24,32,.07); }
-        .mm-stock-card-top { display: grid; grid-template-columns: 80px minmax(0,1fr); gap: 12px; min-width: 0; }
+        .mm-stock-card-top { display: grid; grid-template-columns: 104px minmax(0,1fr); gap: 14px; min-width: 0; }
         .mm-stock-card-photo {
           display: flex;
-          width: 80px;
-          height: 80px;
+          width: 104px;
+          height: 116px;
           align-items: center;
           justify-content: center;
           overflow: hidden;
           border: 1px solid var(--mm-line);
-          border-radius: 11px;
+          border-radius: 12px;
           background: #f7f8fa;
         }
         .mm-stock-card-photo img { width: 100%; height: 100%; object-fit: contain; }
         .mm-stock-card-photo span { padding: 6px; color: var(--mm-muted); font-size: 9px; font-weight: 750; text-align: center; }
-        .mm-stock-card-copy { min-width: 0; padding-right: 12px; }
-        .mm-stock-card-copy b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; font-weight: 900; }
-        .mm-stock-card-copy h3 { margin: 6px 0 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 900; }
-        .mm-stock-card-copy p { margin: 5px 0 0; overflow: hidden; color: var(--mm-muted); font-size: 10px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
-        .mm-stock-card-price { display: block; margin-top: 8px; color: var(--mm-green); font-size: 14px; font-weight: 900; }
-        .mm-stock-card-signal { position: absolute; top: 14px; right: 14px; width: 8px; height: 8px; border-radius: 999px; box-shadow: 0 0 0 3px rgba(17,24,32,.035); }
+        .mm-stock-card-copy { min-width: 0; padding-top: 4px; }
+        .mm-stock-card-copy b { display: block; overflow: hidden; color: #697386; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; font-weight: 800; }
+        .mm-stock-card-copy h3 { margin: 8px 0 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 16px; font-weight: 900; }
+        .mm-stock-card-copy p { margin: 6px 0 0; overflow: hidden; color: var(--mm-muted); font-size: 11px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+        .mm-stock-card-price { display: block; margin-top: 16px; color: var(--mm-green); font-size: 17px; font-weight: 900; }
+        .mm-stock-card-signal { display: none; }
         .mm-stock-card-signal.is-kind-reserve,
-        .mm-stock-kind-legend i.is-kind-reserve { background: var(--mm-green); }
+        .mm-stock-kind-legend i.is-kind-reserve,
+        .mm-stock-kind-button.is-kind-reserve i { background: var(--mm-green); }
         .mm-stock-card-signal.is-kind-sample,
-        .mm-stock-kind-legend i.is-kind-sample { background: #fb923c; }
+        .mm-stock-kind-legend i.is-kind-sample,
+        .mm-stock-kind-button.is-kind-sample i { background: #e8a52b; }
         .mm-stock-card-signal.is-kind-order,
-        .mm-stock-kind-legend i.is-kind-order { background: #f2c14e; }
-        .mm-stock-kind-legend { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
-        .mm-stock-kind-legend button { display: inline-flex; min-height: 22px; align-items: center; gap: 6px; border: 1px solid transparent; border-radius: 6px; padding: 2px 6px; color: var(--mm-muted); font-size: 9px; font-weight: 750; cursor: pointer; }
+        .mm-stock-kind-legend i.is-kind-order,
+        .mm-stock-kind-button.is-kind-order i { background: #d88a27; }
+        .mm-stock-kind-legend { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+        .mm-stock-kind-legend button { display: inline-flex; min-height: 30px; align-items: center; gap: 7px; border: 1px solid transparent; border-radius: 9px; padding: 4px 10px; color: var(--mm-muted); font-size: 10px; font-weight: 800; cursor: pointer; }
         .mm-stock-kind-legend button:hover { border-color: rgba(17,24,32,.12); background: rgba(17,24,32,.025); color: var(--mm-ink); }
-        .mm-stock-kind-legend button.is-active { border-color: rgba(31,141,115,.28); background: var(--mm-green-soft); color: var(--mm-green); box-shadow: inset 0 0 0 1px rgba(31,141,115,.05); }
+        .mm-stock-kind-legend button.is-kind-reserve.is-active { border-color: rgba(31,141,115,.28); background: var(--mm-green-soft); color: var(--mm-green); }
+        .mm-stock-kind-legend button.is-kind-sample.is-active { border-color: rgba(232,165,43,.3); background: #fff8e8; color: #9b6910; }
+        .mm-stock-kind-legend button.is-kind-order.is-active { border-color: rgba(216,138,39,.3); background: #fff4e6; color: #a96013; }
         .mm-stock-kind-legend button:focus-visible { outline: 2px solid var(--mm-green); outline-offset: 2px; }
         .mm-stock-kind-legend i { width: 7px; height: 7px; flex: 0 0 auto; border-radius: 999px; }
-        .mm-stock-card-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 7px 14px; border-top: 1px solid rgba(17,24,32,.07); padding-top: 10px; }
-        .mm-stock-card-meta div { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 8px; color: var(--mm-muted); font-size: 10px; font-weight: 700; }
-        .mm-stock-card-meta strong { min-width: 0; max-width: 62%; overflow: hidden; color: var(--mm-ink); font-size: 10px; font-weight: 850; text-align: right; text-overflow: ellipsis; white-space: nowrap; }
-        .mm-stock-card-footer { display: grid; min-width: 0; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 8px; }
-        .mm-stock-status { display: inline-flex; min-width: 0; min-height: 30px; align-items: center; overflow: hidden; border-radius: 8px; padding: 0 9px; font-size: 10px; font-weight: 850; text-overflow: ellipsis; white-space: nowrap; }
+        .mm-stock-card-body { display: grid; gap: 10px; border-top: 1px solid rgba(17,24,32,.08); padding-top: 13px; }
+        .mm-stock-card-stock-row { display: grid; min-width: 0; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: 9px; color: var(--mm-muted); font-size: 11px; font-weight: 700; }
+        .mm-stock-card-stock-row strong { overflow: hidden; color: var(--mm-ink); font-size: 12px; font-weight: 900; text-overflow: ellipsis; white-space: nowrap; }
+        .mm-stock-status { display: inline-flex; min-width: 0; min-height: 28px; align-items: center; overflow: hidden; border-radius: 8px; padding: 0 10px; font-size: 10px; font-weight: 850; text-overflow: ellipsis; white-space: nowrap; }
         .mm-stock-status.is-stock { background: var(--mm-green-soft); color: var(--mm-green); }
         .mm-stock-status.is-production { background: #fff6e4; color: #a86a00; }
         .mm-stock-status.is-sold { background: #fff0ef; color: #c24640; }
-        .mm-stock-card-actions { display: flex; flex: 0 0 auto; gap: 7px; }
+        .mm-stock-card-timeline { display: flex; min-width: 0; align-items: center; gap: 7px; color: var(--mm-muted); font-size: 10px; font-weight: 750; }
+        .mm-stock-card-timeline svg { flex: 0 0 auto; }
+        .mm-stock-kind-button { display: inline-flex; min-width: 0; min-height: 26px; align-items: center; gap: 6px; overflow: hidden; border: 1px solid transparent; border-radius: 8px; padding: 0 8px; font-size: 9px; font-weight: 850; text-overflow: ellipsis; white-space: nowrap; }
+        .mm-stock-kind-button i { width: 6px; height: 6px; flex: 0 0 auto; border-radius: 999px; }
+        .mm-stock-kind-button.is-kind-reserve { border-color: rgba(31,141,115,.18); background: var(--mm-green-soft); color: var(--mm-green); }
+        .mm-stock-kind-button.is-kind-sample { border-color: rgba(232,165,43,.2); background: #fff8e8; color: #9b6910; }
+        .mm-stock-kind-button.is-kind-order { border-color: rgba(216,138,39,.22); background: #fff4e6; color: #a96013; }
+        .mm-stock-order-customer { display: grid; min-width: 0; grid-template-columns: auto minmax(0,1fr); align-items: center; gap: 8px; border-radius: 9px; background: #fff8ed; padding: 8px 10px; color: #9b671c; font-size: 9px; font-weight: 750; }
+        .mm-stock-order-customer strong { overflow: hidden; color: #5d421a; font-size: 10px; font-weight: 900; text-align: right; text-overflow: ellipsis; white-space: nowrap; }
+        .mm-stock-card-controls { display: grid; min-width: 0; grid-template-columns: 106px minmax(0,1fr) 36px; align-items: center; gap: 8px; }
+        .mm-stock-card-stepper { display: grid; min-width: 0; grid-template-columns: 32px minmax(32px,1fr) 32px; align-items: center; overflow: hidden; border: 1px solid var(--mm-line); border-radius: 10px; background: #fff; }
+        .mm-stock-card-stepper button { height: 40px; border: 0; background: transparent; color: var(--mm-ink); font-size: 15px; font-weight: 850; }
+        .mm-stock-card-stepper input { width: 100%; min-width: 0; height: 40px; border: 0; background: transparent; padding: 0; color: var(--mm-ink); font-size: 11px; font-weight: 900; text-align: center; -moz-appearance: textfield; }
+        .mm-stock-card-stepper input::-webkit-outer-spin-button,
+        .mm-stock-card-stepper input::-webkit-inner-spin-button { margin: 0; -webkit-appearance: none; }
+        .mm-stock-card-add { min-width: 0; height: 42px; overflow: hidden; border: 1px solid var(--mm-green); border-radius: 10px; background: var(--mm-green); padding: 0 9px; color: #fff; font-size: 10px; font-weight: 900; text-overflow: ellipsis; white-space: nowrap; box-shadow: 0 5px 12px rgba(31,141,115,.15); }
+        .mm-stock-card-add:hover { background: #24745f; }
+        .mm-stock-card-actions { display: flex; flex: 0 0 auto; }
         .mm-stock-card-actions button {
           display: inline-flex;
-          width: 34px;
-          height: 34px;
+          width: 36px;
+          height: 42px;
           align-items: center;
           justify-content: center;
           border: 1px solid var(--mm-line);
-          border-radius: 9px;
+          border-radius: 10px;
           background: #fff;
           color: var(--mm-ink);
           font-size: 15px;
           font-weight: 900;
         }
-        .mm-stock-card-actions [data-mm-stock-quick] { border-color: rgba(17,132,95,.22); background: var(--mm-green-soft); color: var(--mm-green); }
-        .mm-stock-accessory-add { display: grid; width: 100%; min-width: 0; grid-column: 1 / -1; grid-template-columns: 64px minmax(0,1fr); align-items: center; gap: 7px; padding-top: 2px; }
-        .mm-stock-accessory-add input { width: 100%; min-width: 0; height: 34px; border: 1px solid var(--mm-line); border-radius: 9px; padding: 0 8px; font-size: 11px; font-weight: 850; text-align: center; }
-        .mm-stock-accessory-add button { min-width: 0; min-height: 34px; overflow: hidden; border: 1px solid rgba(17,132,95,.22); border-radius: 9px; background: var(--mm-green-soft); padding: 0 8px; color: var(--mm-green); font-size: 10px; font-weight: 900; text-overflow: ellipsis; white-space: nowrap; }
         .mm-stock-card-grid.is-list { grid-template-columns: 1fr; }
-        .mm-stock-card-grid.is-list .mm-stock-product-card { grid-template-columns: minmax(290px,1.4fr) minmax(240px,.8fr) auto; align-items: center; }
+        .mm-stock-card-grid.is-list .mm-stock-product-card { grid-template-columns: minmax(290px,1.25fr) minmax(260px,.85fr) minmax(250px,.7fr); align-items: center; }
         .mm-stock-card-grid.is-list .mm-stock-card-top { grid-template-columns: 64px minmax(0,1fr); }
         .mm-stock-card-grid.is-list .mm-stock-card-photo { width: 64px; height: 64px; }
-        .mm-stock-card-grid.is-list .mm-stock-card-meta { border-top: 0; padding-top: 0; }
-        .mm-stock-card-grid.is-list .mm-stock-card-footer { justify-content: flex-end; }
+        .mm-stock-card-grid.is-list .mm-stock-card-body { border-top: 0; padding-top: 0; }
         .mm-stock-empty { grid-column: 1 / -1; border: 1px dashed var(--mm-line); border-radius: 13px; padding: 44px 20px; color: var(--mm-muted); font-size: 12px; font-weight: 750; text-align: center; }
         .mm-stock-pagination {
           display: flex;
@@ -4874,7 +4891,8 @@
         .minmin-stock-desktop-view > section > .mm-desktop-hero,
         .minmin-stock-desktop-view > section > .mm-stat-strip { grid-column: 1 / -1; }
         .minmin-stock-desktop-view > section > div:not(.mm-desktop-hero):not(.mm-stat-strip):not(.mm-desktop-side) { min-width: 0; }
-        .minmin-stock-desktop-view .mm-stock-dashboard-side { display: block; position: sticky; top: 18px; }
+        .minmin-stock-desktop-view .mm-stock-exact-main { grid-column: 1 / -1; }
+        .minmin-stock-desktop-view .mm-stock-dashboard-side { display: none !important; }
       }
       @media (min-width: 768px) and (max-width: 1050px) {
         .mm-quote-customer-card { grid-template-columns: 1fr 1fr; }
@@ -4889,9 +4907,9 @@
         .mm-stock-search { grid-column: 1 / 2; }
         .mm-stock-filter-panel { grid-template-columns: 1fr 1fr; }
         .mm-stock-filter-panel > :last-child { display: none; }
-        .minmin-stock-desktop-view .mm-stock-dashboard-side { display: block; position: static; grid-column: 1 / -1; }
+        .minmin-stock-desktop-view .mm-stock-dashboard-side { display: none !important; }
         .mm-stock-card-grid.is-list .mm-stock-product-card { grid-template-columns: minmax(260px,1.1fr) minmax(210px,.8fr); }
-        .mm-stock-card-grid.is-list .mm-stock-card-footer { grid-column: 1 / -1; }
+        .mm-stock-card-grid.is-list .mm-stock-card-controls { grid-column: 1 / -1; }
         .mm-stock-edit-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
         .mm-stock-edit-files { grid-template-columns: 1fr; }
       }
@@ -19908,6 +19926,7 @@ function mmStockDesktopIcon(name){
     filter:'<path d="M4 6h16M7 12h10M10 18h4"/>',
     grid:'<rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/>',
     list:'<path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/>',
+    calendar:'<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/>',
     search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',
     edit:'<path d="m4 20 4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10L4 20Z"/><path d="m14 7 3 3"/>'
   };
@@ -19937,7 +19956,8 @@ function mmStockCategory(item){
 }
 function mmStockOwner(item){
   const attrs=item?.attributes||{};
-  return String(attrs._responsible||attrs._owner||attrs._quotationRepresentative||item?.responsible||inventoryOrderCustomerName(item)||'Chưa gán');
+  const orderCustomer=mmStockKindPresentation(item).value==='order'?inventoryOrderCustomerName(item):'';
+  return String(orderCustomer||attrs._responsible||attrs._owner||attrs._quotationRepresentative||item?.responsible||inventoryOrderCustomerName(item)||'Chưa gán');
 }
 function mmStockSearchText(item){
   const attrs=item?.attributes||{};
@@ -19960,7 +19980,11 @@ function mmStockKindSignal(item){
 }
 function mmStockKindLegend(){
   const active=mmStockDesktopUi().kind;
-  return `<div class="mm-stock-kind-legend" aria-label="Lọc theo phân loại đèn">${['reserve','sample','order'].map(value=>{const kind=mmStockKindPresentation(value),selected=active===kind.value;return `<button type="button" data-mm-stock-kind-filter="${esc(kind.value)}" class="${selected?'is-active':''}" aria-pressed="${selected}"><i class="is-kind-${esc(kind.value)}"></i>${esc(kind.label)}</button>`;}).join('')}</div>`;
+  return `<div class="mm-stock-kind-legend" aria-label="Lọc theo phân loại đèn">${['reserve','sample','order'].map(value=>{const kind=mmStockKindPresentation(value),selected=active===kind.value;return `<button type="button" data-mm-stock-kind-filter="${esc(kind.value)}" class="is-kind-${esc(kind.value)} ${selected?'is-active':''}" aria-pressed="${selected}"><i class="is-kind-${esc(kind.value)}"></i>${esc(kind.label)}</button>`;}).join('')}</div>`;
+}
+function mmStockKindButton(item){
+  const kind=mmStockKindPresentation(item);
+  return `<button type="button" class="mm-stock-kind-button is-kind-${esc(kind.value)}" data-mm-stock-kind-filter="${esc(kind.value)}" title="Lọc ${esc(kind.label)}"><i></i>${esc(kind.label)}</button>`;
 }
 function mmStockFilteredItems(stats){
   const ui=mmStockDesktopUi();
@@ -19980,19 +20004,29 @@ function mmStockFilteredItems(stats){
 function mmStockProductCard(item){
   const key=mmStockItemKey(item), stage=inventoryStage(item), finance=inventoryFinance(item), attrs=item.attributes||{};
   const photo=mmDesktopImage(item);
-  const detail=[mmStockCategory(item),attrs.color,item.dimension].filter(Boolean).join(' · ');
+  const detail=[mmStockCategory(item),attrs.color||item.dimension].filter(Boolean).join(' · ');
   const duration=inventoryTotalDays(item);
   const isAccessory=item.productType==='AC';
-  const accessoryAdd=isAccessory?`<div class="mm-stock-accessory-add"><input data-mm-stock-accessory-qty="${esc(key)}" type="number" min="1" value="1" aria-label="Số lượng phụ kiện nhập thêm"/><button type="button" data-mm-stock-accessory-add="${esc(key)}">＋ Nhập thêm</button></div>`:'';
-  const quickAction=isAccessory?'':`<button type="button" data-mm-stock-quick="${esc(key)}" aria-label="Thao tác kho ${esc(item.code||'sản phẩm')}">＋</button>`;
+  const kind=mmStockKindPresentation(item);
+  const orderCustomer=kind.value==='order'?String(inventoryOrderCustomerName(item)||mmStockOwner(item)||'Chưa có tên khách hàng'):'';
+  const accessoryQtyAttr=isAccessory?` data-mm-stock-accessory-qty="${esc(key)}"`:'';
+  const accessoryAddAttr=isAccessory?` data-mm-stock-accessory-add="${esc(key)}"`:'';
   return `<article class="mm-stock-product-card ${isAccessory?'is-accessory':''}" data-mm-stock-key="${esc(key)}">
     ${mmStockKindSignal(item)}
     <div class="mm-stock-card-top">
       <div class="mm-stock-card-photo">${photo?mmStockImageMarkup(item,item.name||item.code||'Sản phẩm'):'<span>Chưa có ảnh</span>'}</div>
       <div class="mm-stock-card-copy"><b>${esc(item.code||'Chưa có mã')}</b><h3>${esc(item.name||mmStockCategory(item))}</h3><p>${esc(detail||item.unit||'Chưa có thông tin')}</p><strong class="mm-stock-card-price">${money(finance.sell)}</strong></div>
     </div>
-    <div class="mm-stock-card-meta"><div><span>Tồn kho</span><strong>${Number(item.quantity||0)} ${esc(item.unit||'cái')}</strong></div><div><span>Phụ trách</span><strong>${esc(mmStockOwner(item))}</strong></div></div>
-    <div class="mm-stock-card-footer"><span class="mm-stock-status is-${esc(stage.key)}">${duration.total==null?'':`${duration.total} ngày · `}${esc(stage.label)}</span><div class="mm-stock-card-actions"><button type="button" data-mm-stock-open="${esc(key)}" aria-label="Chỉnh sửa ${esc(item.code||'sản phẩm')}">${mmStockDesktopIcon('more')}</button>${quickAction}</div>${accessoryAdd}</div>
+    <div class="mm-stock-card-body">
+      <div class="mm-stock-card-stock-row"><span>Tồn kho</span><strong>${Number(item.quantity||0)} ${esc(item.unit||'cái')}</strong><span class="mm-stock-status is-${esc(stage.key)}">${esc(stage.label)}</span></div>
+      <div class="mm-stock-card-timeline">${mmStockDesktopIcon('calendar')}<span>${duration.total==null?'Chưa cập nhật':`${duration.total} ngày`}</span><span aria-hidden="true">·</span>${mmStockKindButton(item)}</div>
+      ${orderCustomer?`<div class="mm-stock-order-customer"><span>Khách hàng order</span><strong title="${esc(orderCustomer)}">${esc(orderCustomer)}</strong></div>`:''}
+    </div>
+    <div class="mm-stock-card-controls">
+      <div class="mm-stock-card-stepper"><button type="button" data-mm-stock-card-step="${esc(key)}" data-step="-1" aria-label="Giảm số lượng">−</button><input data-mm-stock-card-qty="${esc(key)}"${accessoryQtyAttr} type="number" min="1" value="1" inputmode="numeric" aria-label="Số lượng nhập thêm"/><button type="button" data-mm-stock-card-step="${esc(key)}" data-step="1" aria-label="Tăng số lượng">＋</button></div>
+      <button type="button" class="mm-stock-card-add" data-mm-stock-card-add="${esc(key)}"${accessoryAddAttr}>＋ Nhập thêm</button>
+      <div class="mm-stock-card-actions"><button type="button" data-mm-stock-open="${esc(key)}" aria-label="Chỉnh sửa ${esc(item.code||'sản phẩm')}">${mmStockDesktopIcon('more')}</button></div>
+    </div>
   </article>`;
 }
 function mmDesktopStockAside(stats){
@@ -20249,10 +20283,24 @@ document.addEventListener('click',event=>{
   if(event.target.closest?.('[data-mm-stock-more]')){
     state.ui.desktopStockModal='more'; render({force:true}); return;
   }
+  const quantityStep=event.target.closest?.('[data-mm-stock-card-step]');
+  if(quantityStep){
+    const key=quantityStep.dataset.mmStockCardStep;
+    const input=document.querySelector(`[data-mm-stock-card-qty="${CSS.escape(key)}"]`);
+    if(input)input.value=String(Math.max(1,Number(input.value||1)+Number(quantityStep.dataset.step||0)));
+    return;
+  }
   const accessoryAdd=event.target.closest?.('[data-mm-stock-accessory-add]');
   if(accessoryAdd){
     const key=accessoryAdd.dataset.mmStockAccessoryAdd;
     const qty=Math.max(1,Number(document.querySelector(`[data-mm-stock-accessory-qty="${CSS.escape(key)}"]`)?.value||1));
+    adjustInventory(key,'Nhập kho',qty);
+    return;
+  }
+  const cardAdd=event.target.closest?.('[data-mm-stock-card-add]');
+  if(cardAdd){
+    const key=cardAdd.dataset.mmStockCardAdd;
+    const qty=Math.max(1,Number(document.querySelector(`[data-mm-stock-card-qty="${CSS.escape(key)}"]`)?.value||1));
     adjustInventory(key,'Nhập kho',qty);
     return;
   }
