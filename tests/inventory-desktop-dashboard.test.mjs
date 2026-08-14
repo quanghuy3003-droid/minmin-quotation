@@ -73,6 +73,13 @@ test('desktop product dots use the same inventory classification as mobile', () 
   assert.doesNotMatch(html, /mmStockProductCard\(item\)[\s\S]*?mm-stock-card-signal is-\$\{esc\(stage\.key\)\}/);
 });
 
+test('desktop classification legend filters products and can be toggled off', () => {
+  assert.match(html, /function mmStockKindLegend\(\)[\s\S]*?data-mm-stock-kind-filter/);
+  assert.match(html, /aria-pressed="\$\{selected\}"/);
+  assert.match(html, /if\(ui\.kind!=='all'\)items=items\.filter\(item=>mmStockKindPresentation\(item\)\.value===ui\.kind\)/);
+  assert.match(html, /const stockKind=event\.target\.closest\?\.\('\[data-mm-stock-kind-filter\]'\)[\s\S]*?ui\.kind=ui\.kind===kind\?'all':kind;[\s\S]*?ui\.page=1/);
+});
+
 test('product detail can choose, replace and clear XML or PDF invoices', () => {
   assert.ok(html.includes('＋ Chọn XML/PDF'));
   assert.ok(html.includes('accept=".xml,.pdf,application/pdf,text/xml,application/xml"'));

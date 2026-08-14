@@ -4630,8 +4630,11 @@
         .mm-stock-kind-legend i.is-kind-sample { background: #fb923c; }
         .mm-stock-card-signal.is-kind-order,
         .mm-stock-kind-legend i.is-kind-order { background: #f2c14e; }
-        .mm-stock-kind-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 5px; }
-        .mm-stock-kind-legend span { display: inline-flex; align-items: center; gap: 6px; color: var(--mm-muted); font-size: 9px; font-weight: 750; }
+        .mm-stock-kind-legend { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+        .mm-stock-kind-legend button { display: inline-flex; min-height: 22px; align-items: center; gap: 6px; border: 1px solid transparent; border-radius: 6px; padding: 2px 6px; color: var(--mm-muted); font-size: 9px; font-weight: 750; cursor: pointer; }
+        .mm-stock-kind-legend button:hover { border-color: rgba(17,24,32,.12); background: rgba(17,24,32,.025); color: var(--mm-ink); }
+        .mm-stock-kind-legend button.is-active { border-color: rgba(31,141,115,.28); background: var(--mm-green-soft); color: var(--mm-green); box-shadow: inset 0 0 0 1px rgba(31,141,115,.05); }
+        .mm-stock-kind-legend button:focus-visible { outline: 2px solid var(--mm-green); outline-offset: 2px; }
         .mm-stock-kind-legend i { width: 7px; height: 7px; flex: 0 0 auto; border-radius: 999px; }
         .mm-stock-card-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 7px 14px; border-top: 1px solid rgba(17,24,32,.07); padding-top: 10px; }
         .mm-stock-card-meta div { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 8px; color: var(--mm-muted); font-size: 10px; font-weight: 700; }
@@ -19893,6 +19896,7 @@ function mmStockDesktopUi(){
     view:current.view==='list'?'list':'grid',
     page:Math.max(1,Number(current.page||1)),
     category:current.category||'all',
+    kind:['reserve','sample','order'].includes(current.kind)?current.kind:'all',
     review:current.review||'all',
     filterOpen:!!current.filterOpen
   };
@@ -19928,12 +19932,14 @@ function mmStockKindSignal(item){
   return `<span class="mm-stock-card-signal is-kind-${esc(kind.value)}" data-mm-stock-kind="${esc(kind.value)}" title="${esc(kind.label)}" aria-label="${esc(kind.label)}"></span>`;
 }
 function mmStockKindLegend(){
-  return `<div class="mm-stock-kind-legend" aria-label="Chú giải phân loại đèn">${['reserve','sample','order'].map(value=>{const kind=mmStockKindPresentation(value);return `<span><i class="is-kind-${esc(kind.value)}"></i>${esc(kind.label)}</span>`;}).join('')}</div>`;
+  const active=mmStockDesktopUi().kind;
+  return `<div class="mm-stock-kind-legend" aria-label="Lọc theo phân loại đèn">${['reserve','sample','order'].map(value=>{const kind=mmStockKindPresentation(value),selected=active===kind.value;return `<button type="button" data-mm-stock-kind-filter="${esc(kind.value)}" class="${selected?'is-active':''}" aria-pressed="${selected}"><i class="is-kind-${esc(kind.value)}"></i>${esc(kind.label)}</button>`;}).join('')}</div>`;
 }
 function mmStockFilteredItems(stats){
   const ui=mmStockDesktopUi();
   const query=cleanSearch(ui.query);
   let items=stats.items.filter(item=>ui.filter==='all'||inventoryStage(item).key===ui.filter);
+  if(ui.kind!=='all')items=items.filter(item=>mmStockKindPresentation(item).value===ui.kind);
   if(ui.category!=='all')items=items.filter(item=>cleanSearch(mmStockCategory(item))===ui.category);
   if(ui.review==='review')items=items.filter(item=>!item.code||!item.name||!item.dimension||!mmDesktopImage(item));
   if(query)items=items.filter(item=>mmStockSearchText(item).includes(query));
@@ -20240,8 +20246,16 @@ document.addEventListener('click',event=>{
     ui.page=1;
     if(ui.filter==='all'){
       ui.category='all';
+      ui.kind='all';
       ui.review='all';
     }
+    render({force:true}); return;
+  }
+  const stockKind=event.target.closest?.('[data-mm-stock-kind-filter]');
+  if(stockKind){
+    const ui=mmStockDesktopUi(), kind=stockKind.dataset.mmStockKindFilter||'all';
+    ui.kind=ui.kind===kind?'all':kind;
+    ui.page=1;
     render({force:true}); return;
   }
   if(event.target.closest?.('[data-mm-stock-filter-toggle]')){
@@ -20264,7 +20278,7 @@ document.addEventListener('click',event=>{
     render({force:true}); return;
   }
   if(event.target.closest?.('[data-mm-stock-filter-reset]')){
-    state.ui.desktopStockDashboard={filter:'all',query:'',sort:'new',view:mmStockDesktopUi().view,page:1,category:'all',review:'all',filterOpen:false};
+    state.ui.desktopStockDashboard={filter:'all',query:'',sort:'new',view:mmStockDesktopUi().view,page:1,category:'all',kind:'all',review:'all',filterOpen:false};
     render({force:true}); return;
   }
   const moreAction=event.target.closest?.('[data-mm-stock-more-action]');
