@@ -21611,6 +21611,7 @@ function labelInventoryImages(item){
   if(!item)return[];
   const attrs=item.attributes||{};
   const candidates=[
+    ...(typeof mmStockImageCandidates==='function'?mmStockImageCandidates(item):[]),
     photoSourceValue(item),item.photoDataUrl,item.photoStorageUrl,item.photoDriveUrl,
     ...(Array.isArray(item.gallery_image_urls)?item.gallery_image_urls:[]),
     ...(Array.isArray(attrs._galleryImageUrls)?attrs._galleryImageUrls:[])
@@ -21695,22 +21696,17 @@ async function labelImageSourceToDataUrl(source){
   const resolved=imageDisplayUrl(source);
   if(!resolved)return'';
   if(String(resolved).startsWith('data:image/'))return resolved;
-  if(!/^https?:\/\//i.test(resolved))return'';
-  const controller=typeof AbortController!=='undefined'?new AbortController():null;
-  const timer=controller?setTimeout(()=>controller.abort(),15000):null;
-  try{
-    const response=await fetch(resolved,controller?{signal:controller.signal}:undefined);
-    if(!response.ok)throw new Error('Không tải được ảnh Label: '+resolved);
-    const blob=await response.blob();
-    return await new Promise((resolve,reject)=>{
-      const reader=new FileReader();
-      reader.onload=()=>resolve(String(reader.result||''));
-      reader.onerror=()=>reject(new Error('Không đọc được ảnh Label.'));
-      reader.readAsDataURL(blob);
-    });
-  }finally{
-    if(timer)clearTimeout(timer);
-  }
+  const absolute=/^https?:\/\//i.test(resolved)?resolved:new URL(resolved,location.href).href;
+  const blob=await fetchPdfImageBlob(absolute);
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=()=>{
+      const data=String(reader.result||'');
+      /^data:image\//i.test(data)?resolve(data):reject(new Error('Nguồn Label không phải hình ảnh.'));
+    };
+    reader.onerror=()=>reject(new Error('Không đọc được ảnh Label.'));
+    reader.readAsDataURL(blob);
+  });
 }
 function labelLoadImage(source){
   return new Promise((resolve,reject)=>{
@@ -21879,26 +21875,38 @@ function renderLabelTab(){
     ${labelPickerHtml()}
   </section>`;
 }
-function labelWaitForImages(rootNode){
+async function labelWaitForImages(rootNode,strict=false){
   const images=[...rootNode.querySelectorAll('img')];
   const pending=Promise.all(images.map(img=>img.complete?Promise.resolve():new Promise(resolve=>{img.onload=img.onerror=resolve;})));
-  return Promise.race([pending,new Promise(resolve=>setTimeout(resolve,15000))]);
+  await Promise.race([pending,new Promise(resolve=>setTimeout(resolve,15000))]);
+  const failed=images.filter(img=>!img.complete||!(img.naturalWidth>0));
+  if(strict&&failed.length)throw new Error(`Có ${failed.length} ảnh Label chưa tải xong. Vui lòng thử xuất lại.`);
+  return failed.length===0;
 }
 async function labelDraftForOutput(sourceDraft,cache=new Map()){
   const draft=normalizeLabelDraft(sourceDraft);
-  if(draft.photoUrl&&!String(draft.photoUrl).startsWith('data:image/')){
+  const sources=[draft.photoUrl,draft.originalPhotoUrl,...(draft.photoOptions||[])].filter(Boolean);
+  let lastError=null;
+  for(const source of [...new Set(sources)]){
     try{
-      if(!cache.has(draft.photoUrl))cache.set(draft.photoUrl,labelImageSourceToDataUrl(draft.photoUrl));
-      draft.photoUrl=await cache.get(draft.photoUrl);
-    }catch(e){console.warn('Không nhúng được ảnh Label, tiếp tục dùng URL gốc:',e);}
+      if(!cache.has(source))cache.set(source,labelImageSourceToDataUrl(source));
+      const embedded=await cache.get(source);
+      if(embedded){draft.photoUrl=embedded;return draft;}
+    }catch(error){lastError=error;console.warn('Không nhúng được một nguồn ảnh Label:',source,error);}
   }
+  if(sources.length)throw new Error(`Không tải được ảnh Label của ${draft.model||draft.productName||'sản phẩm'}. ${lastError?.message||''}`.trim());
+  draft.photoUrl='';
   return draft;
 }
 async function labelSheetsForOutput(){
   const label=ensureLabelState(),cache=new Map();
   return Promise.all(label.sheets.map(async sourceSheet=>({
     id:sourceSheet.id,
-    slots:await Promise.all(sourceSheet.slots.map(async sourceSlot=>({selectedCode:sourceSlot.selectedCode,draft:await labelDraftForOutput(sourceSlot.draft,cache)})))
+    slots:await Promise.all(sourceSheet.slots.map(async sourceSlot=>{
+      const draft=await labelDraftForOutput(sourceSlot.draft,cache);
+      if(sourceSlot.selectedCode&&!draft.photoUrl)throw new Error(`Sản phẩm ${sourceSlot.selectedCode} chưa có ảnh để xuất Label.`);
+      return {selectedCode:sourceSlot.selectedCode,draft};
+    }))
   })));
 }
 async function exportLabelPdf(){
@@ -21916,7 +21924,7 @@ async function exportLabelPdf(){
     for(let sheetIndex=0;sheetIndex<sheets.length;sheetIndex++){
       host.innerHTML=labelSheetHtml(sheets[sheetIndex],false,sheetIndex);
       const sheetNode=host.firstElementChild;
-      await labelWaitForImages(sheetNode);
+      await labelWaitForImages(sheetNode,true);
       const canvas=await html2canvas(sheetNode,{scale:2,useCORS:true,allowTaint:false,backgroundColor:'#fff',logging:false});
       if(sheetIndex>0)pdf.addPage('a4','landscape');
       pdf.addImage(canvas.toDataURL('image/jpeg',0.96),'JPEG',0,0,297,210,undefined,'FAST');

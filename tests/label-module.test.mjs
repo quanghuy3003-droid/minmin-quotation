@@ -141,14 +141,18 @@ test('label images preserve their source aspect ratio in preview, background rem
   const end=label.indexOf('function labelLoadImage',start);
   const converter=label.slice(start,end);
   assert.doesNotMatch(converter,/cropImageToSquare/);
+  assert.match(converter,/fetchPdfImageBlob\(absolute\)/,'Label export must use the CORS-safe image proxy fallback');
   assert.match(label,/const embedded=await labelImageSourceToDataUrl\(source\)/);
-  assert.match(label,/cache\.set\(draft\.photoUrl,labelImageSourceToDataUrl\(draft\.photoUrl\)\)/);
+  assert.match(label,/\[draft\.photoUrl,draft\.originalPhotoUrl,\.\.\.\(draft\.photoOptions\|\|\[\]\)\]/,'Label export must try every saved product image before failing');
+  assert.match(label,/cache\.set\(source,labelImageSourceToDataUrl\(source\)\)/);
   assert.match(label,/\.minmin-label-product-photo img\{display:block;width:auto;height:auto;max-width:100%;max-height:100%;object-fit:contain\}/);
   assert.match(label,/\.minmin-label-export-host\{[^}]*width:1123px;height:794px/);
 });
 
 test('PDF image loading has a finite wait and product labels can be exported or printed',()=>{
   assert.match(label,/Promise\.race\(\[pending,new Promise\(resolve=>setTimeout\(resolve,15000\)\)\]\)/);
+  assert.match(label,/labelWaitForImages\(sheetNode,true\)/,'PDF generation must stop instead of silently omitting an unloaded image');
+  assert.match(label,/sourceSlot\.selectedCode&&!draft\.photoUrl/,'A selected inventory product must never export as an image-less label');
   assert.match(label,/data-label-export-pdf/);
   assert.match(label,/data-label-print/);
   assert.match(label,/vendor\/html2canvas\.min\.js/);
