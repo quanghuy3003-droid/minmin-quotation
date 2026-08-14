@@ -7304,9 +7304,27 @@ function inputInvoiceItemsSummary(inv){
   </div>`;
 }
 
+function inputInvoiceMatchText(value){
+  return String(value||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').replace(/[^a-z0-9]+/g,' ').trim();
+}
+function inputInvoiceLineNeedsInventoryMatch(inv,item){
+  const category=inputInvoiceMatchText(inv?.category||'');
+  if(/\b(hang hoa|nhap kho|mua hang)\b/.test(category))return true;
+  const linked=String(item?.linked_inventory_code||'').trim();
+  if(linked)return true;
+  const text=inputInvoiceMatchText([item?.item_name,item?.product_note,item?.unit].filter(Boolean).join(' '));
+  if(!text)return false;
+  const stockGoods=/\b(den|bong|bulb|ledbulb|lamp|light|led|phu kien|linh kien|chao|khung|ray|driver|nguon|adapter|cong tac|day dien|gia do|e14|e27|g4|g9|gu10)\b/;
+  if(stockGoods.test(text))return true;
+  if(/\b(?:stk|od|wl|pl|tl|ac)[a-z0-9-]{2,}\b/.test(text))return true;
+  const nonStock=/\b(dich vu|chi phi|chiet khau|van chuyen|cuoc|phan mem|tu van|bao tri|thue|hoa hong|hop dong)\b/;
+  if(nonStock.test(text))return false;
+  return false;
+}
 function inputInvoiceNeedsItemImages(inv){
-  const normalized=String(inv?.category||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-  return normalized.includes('hang hoa nhap kho');
+  const normalized=String(inv?.category||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d');
+  if(/\b(hang hoa|nhap kho|mua hang)\b/.test(normalized))return true;
+  return (inv?.items||[]).some(item=>inputInvoiceLineNeedsInventoryMatch(inv,item));
 }
 function inputInvoiceItemsEditor(inv,locked=false){
   if(!inputInvoiceNeedsItemImages(inv)){
@@ -22118,6 +22136,7 @@ async function printLabelDirect(){
     <div class="mmq-drawer-products">${items.map((item,index)=>{
       const img=inputInvoiceItemImageUrl(item);
       const matched=String(item.linked_inventory_code||'').split(/[,\n;|]+/).filter(Boolean).length;
+      const lineCanMatch=inputInvoiceLineNeedsInventoryMatch(inv,item);
       return `<article class="mmq-drawer-product">
         <div class="mmq-drawer-product-image">${img?`<img src="${esc(img)}" alt="" loading="lazy"/>`:quietIcon('image',21)}</div>
         <div class="mmq-drawer-product-main">
@@ -22126,7 +22145,7 @@ async function printLabelDirect(){
             <label><span>SL</span><input data-input-invoice-item-field="quantity" data-invoice-id="${esc(inv.id)}" data-item-id="${esc(item.id)}" value="${esc(item.quantity||'')}" ${inv.locked?'disabled':''}/></label>
             <label><span>Trước VAT</span><input data-input-invoice-item-field="net_amount" data-invoice-id="${esc(inv.id)}" data-item-id="${esc(item.id)}" value="${esc(moneyPlain(item.net_amount||0))}" ${inv.locked?'disabled':''}/></label>
           </div>
-          ${canMatch?`<button data-input-invoice-stock-picker="${esc(inv.id)}" data-item-id="${esc(item.id)}" type="button" class="mmq-product-match" ${inv.locked?'disabled':''}>${quietIcon('image',16)}${matched?`${matched} sản phẩm đã chọn`:'Chọn sản phẩm trong kho'}${quietIcon('chevron',13)}</button>`:'<span class="mmq-product-not-required">Không áp dụng khớp kho</span>'}
+          ${lineCanMatch?`<button data-input-invoice-stock-picker="${esc(inv.id)}" data-item-id="${esc(item.id)}" type="button" class="mmq-product-match" ${inv.locked?'disabled':''}>${quietIcon('image',16)}${matched?`${matched} sản phẩm đã chọn`:'Chọn sản phẩm trong kho'}${quietIcon('chevron',13)}</button>`:'<span class="mmq-product-not-required">Không áp dụng khớp kho</span>'}
         </div>
         <button data-input-invoice-item-delete data-invoice-id="${esc(inv.id)}" data-item-id="${esc(item.id)}" type="button" class="mmq-product-delete" aria-label="Xóa sản phẩm" ${inv.locked?'disabled':''}>×</button>
       </article>`;
