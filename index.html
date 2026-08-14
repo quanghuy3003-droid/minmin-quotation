@@ -18144,11 +18144,31 @@ document.addEventListener('click',event=>{
     if(diff<0)return {label:`Hóa đơn cao hơn ${money(Math.abs(diff))}`,cls:'bg-coral/10 text-coral border-coral/25'};
     return {label:`${unlinked} giao dịch chưa gắn hóa đơn`,cls:'bg-gold/20 text-[#8a5a00] border-gold/40'};
   }
+  function reconcileFilterDate(value){
+    const filters=state.accounting?.filters||{}, iso=String(value||'').slice(0,10);
+    const from=String(filters.reconcileFrom||''), to=String(filters.reconcileTo||'');
+    if(from||to)return !!iso&&(!from||iso>=from)&&(!to||iso<=to);
+    const monthValue=String(filters.reconcileMonth||''), month=monthValue?monthValue.padStart(2,'0'):'', year=String(filters.reconcileYear||'');
+    if(monthValue||year){
+      if(!iso)return false;
+      const [rowYear,rowMonth]=iso.split('-');
+      return (!year||rowYear===year)&&(!monthValue||rowMonth===month);
+    }
+    return accountingInPeriod(value);
+  }
+  function reconcileSearchMatch(row,type){
+    const needle=invoiceNorm(state.accounting?.filters?.reconcileSearch||'');
+    if(!needle)return true;
+    const fields=type==='payment'
+      ? [row.related_label,row.payer_payee,row.note,row.method,row.statement_source_file,row.amount]
+      : [row.invoice_number,row.order_code,row.seller_name,row.seller_tax_code,row.description,row.note,row.source_file_name,row.total_amount];
+    return invoiceNorm(fields.filter(value=>value!==undefined&&value!==null).join(' ')).includes(needle);
+  }
   function reconcileRows(party,type){
     const invoiceType=type==='Thu'?'outgoing':'incoming';
     const invoices=(invoiceType==='outgoing'?(state.accounting?.outgoingInvoices||[]).filter(isManagedOutgoingInvoice):(state.inputInvoices?.invoices||[]))
-      .filter(inv=>reconcileInvoiceParty(inv,invoiceType)===party.key&&accountingInPeriod(inv.invoice_date||inv.request_date||inv.period));
-    const payments=(state.accounting?.payments||[]).filter(p=>p.payment_type===type&&accountingInPeriod(p.payment_date)&&reconcilePaymentMatchesParty(p,party,invoices));
+      .filter(inv=>reconcileInvoiceParty(inv,invoiceType)===party.key&&reconcileFilterDate(inv.invoice_date||inv.request_date||inv.period)&&reconcileSearchMatch(inv,'invoice'));
+    const payments=(state.accounting?.payments||[]).filter(p=>p.payment_type===type&&reconcileFilterDate(p.payment_date)&&reconcilePaymentMatchesParty(p,party,invoices)&&reconcileSearchMatch(p,'payment'));
     const invoiceTotal=invoices.reduce((s,x)=>s+Number(x.total_amount||0),0), paymentTotal=payments.reduce((s,x)=>s+Number(x.amount||0),0);
     const unlinked=payments.filter(p=>!paymentRelatedIds(p)[0]).length, difference=paymentTotal-invoiceTotal;
     return {invoiceType,invoices,payments,invoiceTotal,paymentTotal,unlinked,difference,status:reconcileStatus(difference,unlinked)};
@@ -18204,6 +18224,12 @@ document.addEventListener('click',event=>{
     const chi=reconcileRows(party,'Chi');
     return `<div class="grid gap-3">${accountingFilters()}<div class="rounded-lg border border-black/10 bg-white p-3 shadow-sm"><div class="grid gap-3 lg:grid-cols-[1fr_2fr] lg:items-end"><div><h2 class="text-base font-black">Đối soát theo đơn vị</h2><p class="mt-1 text-xs font-bold text-black/45">Kiểm tra tổng tiền đã thanh toán với tổng hóa đơn nhà cung cấp.</p></div><label class="grid gap-1"><span class="text-[10px] font-bold uppercase text-black/40">Đơn vị cần đối soát</span>${select}</label></div><div class="mt-3 grid gap-2 md:grid-cols-2">${reconcileMetric('Đơn vị',party.name)}${reconcileMetric('Trạng thái đối soát',Math.abs(chi.difference)<1?'Đã khớp':'Đang chênh lệch',Math.abs(chi.difference)<1?'bg-mint/10':'bg-coral/10')}</div></div>${reconcileStatementInvoicePanel(chi)}<div class="rounded-lg border ${Math.abs(chi.difference)>=1?'border-coral/25 bg-coral/10':'border-mint/25 bg-mint/10'} p-3 text-sm font-extrabold">Kết luận: ${Math.abs(chi.difference)>=1?'Tổng thanh toán và tổng hóa đơn nhà cung cấp chưa khớp. Kiểm tra số lượng giao dịch và hóa đơn trong bảng trên.':'Tổng thanh toán và tổng hóa đơn nhà cung cấp đang khớp trong kỳ đã chọn.'}</div></div>`;
   }
+  globalThis.__minminReconciliation={
+    partyKey:reconcilePartyKey,
+    parties:reconcileParties,
+    rows:reconcileRows,
+    pairs:reconcileStatementPairs
+  };
   accountingNav=function(){
     const groups=[
       [['overview','Tổng quan'],['incoming','Mua vào'],['outgoing','Bán ra'],['reconcile','Đối soát']],
@@ -21721,6 +21747,19 @@ async function printLabelDirect(){
     @media(min-width:768px) and (max-width:1050px){body .minmin-main-nav .minmin-tab-button{width:84px!important;min-width:84px!important;max-width:84px!important}}
     @media print{@page{size:A4 landscape;margin:0}html,body{width:297mm!important;min-height:210mm!important;height:auto!important;margin:0!important;background:#fff!important}body.minmin-label-printing #root{display:none!important}body.minmin-label-printing #minminLabelPrintRoot{display:block!important;width:297mm;margin:0}#minminLabelPrintRoot .minmin-label-sheet{width:297mm;height:210mm;min-width:0;break-after:page;page-break-after:always}#minminLabelPrintRoot .minmin-label-sheet:last-child{break-after:auto;page-break-after:auto}}
   `;
+  style.textContent+=`
+    .mmq-reconcile-page{background:#FAFAF8}
+    .mmq-reconcile-filters{display:grid;grid-template-columns:.9fr .9fr .72fr .72fr 1.55fr 1.02fr 1.45fr auto;gap:10px;align-items:end;margin-bottom:14px;border:1px solid #ECECEC;border-radius:16px;background:#fff;padding:14px;box-shadow:0 8px 30px rgba(20,25,22,.025)}
+    .mmq-reconcile-filters label{display:grid;gap:6px;min-width:0}.mmq-reconcile-filters label>span{color:#777B78;font-size:9px;font-weight:720}.mmq-reconcile-filters input,.mmq-reconcile-filters select{width:100%;height:44px;min-width:0;border:1px solid #E4E6E4;border-radius:10px;background:#fff;padding:0 11px;color:#252927;font-size:11px;font-weight:630;outline:none}.mmq-reconcile-filters input:focus,.mmq-reconcile-filters select:focus{border-color:#78AB9B;box-shadow:0 0 0 3px rgba(61,139,116,.07)}
+    .mmq-reconcile-filters .search>div{height:44px;display:flex;align-items:center;gap:7px;border:1px solid #E4E6E4;border-radius:10px;padding:0 10px;color:#848885}.mmq-reconcile-filters .search input{height:40px;border:0;padding:0;box-shadow:none}.mmq-reconcile-filters .actions{display:flex;gap:7px}.mmq-reconcile-filters .reconcile-apply{border-color:#3D8B74;background:#3D8B74;color:#fff}
+    .mmq-reconcile-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:14px}.mmq-reconcile-kpi{min-height:112px;display:grid;grid-template-columns:42px minmax(0,1fr);gap:13px;align-items:center;border:1px solid #ECECEC;border-radius:16px;background:#fff;padding:17px 18px;box-shadow:0 8px 30px rgba(20,25,22,.025)}.mmq-reconcile-kpi>span{width:42px;height:42px;display:grid;place-items:center;border:1px solid #E8EAE8;border-radius:13px;background:#FAFAF8;color:#474D49}.mmq-reconcile-kpi p{color:#777C78;font-size:10px;font-weight:690}.mmq-reconcile-kpi strong{display:block;margin-top:6px;font-size:18px;line-height:1.15;font-weight:770;letter-spacing:-.02em}.mmq-reconcile-kpi small{display:block;margin-top:6px;color:#959995;font-size:8.5px;font-weight:590}.mmq-reconcile-kpi.success strong{color:#3D8B74}.mmq-reconcile-kpi.success>span{border-color:#CFE1DB;background:#F1F8F5;color:#3D8B74}.mmq-reconcile-kpi.warning strong{color:#B86832}.mmq-reconcile-kpi.warning>span{border-color:#F0DDCD;background:#FFF7F0;color:#B86832}
+    .mmq-reconcile-party{display:grid;grid-template-columns:46px minmax(260px,1.6fr) minmax(150px,.7fr) minmax(190px,.8fr);gap:18px;align-items:center;margin-bottom:14px;border:1px solid #ECECEC;border-radius:16px;background:#fff;padding:15px 18px;box-shadow:0 8px 30px rgba(20,25,22,.022)}.mmq-reconcile-party>.icon{width:42px;height:42px;display:grid;place-items:center;border-radius:13px;background:#EFF7F4;color:#3D8B74}.mmq-reconcile-party>div:not(.identity){border-left:1px solid #EEEEEC;padding-left:18px}.mmq-reconcile-party small{display:block;color:#878B88;font-size:8.5px;font-weight:680}.mmq-reconcile-party strong{display:block;margin-top:5px;color:#2A2E2C;font-size:11px;font-weight:750}.mmq-reconcile-party .identity strong{font-size:12px}.mmq-reconcile-party p{margin-top:4px;color:#747976;font-size:9px;font-weight:600}.mmq-reconcile-party.empty{display:flex;color:#777C78;font-size:11px}.mmq-reconcile-badge{min-height:27px;display:inline-flex;align-items:center;margin-top:6px;border:1px solid;border-radius:8px;padding:0 9px;font-size:9px;font-weight:740}.mmq-reconcile-badge.success{border-color:#CDE1DA;background:#F0F8F5;color:#347C66}.mmq-reconcile-badge.warning{border-color:#F0D7C2;background:#FFF6EE;color:#B86123}
+    .mmq-reconcile-columns{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}.mmq-reconcile-table-card{min-width:0;overflow:visible;border:1px solid #ECECEC;border-radius:16px;background:#fff;box-shadow:0 10px 35px rgba(20,25,22,.025)}.mmq-reconcile-table-card>header{height:61px;display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid #ECEEEC;padding:0 16px}.mmq-reconcile-table-card>header h2{font-size:13px;font-weight:760}.mmq-reconcile-table-card>header p{margin-top:4px;color:#939793;font-size:8.5px}.mmq-reconcile-table-card>header>span{border:1px solid #E7E9E7;border-radius:8px;background:#FAFAF8;padding:6px 9px;color:#565B58;font-size:9px;font-weight:720;white-space:nowrap}.mmq-reconcile-table-wrap{overflow:visible;border-radius:0 0 16px 16px}.mmq-reconcile-table-card table{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed}.mmq-reconcile-table-card th{height:39px;border-bottom:1px solid #ECEEEC;background:#FAFAF8;padding:0 9px;color:#8B8F8C;font-size:7.5px;font-weight:750;letter-spacing:.035em;text-align:left;text-transform:uppercase}.mmq-reconcile-table-card th:nth-child(1){width:68px}.mmq-reconcile-table-card th:nth-child(4){width:104px;text-align:right}.mmq-reconcile-table-card th:nth-child(5){width:152px;text-align:right}.mmq-reconcile-table-card td{height:76px;border-bottom:1px solid #F0F0EE;padding:9px;vertical-align:middle;color:#353A37;font-size:9px}.mmq-reconcile-table-card tbody tr{cursor:pointer;transition:background .16s,box-shadow .16s}.mmq-reconcile-table-card tbody tr:hover{background:#FBFCFA;box-shadow:inset 2px 0 #A5C8BC}.mmq-reconcile-table-card tbody tr:last-child td{border-bottom:0}.mmq-reconcile-table-card td>strong{display:block;overflow:hidden;text-overflow:ellipsis;color:#333735;font-size:9px;line-height:1.4;font-weight:690;white-space:nowrap}.mmq-reconcile-table-card td>small{display:block;overflow:hidden;margin-top:5px;color:#929692;font-size:7.5px;line-height:1.35;text-overflow:ellipsis;white-space:nowrap}.mmq-reconcile-table-card td.amount{text-align:right;color:#1E2220;font-size:9.5px;font-weight:770;white-space:nowrap}
+    .mmq-reconcile-row-state{max-width:100%;display:inline-flex!important;align-items:center;gap:3px;border-radius:6px;padding:3px 6px;font-size:7px!important;font-weight:720!important}.mmq-reconcile-row-state.success{background:#EDF7F3;color:#347C66}.mmq-reconcile-row-state.warning{background:#FFF4EB;color:#B86123}.mmq-reconcile-actions{display:flex;align-items:center;justify-content:flex-end;gap:4px}.mmq-reconcile-actions>button,.mmq-reconcile-actions>span>button{height:28px;border:1px solid #E2E5E3;border-radius:7px;background:#fff;padding:0 7px;color:#3E4541;font-size:7.5px;font-weight:720;white-space:nowrap}.mmq-reconcile-actions>button:first-child{color:#347C66}.mmq-reconcile-actions>span{position:relative}.mmq-reconcile-actions>span>button{width:28px;display:grid;place-items:center;padding:0}.mmq-reconcile-actions button:hover{border-color:#A9C7BD;color:#347C66}.mmq-reconcile-menu{position:absolute;right:0;top:34px;z-index:60;width:150px;border:1px solid #E5E7E5;border-radius:10px;background:#fff;padding:5px;box-shadow:0 16px 40px rgba(20,25,22,.13)}.mmq-reconcile-menu button{width:100%;height:32px;border:0;border-radius:7px;background:transparent;padding:0 8px;color:#454A47;font-size:8.5px;font-weight:650;text-align:left}.mmq-reconcile-menu button:hover{background:#F3F8F6;color:#347C66}.mmq-reconcile-menu button:disabled{color:#B9BCBA}.mmq-reconcile-column-empty{display:grid;place-items:center;min-height:230px;padding:20px;color:#929692;font-size:10px;text-align:center}
+    .mmq-reconcile-empty{display:grid;justify-items:center;border:1px dashed #DCE1DE;border-radius:16px;background:#fff;padding:64px 20px;color:#8B908C;text-align:center}.mmq-reconcile-empty>span{width:48px;height:48px;display:grid;place-items:center;border:1px solid #E5E8E6;border-radius:14px;background:#FAFAF8}.mmq-reconcile-empty h2{margin-top:14px;color:#3B403D;font-size:13px;font-weight:750}.mmq-reconcile-empty p{max-width:520px;margin-top:6px;font-size:10px;line-height:1.55}.mmq-reconcile-empty button{margin-top:15px}
+    .mmq-reconcile-drawer-layer{position:fixed;inset:0;z-index:1120;display:flex;justify-content:flex-end}.mmq-reconcile-drawer{position:relative;width:min(520px,96vw);height:100%;display:grid;grid-template-rows:auto minmax(0,1fr) auto;background:#fff;box-shadow:-24px 0 70px rgba(19,24,21,.14);animation:mmq-drawer-in .22s ease-out}.mmq-reconcile-drawer>header{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;border-bottom:1px solid #ECEEEC;padding:22px 24px 18px}.mmq-reconcile-drawer>header small{color:#3D8B74;font-size:9px;font-weight:760;text-transform:uppercase}.mmq-reconcile-drawer>header h2{margin-top:6px;font-size:17px;line-height:1.3;font-weight:770}.mmq-reconcile-drawer>header p{margin-top:6px;color:#696E6B;font-size:11px;font-weight:720}.mmq-reconcile-drawer>.body{display:grid;align-content:start;gap:20px;overflow-y:auto;padding:20px 24px}.mmq-reconcile-drawer section{border-bottom:1px solid #EEEEEC;padding-bottom:20px}.mmq-reconcile-drawer section:last-child{border-bottom:0}.mmq-reconcile-drawer h3{margin-bottom:12px;font-size:11px;font-weight:760}.mmq-reconcile-drawer dl{display:grid;grid-template-columns:1fr 1fr;gap:1px;border:1px solid #ECEEEC;border-radius:11px;background:#ECEEEC;overflow:hidden}.mmq-reconcile-drawer dl>div{min-height:58px;background:#fff;padding:10px 12px}.mmq-reconcile-drawer dt{color:#939793;font-size:8px;font-weight:650}.mmq-reconcile-drawer dd{margin-top:6px;color:#343936;font-size:10px;font-weight:690}.mmq-reconcile-drawer .file{display:grid;grid-template-columns:38px minmax(0,1fr) auto;gap:10px;align-items:center;border:1px solid #ECEEEC;border-radius:11px;padding:11px}.mmq-reconcile-drawer .file>span{width:38px;height:38px;display:grid;place-items:center;border-radius:9px;background:#F1F7F5;color:#3D8B74}.mmq-reconcile-drawer .file strong{display:block;overflow:hidden;font-size:9px;text-overflow:ellipsis;white-space:nowrap}.mmq-reconcile-drawer .file small{display:block;margin-top:4px;color:#929692;font-size:8px}.mmq-reconcile-drawer .file button{height:31px;border:1px solid #DDE4E1;border-radius:8px;background:#fff;padding:0 10px;color:#347C66;font-size:8px;font-weight:720}.mmq-reconcile-drawer .note{border-radius:10px;background:#FAFAF8;padding:12px;color:#5B605D;font-size:9.5px;line-height:1.6}.mmq-reconcile-drawer ol{display:grid;gap:12px}.mmq-reconcile-drawer li{display:grid;grid-template-columns:10px 1fr;gap:8px}.mmq-reconcile-drawer li>span{width:8px;height:8px;margin-top:3px;border:2px solid #A4C6BB;border-radius:50%}.mmq-reconcile-drawer li strong{display:block;font-size:9px}.mmq-reconcile-drawer li small{display:block;margin-top:4px;color:#919591;font-size:8px}.mmq-reconcile-drawer>footer{display:flex;justify-content:flex-end;gap:8px;border-top:1px solid #ECEEEC;padding:14px 20px}
+    @media(max-width:1180px){.mmq-reconcile-filters{grid-template-columns:repeat(4,minmax(0,1fr))}.mmq-reconcile-filters .actions{grid-column:span 2;justify-content:flex-end}.mmq-reconcile-kpis{gap:10px}.mmq-reconcile-kpi{padding:14px}.mmq-reconcile-kpi strong{font-size:15px}.mmq-reconcile-columns{grid-template-columns:1fr}.mmq-reconcile-party{grid-template-columns:44px 1.4fr .7fr .8fr}}
+  `;
   document.head.appendChild(style);
   document.addEventListener('click',event=>{
     const labelTab=event.target.closest?.('[data-tab="label"]');
@@ -21809,7 +21848,11 @@ async function printLabelDirect(){
       drawerTab:'info',
       menuId:''
     };
-    return state.ui.quietAccounting;
+    const ui=state.ui.quietAccounting;
+    if(!ui.reconcileDraft)ui.reconcileDraft=null;
+    if(!ui.reconcileDrawer)ui.reconcileDrawer=null;
+    if(!('reconcileMenuId' in ui))ui.reconcileMenuId='';
+    return ui;
   }
 
   function quietIcon(name,size=18){
@@ -22321,6 +22364,126 @@ async function printLabelDirect(){
     </section>`;
   }
 
+  function quietReconcileApplied(){
+    const filters=state.accounting?.filters||{};
+    return {
+      reconcileFrom:String(filters.reconcileFrom||''),
+      reconcileTo:String(filters.reconcileTo||''),
+      reconcileMonth:String(filters.reconcileMonth||''),
+      reconcileYear:String(filters.reconcileYear||''),
+      reconcileUnit:String(filters.reconcileUnit||''),
+      reconcileStatus:String(filters.reconcileStatus||'all'),
+      reconcileSearch:String(filters.reconcileSearch||'')
+    };
+  }
+
+  function quietReconcileDraft(parties=[]){
+    const ui=quietUi();
+    if(!ui.reconcileDraft)ui.reconcileDraft={...quietReconcileApplied()};
+    if(!ui.reconcileDraft.reconcileUnit&&parties[0])ui.reconcileDraft.reconcileUnit=parties[0].key;
+    return ui.reconcileDraft;
+  }
+
+  function quietReconcileModel(){
+    const logic=globalThis.__minminReconciliation;
+    const parties=logic?.parties?.()||[];
+    const applied=quietReconcileApplied();
+    const party=parties.find(item=>item.key===applied.reconcileUnit)||parties[0]||null;
+    const data=party&&logic?.rows?logic.rows(party,'Chi'):{invoiceType:'incoming',invoices:[],payments:[],invoiceTotal:0,paymentTotal:0,unlinked:0,difference:0};
+    const balance=Number(data.invoiceTotal||0)-Number(data.paymentTotal||0);
+    const matched=Math.abs(balance)<1&&data.invoices.length+data.payments.length>0;
+    const status=matched?'matched':'difference';
+    const statusVisible=applied.reconcileStatus==='all'||applied.reconcileStatus===status;
+    const pairs=logic?.pairs?.(data)||[];
+    return {logic,parties,party,data,balance,matched,status,statusVisible,pairs};
+  }
+
+  function quietReconcileFilters(model){
+    const draft=quietReconcileDraft(model.parties), months=['Tháng 1','Tháng 2','Tháng 3','Tháng 4','Tháng 5','Tháng 6','Tháng 7','Tháng 8','Tháng 9','Tháng 10','Tháng 11','Tháng 12'];
+    const years=new Set([new Date().getFullYear(),...(state.inputInvoices?.invoices||[]).map(row=>Number(String(row.invoice_date||row.period||'').slice(0,4))).filter(Boolean),...(state.accounting?.payments||[]).map(row=>Number(String(row.payment_date||'').slice(0,4))).filter(Boolean)]);
+    return `<section class="mmq-reconcile-filters" aria-label="Bộ lọc đối soát">
+      <label><span>Từ ngày</span><input data-mmq-reconcile-filter="reconcileFrom" type="date" value="${esc(draft.reconcileFrom)}"/></label>
+      <label><span>Đến ngày</span><input data-mmq-reconcile-filter="reconcileTo" type="date" value="${esc(draft.reconcileTo)}"/></label>
+      <label><span>Tháng</span><select data-mmq-reconcile-filter="reconcileMonth"><option value="">Tất cả</option>${months.map((label,index)=>{const value=String(index+1);return `<option value="${value}" ${String(draft.reconcileMonth)===value?'selected':''}>${label}</option>`;}).join('')}</select></label>
+      <label><span>Năm</span><select data-mmq-reconcile-filter="reconcileYear"><option value="">Tất cả</option>${[...years].sort((a,b)=>b-a).map(year=>`<option value="${year}" ${String(draft.reconcileYear)===String(year)?'selected':''}>${year}</option>`).join('')}</select></label>
+      <label class="unit"><span>Đơn vị cần đối soát</span><select data-mmq-reconcile-filter="reconcileUnit"><option value="">Chọn đơn vị</option>${model.parties.map(item=>`<option value="${esc(item.key)}" ${draft.reconcileUnit===item.key?'selected':''}>${esc(item.name)}${item.taxCode?` · ${esc(item.taxCode)}`:''}</option>`).join('')}</select></label>
+      <label><span>Trạng thái</span><select data-mmq-reconcile-filter="reconcileStatus"><option value="all" ${draft.reconcileStatus==='all'?'selected':''}>Tất cả</option><option value="matched" ${draft.reconcileStatus==='matched'?'selected':''}>Khớp</option><option value="difference" ${draft.reconcileStatus==='difference'?'selected':''}>Đang chênh lệch</option></select></label>
+      <label class="search"><span>Tìm kiếm</span><div>${quietIcon('search',15)}<input data-mmq-reconcile-filter="reconcileSearch" value="${esc(draft.reconcileSearch)}" placeholder="Số hóa đơn, chứng từ..."/></div></label>
+      <div class="actions"><button data-mmq-reconcile-apply type="button" class="mmq-button reconcile-apply">Áp dụng</button><button data-mmq-reconcile-clear type="button" class="mmq-button">Xóa bộ lọc</button></div>
+    </section>`;
+  }
+
+  function quietReconcileKpis(model){
+    const result=model.matched?'Đã khớp':`Đang chênh ${money(Math.abs(model.balance))}`;
+    const cards=[
+      ['invoice','Tổng hóa đơn',money(model.data.invoiceTotal),`${model.data.invoices.length} hóa đơn nhà cung cấp`,''],
+      ['sync','Tổng giao dịch',money(model.data.paymentTotal),`${model.data.payments.length} giao dịch sao kê`,''],
+      ['review','Chênh lệch',money(Math.abs(model.balance)),model.balance>0?'Thiếu giao dịch thanh toán':model.balance<0?'Thiếu hóa đơn đối ứng':'Hai nguồn bằng nhau',model.matched?'success':'warning'],
+      ['check','Kết quả đối soát',result,model.matched?'Không còn chênh lệch':'Cần kiểm tra hai nguồn',model.matched?'success':'warning']
+    ];
+    return `<div class="mmq-reconcile-kpis">${cards.map(([icon,label,value,meta,tone])=>`<article class="mmq-reconcile-kpi ${tone}"><span>${quietIcon(icon,20)}</span><div><p>${esc(label)}</p><strong>${value}</strong><small>${esc(meta)}</small></div></article>`).join('')}</div>`;
+  }
+
+  function quietReconcileParty(model){
+    if(!model.party)return `<section class="mmq-reconcile-party empty"><div>${quietIcon('invoice',20)}</div><p>Chưa có đơn vị từ hóa đơn mua vào để đối soát.</p></section>`;
+    const role=model.party.roles?.join(' / ')||'Nhà cung cấp';
+    return `<section class="mmq-reconcile-party"><span class="icon">${quietIcon('invoice',21)}</span><div class="identity"><small>Đơn vị cần đối soát</small><strong>${esc(model.party.name)}</strong><p>MST: ${esc(model.party.taxCode||'—')}</p></div><div><small>Loại đối tượng</small><strong>${esc(role)}</strong></div><div><small>Trạng thái đối soát</small><span class="mmq-reconcile-badge ${model.matched?'success':'warning'}">${model.matched?'Đã khớp':`Đang chênh ${money(Math.abs(model.balance))}`}</span></div></section>`;
+  }
+
+  function quietReconcileSource(row,kind){
+    if(kind==='payment')return {label:row.statement_source_file||row.method||'Sao kê ngân hàng',url:row.proof_url||(/^https?:/i.test(String(row.method||''))?row.method:'')};
+    return {label:row.source_file_name||'Hóa đơn điện tử',url:row.source_pdf_url||row.source_xml_url||row.source_file_url||''};
+  }
+
+  function quietReconcilePairMaps(model){
+    const payment=new Map(),invoice=new Map();
+    model.pairs.forEach(pair=>{if(pair.payment)payment.set(String(pair.payment.id),pair);if(pair.invoice)invoice.set(String(pair.invoice.id),pair);});
+    return {payment,invoice};
+  }
+
+  function quietReconcileBadge(pair){
+    const matched=pair&&pair.payment&&pair.invoice&&Math.abs(Number(pair.difference||0))<1;
+    const text=matched?'Đã khớp':pair?.status||'Chưa khớp';
+    return `<span class="mmq-reconcile-row-state ${matched?'success':'warning'}">${matched?'':quietIcon('review',11)}${esc(text)}</span>`;
+  }
+
+  function quietReconcileActions(row,kind,pair){
+    const ui=quietUi(), key=`${kind}:${row.id}`, open=String(ui.reconcileMenuId||'')===key, source=quietReconcileSource(row,kind);
+    const copy=kind==='payment'?(row.related_label||row.note||row.method||''):`HĐ ${row.invoice_number||''} · ${row.seller_name||''}`;
+    return `<div class="mmq-reconcile-actions"><button data-mmq-reconcile-open="${esc(key)}" type="button">Mở</button><button data-mmq-reconcile-refresh="${esc(key)}" type="button">Đối soát lại</button><span><button data-mmq-reconcile-menu="${esc(key)}" type="button" aria-label="Thêm thao tác">${quietIcon('more',15)}</button>${open?`<div class="mmq-reconcile-menu"><button data-mmq-reconcile-open="${esc(key)}">Xem chi tiết</button><button data-mmq-reconcile-copy="${esc(copy)}">Sao chép nội dung</button><button ${source.url?`data-open-url="${esc(source.url)}"`:'disabled'}>Mở file nguồn</button><button data-mmq-reconcile-note="${esc(key)}">Ghi chú</button><button data-mmq-reconcile-refresh="${esc(key)}">Làm mới dữ liệu</button></div>`:''}</span></div>`;
+  }
+
+  function quietReconcileTables(model){
+    if(!model.statusVisible||(!model.data.payments.length&&!model.data.invoices.length))return `<section class="mmq-reconcile-empty"><span>${quietIcon('search',24)}</span><h2>Không có dữ liệu đối soát trong khoảng thời gian này.</h2><p>Hãy thay đổi khoảng ngày, tháng/năm, đơn vị hoặc trạng thái rồi áp dụng lại bộ lọc.</p><button data-mmq-reconcile-clear type="button" class="mmq-button">Xóa bộ lọc</button></section>`;
+    const pairs=quietReconcilePairMaps(model), payments=[...model.data.payments].sort((a,b)=>String(b.payment_date||'').localeCompare(String(a.payment_date||''))), invoices=[...model.data.invoices].sort((a,b)=>String(b.invoice_date||b.period||'').localeCompare(String(a.invoice_date||a.period||'')));
+    const paymentRows=payments.map(row=>{const source=quietReconcileSource(row,'payment'),pair=pairs.payment.get(String(row.id));return `<tr data-mmq-reconcile-open="payment:${esc(row.id)}"><td><strong>${esc(compactDate(row.payment_date))}</strong></td><td><strong>${esc(paymentShortText(row.related_label||row.payer_payee||row.note||'Giao dịch sao kê',72))}</strong><small>${quietReconcileBadge(pair)}</small></td><td><strong>${esc(paymentShortText(source.label,42))}</strong><small>${esc(row.related_label||'Nhà cung cấp đã nhận diện')}</small></td><td class="amount">${money(row.amount)}</td><td>${quietReconcileActions(row,'payment',pair)}</td></tr>`;}).join('');
+    const invoiceRows=invoices.map(row=>{const source=quietReconcileSource(row,'invoice'),pair=pairs.invoice.get(String(row.id));return `<tr data-mmq-reconcile-open="invoice:${esc(row.id)}"><td><strong>${esc(compactDate(row.invoice_date||row.period))}</strong></td><td><strong>HĐ ${esc(row.invoice_number||'chưa có số')}</strong><small>${quietReconcileBadge(pair)}</small></td><td><strong>${esc(paymentShortText(row.seller_name||model.party?.name||'Nhà cung cấp',42))}</strong><small>${esc(paymentShortText(source.label,44))}</small></td><td class="amount">${money(row.total_amount)}</td><td>${quietReconcileActions(row,'invoice',pair)}</td></tr>`;}).join('');
+    const table=(title,total,rows,empty)=>`<section class="mmq-reconcile-table-card"><header><div><h2>${title}</h2><p>${rows?`${(rows.match(/<tr/g)||[]).length} dòng dữ liệu`:'0 dòng dữ liệu'}</p></div><span>Tổng: ${total}</span></header>${rows?`<div class="mmq-reconcile-table-wrap"><table><thead><tr><th>Ngày</th><th>${title==='Giao dịch sao kê'?'Nội dung':'Số hóa đơn'}</th><th>${title==='Giao dịch sao kê'?'Nguồn / File':'Nhà cung cấp / File'}</th><th>Số tiền</th><th>Thao tác</th></tr></thead><tbody>${rows}</tbody></table></div>`:`<div class="mmq-reconcile-column-empty">${empty}</div>`}</section>`;
+    return `<div class="mmq-reconcile-columns">${table('Giao dịch sao kê',money(model.data.paymentTotal),paymentRows,'Chưa có giao dịch sao kê phù hợp.')}${table('Hóa đơn nhà cung cấp',money(model.data.invoiceTotal),invoiceRows,'Chưa có hóa đơn nhà cung cấp phù hợp.')}</div>`;
+  }
+
+  function quietReconcileDrawer(){
+    const target=quietUi().reconcileDrawer;
+    if(!target?.id)return'';
+    const kind=target.kind, row=kind==='payment'?(state.accounting?.payments||[]).find(item=>String(item.id)===String(target.id)):(state.inputInvoices?.invoices||[]).find(item=>String(item.id)===String(target.id));
+    if(!row)return'';
+    const source=quietReconcileSource(row,kind), isPayment=kind==='payment', title=isPayment?(row.related_label||row.payer_payee||'Giao dịch sao kê'):`Hóa đơn ${row.invoice_number||'chưa có số'}`;
+    const details=isPayment?[
+      ['Ngày giao dịch',compactDate(row.payment_date)],['Loại',row.payment_type||'Chi'],['Số tiền',money(row.amount)],['Đơn vị',row.related_label||row.payer_payee||'—'],['File nguồn',source.label],['Liên kết',row.related_type||'Chưa liên kết']
+    ]:[
+      ['Ngày hóa đơn',compactDate(row.invoice_date||row.period)],['Số hóa đơn',row.invoice_number||'—'],['Nhà cung cấp',row.seller_name||'—'],['MST',row.seller_tax_code||'—'],['Trước VAT',money(row.net_amount)],['VAT',money(row.vat_amount)],['Tổng',money(row.total_amount)],['File nguồn',source.label]
+    ];
+    const note=isPayment?(row.note||'Chưa có ghi chú.'):(row.validation_notes||row.note||'Chưa có ghi chú.');
+    const history=[row.created_at&&['Tạo dữ liệu',row.created_at],row.updated_at&&['Cập nhật gần nhất',row.updated_at]].filter(Boolean);
+    return `<div class="mmq-reconcile-drawer-layer"><button data-mmq-reconcile-close class="mmq-drawer-scrim" aria-label="Đóng chi tiết"></button><aside class="mmq-reconcile-drawer" role="dialog" aria-modal="true"><header><div><small>${isPayment?'Giao dịch sao kê':'Hóa đơn nhà cung cấp'}</small><h2>${esc(title)}</h2><p>${isPayment?money(row.amount):money(row.total_amount)}</p></div><button data-mmq-reconcile-close class="mmq-drawer-close">${quietIcon('close',19)}</button></header><div class="body"><section><h3>Thông tin đầy đủ</h3><dl>${details.map(([label,value])=>`<div><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div>`).join('')}</dl></section><section><h3>File liên kết</h3><div class="file"><span>${quietIcon('file',19)}</span><div><strong>${esc(source.label)}</strong><small>${source.url?'Sẵn sàng mở file nguồn':'Chưa có liên kết file nguồn'}</small></div><button ${source.url?`data-open-url="${esc(source.url)}"`:'disabled'}>Mở</button></div></section><section><h3>Ghi chú</h3><p class="note">${esc(note)}</p></section><section><h3>Lịch sử đối soát</h3>${history.length?`<ol>${history.map(([label,date])=>`<li><span></span><div><strong>${esc(label)}</strong><small>${esc(new Date(date).toLocaleString('vi-VN'))}</small></div></li>`).join('')}</ol>`:'<p class="note">Chưa có lịch sử cập nhật.</p>'}</section></div><footer><button data-mmq-reconcile-refresh="${esc(kind+':'+row.id)}" class="mmq-button">${quietIcon('sync',15)}Đối soát lại</button><button data-mmq-reconcile-close class="mmq-button primary">Đóng</button></footer></aside></div>`;
+  }
+
+  function quietReconcileDesktop(){
+    const model=quietReconcileModel();
+    quietReconcileDraft(model.parties);
+    return `<section class="mm-accounting-quiet-page mmq-reconcile-page" data-mm-accounting-quiet-view="reconcile"><div class="mmq-shell"><header class="mmq-page-head"><div><h1>Kế toán</h1><p><b>Đối soát</b> · Kiểm tra chênh lệch giữa giao dịch sao kê và hóa đơn nhà cung cấp.</p></div><div class="mmq-page-actions"><button id="syncAccounting" type="button" class="mmq-button">${quietIcon('sync',16)}Đồng bộ</button><button id="accountingSqlTop" type="button" class="mmq-button accent">SQL tạo bảng</button></div></header>${quietNavigation()}${quietReconcileFilters(model)}${quietReconcileKpis(model)}${quietReconcileParty(model)}${quietReconcileTables(model)}</div>${quietReconcileDrawer()}</section>`;
+  }
+
   function quietAccountingOtherDesktop(view){
     const meta={
       outgoing:['Bán ra','Quản lý hóa đơn đầu ra, doanh thu và trạng thái thu tiền.'],
@@ -22351,6 +22514,7 @@ async function printLabelDirect(){
     const view=state.accounting?.view||'overview';
     if(view==='overview'||view==='incoming')return quietAccountingDesktop();
     if(view==='payments')return quietPaymentsDesktop();
+    if(view==='reconcile')return quietReconcileDesktop();
     return quietAccountingOtherDesktop.apply(this,[view,...arguments]);
   };
 
@@ -22574,6 +22738,52 @@ async function printLabelDirect(){
   document.head.appendChild(style);
 
   document.addEventListener('click',event=>{
+    const reconcileApply=event.target.closest?.('[data-mmq-reconcile-apply]');
+    if(reconcileApply){
+      const ui=quietUi(),draft=ui.reconcileDraft||quietReconcileApplied();
+      state.accounting.filters=state.accounting.filters||{};
+      Object.assign(state.accounting.filters,draft);
+      ui.reconcileDrawer=null;ui.reconcileMenuId='';
+      saveAccounting();render();return;
+    }
+    const reconcileClear=event.target.closest?.('[data-mmq-reconcile-clear]');
+    if(reconcileClear){
+      const keys=['reconcileFrom','reconcileTo','reconcileMonth','reconcileYear','reconcileStatus','reconcileSearch'];
+      state.accounting.filters=state.accounting.filters||{};keys.forEach(key=>delete state.accounting.filters[key]);
+      const unit=String(state.accounting.filters.reconcileUnit||'');
+      quietUi().reconcileDraft={reconcileFrom:'',reconcileTo:'',reconcileMonth:'',reconcileYear:'',reconcileUnit:unit,reconcileStatus:'all',reconcileSearch:''};
+      quietUi().reconcileDrawer=null;quietUi().reconcileMenuId='';saveAccounting();render();return;
+    }
+    const reconcileClose=event.target.closest?.('[data-mmq-reconcile-close]');
+    if(reconcileClose){quietUi().reconcileDrawer=null;quietUi().reconcileMenuId='';render();return;}
+    const reconcileMenu=event.target.closest?.('[data-mmq-reconcile-menu]');
+    if(reconcileMenu){
+      event.preventDefault();event.stopPropagation();
+      const ui=quietUi(),key=reconcileMenu.dataset.mmqReconcileMenu;
+      ui.reconcileMenuId=String(ui.reconcileMenuId||'')===String(key)?'':key;render();return;
+    }
+    const reconcileCopy=event.target.closest?.('[data-mmq-reconcile-copy]');
+    if(reconcileCopy){
+      event.preventDefault();event.stopPropagation();
+      const value=String(reconcileCopy.dataset.mmqReconcileCopy||'');
+      if(navigator.clipboard?.writeText)navigator.clipboard.writeText(value).catch(()=>{});
+      quietUi().reconcileMenuId='';return;
+    }
+    const reconcileRefresh=event.target.closest?.('[data-mmq-reconcile-refresh]');
+    if(reconcileRefresh){
+      event.preventDefault();event.stopPropagation();
+      state.accounting.syncStatus='Đã tính lại đối soát từ dữ liệu hóa đơn và sao kê hiện có.';
+      quietUi().reconcileMenuId='';saveAccounting();render();return;
+    }
+    const reconcileNote=event.target.closest?.('[data-mmq-reconcile-note]');
+    const reconcileOpen=event.target.closest?.('[data-mmq-reconcile-open]');
+    const reconcileTarget=reconcileNote||reconcileOpen;
+    if(reconcileTarget){
+      event.preventDefault();event.stopPropagation();
+      const key=String(reconcileTarget.dataset.mmqReconcileNote||reconcileTarget.dataset.mmqReconcileOpen||''),split=key.indexOf(':');
+      if(split>0)quietUi().reconcileDrawer={kind:key.slice(0,split),id:key.slice(split+1)};
+      quietUi().reconcileMenuId='';render();return;
+    }
     const paymentMenu=event.target.closest?.('[data-mm-payment-menu]');
     if(paymentMenu){
       event.preventDefault();event.stopPropagation();
@@ -22629,6 +22839,9 @@ async function printLabelDirect(){
     if(quietUi().paymentMenuId&&!event.target.closest?.('.mmq-payment-action-menu')){
       quietUi().paymentMenuId='';render();
     }
+    if(quietUi().reconcileMenuId&&!event.target.closest?.('.mmq-reconcile-menu')){
+      quietUi().reconcileMenuId='';render();
+    }
   },true);
 
   document.addEventListener('keydown',event=>{
@@ -22642,9 +22855,21 @@ async function printLabelDirect(){
     if(event.key==='Escape'&&quietUi().drawerId){
       quietUi().drawerId='';quietUi().menuId='';state.inputInvoices.editingId='';saveInputInvoices();render();
     }
+    if(event.key==='Escape'&&quietUi().reconcileDrawer){quietUi().reconcileDrawer=null;quietUi().reconcileMenuId='';render();}
+    if(event.key==='Enter'&&event.target.closest?.('[data-mmq-reconcile-filter="reconcileSearch"]')){
+      event.preventDefault();
+      const ui=quietUi();ui.reconcileDraft=ui.reconcileDraft||quietReconcileApplied();ui.reconcileDraft.reconcileSearch=event.target.value;
+      state.accounting.filters=state.accounting.filters||{};Object.assign(state.accounting.filters,ui.reconcileDraft);saveAccounting();render();
+    }
   });
 
   document.addEventListener('change',event=>{
+    const reconcileFilter=event.target.closest?.('[data-mmq-reconcile-filter]');
+    if(reconcileFilter){
+      const ui=quietUi(),draft=ui.reconcileDraft||quietReconcileApplied();
+      draft[reconcileFilter.dataset.mmqReconcileFilter]=reconcileFilter.value;
+      return;
+    }
     const filter=event.target.closest?.('[data-mm-payment-filter]');
     if(filter){
       state.accounting.filters=state.accounting.filters||{};
