@@ -35,8 +35,13 @@ assert.match(
 );
 assert.match(
   source,
-  /<details class="minmin-quote-mobile-attributes">[\s\S]*?ATTRIBUTE_FIELDS\.map\(field=>renderAttributeField\(line,field\)\)/,
-  'Product attributes must remain complete inside a collapsed native accordion'
+  /<section class="minmin-quote-mobile-line-section minmin-quote-mobile-attributes">[\s\S]*?minmin-quote-mobile-attributes-head[\s\S]*?ATTRIBUTE_FIELDS\.map\(field=>renderAttributeField\(line,field\)\)/,
+  'Product attributes must stay open and use the same Minmin section design as the rest of the editor'
+);
+assert.doesNotMatch(
+  source.match(/function quoteMobileLineEditor\(line\)[\s\S]*?document\.addEventListener\('change'/)?.[0]||'',
+  /<details|<summary/,
+  'Product attributes must not be collapsible on mobile'
 );
 assert.match(
   source,

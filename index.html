@@ -966,7 +966,10 @@
         .minmin-quote-mobile-content {
           display: grid;
           gap: 0.75rem;
-          padding: 0.75rem;
+          padding: 0.75rem 0.75rem calc(128px + env(safe-area-inset-bottom));
+        }
+        #quoteMobilePaymentSummary {
+          scroll-margin-bottom: calc(104px + env(safe-area-inset-bottom));
         }
         .minmin-quote-mobile-card {
           overflow: hidden;
@@ -1525,41 +1528,26 @@
           stroke-width: 1.9;
         }
         .minmin-quote-mobile-attributes {
-          overflow: hidden;
-          border: 1px solid #ececec;
-          border-radius: 16px;
-          background: #fff;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+          padding: 0;
         }
-        .minmin-quote-mobile-attributes summary {
-          display: flex;
-          min-height: 64px;
-          cursor: pointer;
-          list-style: none;
-          align-items: center;
-          justify-content: space-between;
-          gap: 0.75rem;
-          padding: 0 16px;
+        .minmin-quote-mobile-attributes-head {
+          padding: 16px 16px 0;
+        }
+        .minmin-quote-mobile-attributes-head h2 {
+          margin: 0;
           color: #202529;
-          font-size: 0.76rem;
+          font-size: 0.76rem !important;
           font-weight: 900;
+          letter-spacing: 0;
+          line-height: 1.2;
           text-transform: uppercase;
         }
-        .minmin-quote-mobile-attributes summary::-webkit-details-marker {
-          display: none;
-        }
-        .minmin-quote-mobile-attributes summary::after {
-          content: "⌄";
-          font-size: 1.1rem;
-        }
-        .minmin-quote-mobile-attributes[open] summary::after {
-          transform: rotate(180deg);
-        }
         .minmin-quote-mobile-attributes-copy {
-          padding: 0 16px 0.8rem;
+          margin-top: 0.55rem;
           color: rgba(17, 19, 21, 0.48);
           font-size: 0.68rem;
           font-weight: 650;
+          line-height: 1.45;
         }
         .minmin-quote-mobile-attributes-grid {
           display: grid;
@@ -2568,6 +2556,41 @@
       .minmin-overflow-popover .is-danger {
         color: var(--minmin-danger);
       }
+      @keyframes minmin-ui-fade-in {
+        from { opacity: 0; transform: translateY(5px) scale(0.985); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
+      }
+      @keyframes minmin-ui-fade-out {
+        from { opacity: 1; transform: translateY(0) scale(1); }
+        to { opacity: 0; transform: translateY(4px) scale(0.985); }
+      }
+      @media (prefers-reduced-motion: no-preference) {
+        button, a, label, input, select, textarea, summary, [role="button"] {
+          transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease, opacity 160ms ease, transform 160ms ease;
+        }
+        button:active, [role="button"]:active {
+          transform: scale(0.975);
+        }
+        .minmin-overflow-popover,
+        .mmq-action-menu,
+        .mmq-payment-action-menu,
+        .mmq-reconcile-menu,
+        .mmso-menu,
+        .mmw-menu-popover,
+        .minmin-quote-mobile-card,
+        .minmin-quote-mobile-line-section {
+          animation: minmin-ui-fade-in 180ms ease both;
+        }
+        .minmin-overflow-popover.is-closing,
+        .mmq-action-menu.is-closing,
+        .mmq-payment-action-menu.is-closing,
+        .mmq-reconcile-menu.is-closing,
+        .mmso-menu.is-closing,
+        .mmw-menu-popover.is-closing {
+          pointer-events: none;
+          animation: minmin-ui-fade-out 130ms ease both;
+        }
+      }
       .minmin-mobile-empty {
         display: grid;
         min-height: 150px;
@@ -2667,6 +2690,9 @@
           gap: 0.75rem;
           padding: 0.75rem;
         }
+        .minmin-quote-mobile-content {
+          padding-bottom: calc(128px + env(safe-area-inset-bottom));
+        }
         .minmin-quote-mobile-card,
         .minmin-website-card {
           border-color: var(--minmin-border);
@@ -2760,7 +2786,7 @@
           grid-template-columns: repeat(2, minmax(0, 1fr));
         }
         .minmin-quote-mobile-bottom {
-          grid-template-columns: minmax(0, 1fr) 56px 114px;
+          grid-template-columns: minmax(0, 1fr) 52px 132px;
           min-height: 72px;
           padding: 0.5rem 0.7rem max(0.5rem, env(safe-area-inset-bottom));
         }
@@ -18621,11 +18647,10 @@ function quoteMobileLineEditor(line){
         ${linePricingInput('Lợi nhuận','profitPercent',line,'%')}
       </div>
     </section>
-    <details class="minmin-quote-mobile-attributes">
-      <summary>4. Thuộc tính sản phẩm</summary>
-      <p class="minmin-quote-mobile-attributes-copy">Vật liệu, màu sắc, nhiệt độ màu, nguồn sáng...</p>
+    <section class="minmin-quote-mobile-line-section minmin-quote-mobile-attributes">
+      <header class="minmin-quote-mobile-attributes-head"><h2>4. Thuộc tính sản phẩm</h2><p class="minmin-quote-mobile-attributes-copy">Vật liệu, màu sắc, nhiệt độ màu và nguồn sáng</p></header>
       <div class="minmin-quote-mobile-attributes-grid">${ATTRIBUTE_FIELDS.map(field=>renderAttributeField(line,field)).join('')}</div>
-    </details>
+    </section>
     <footer class="minmin-quote-mobile-line-footer">
       <button data-quote-mobile-close-editor type="button">Hủy</button>
       <button data-quote-mobile-save-line="${line.uid}" type="button" class="is-primary">Lưu sản phẩm</button>
@@ -18835,6 +18860,7 @@ function quoteMobileIcon(name){
     search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',
     plus:'<path d="M12 5v14M5 12h14"/>',
     excel:'<path d="M5 3h10l4 4v14H5z"/><path d="M14 3v5h5M8 11l4 6M12 11l-4 6"/>',
+    pdf:'<path d="M5 3h10l4 4v14H5z"/><path d="M14 3v5h5M8 12h8M8 16h5"/>',
     back:'<path d="m15 18-6-6 6-6"/><path d="M9 12h10"/>',
     chevron:'<path d="m8 10 4 4 4-4"/>'
   };
@@ -18851,10 +18877,6 @@ function quoteMobileFinancePanel(){
     return `<label>${label}<input data-quote-mobile-finance="${key}" type="${type}" inputmode="numeric" value="${esc(value)}"/></label>`;
   };
   return `<div class="minmin-quote-finance-panel">
-    <div class="minmin-quote-finance-actions">
-      <button data-quote-mobile-action="preview-pdf" type="button">Xem trước PDF</button>
-      <button data-quote-mobile-action="export-pdf" type="button">Xuất PDF</button>
-    </div>
     ${input('Phí vận chuyển','shipPriceText','text')}
     ${input('SL phí','shipQty')}
     ${input('Chiết khấu %','discountRate')}
@@ -18945,12 +18967,12 @@ function quoteMobileView(){
       <div class="minmin-overflow-wrap">
         <button data-quote-mobile-actions type="button" class="minmin-quote-mobile-more" aria-label="Thêm thao tác">⋮</button>
         ${state.ui?.quoteMobileActionsOpen?`<div class="minmin-overflow-popover minmin-quote-mobile-more-actions">
-          <button data-quote-mobile-action="preview-pdf" type="button">Xem trước PDF</button>
+          <button data-quote-mobile-action="export-excel" type="button">Xuất Excel</button>
           <button data-quote-mobile-action="export-pdf" type="button">Xuất PDF</button>
           <label>Nhập Excel cũ<input data-quote-mobile-import type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="hidden"/></label>
         </div>`:''}
       </div>
-      <button data-quote-mobile-action="export-excel" type="button" class="minmin-quote-export">${quoteMobileIcon('excel')}<span>Xuất Excel</span></button>
+      <button data-quote-mobile-action="preview-pdf" type="button" class="minmin-quote-export">${quoteMobileIcon('pdf')}<span>Xem trước PDF</span></button>
     </div>
   </section>`;
 }
@@ -19110,9 +19132,34 @@ document.addEventListener('click',event=>{
   }
   const action=event.target.closest?.('[data-quote-mobile-action]')?.dataset.quoteMobileAction;
   if(!action)return;
+  state.ui.quoteMobileActionsOpen=false;
+  render({force:true});
   if(action==='export-excel')exportQuotation().catch(error=>alert('Chưa xuất được Excel: '+error.message));
   if(action==='preview-pdf')exportQuotationPdfFromXlsx({preview:true}).catch(error=>alert('Chưa xem trước được PDF: '+error.message));
   if(action==='export-pdf')exportQuotationPdfFromXlsx().catch(error=>alert('Chưa xuất được PDF: '+error.message));
+});
+
+let minminOverflowCloseTimer=0;
+document.addEventListener('click',event=>{
+  const target=event.target;
+  if(!target?.closest)return;
+  const insideMenu=target.closest('.minmin-overflow-popover,.mmq-action-menu,.mmq-payment-action-menu,.mmq-reconcile-menu,.mmso-menu,.mmw-menu-popover,.mmw-connection-actions');
+  const menuToggle=target.closest('[data-quote-mobile-menu],[data-quote-mobile-actions],[data-stock-mobile-menu],[data-website-mobile-product-menu],[data-accounting-unified-menu],[data-mm-accounting-menu],[data-mm-payment-menu],[data-mmq-reconcile-menu],[data-mmso-menu],[data-mmw-menu],[data-mmw-connection-menu]');
+  const interactive=target.closest('button,a,label,input,select,textarea,summary,[role="button"]');
+  if(insideMenu||menuToggle||interactive)return;
+  const ui=state.ui=state.ui||{};
+  const open=!!(ui.quoteMobileMenuId||ui.quoteMobileActionsOpen||ui.stockMobileMenuId||ui.websiteMobileProductMenuId||ui.accountingMobileMenuId);
+  if(!open)return;
+  document.querySelectorAll('.minmin-overflow-popover').forEach(menu=>menu.classList.add('is-closing'));
+  clearTimeout(minminOverflowCloseTimer);
+  minminOverflowCloseTimer=setTimeout(()=>{
+    ui.quoteMobileMenuId='';
+    ui.quoteMobileActionsOpen=false;
+    ui.stockMobileMenuId='';
+    ui.websiteMobileProductMenuId='';
+    ui.accountingMobileMenuId='';
+    render({force:true});
+  },130);
 });
 
 function websiteMobileIcon(name){

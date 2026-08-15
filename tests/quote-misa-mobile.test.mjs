@@ -9,8 +9,12 @@ assert.match(source,/minmin-quote-product-head[\s\S]*?Sản phẩm[\s\S]*?SL[\s\
 assert.match(source,/function quoteMobileProductRows\(\)[\s\S]*?previewImage\(line\)[\s\S]*?lineUnitPrice\(line\)[\s\S]*?lineAmount\(line\)/,'Mobile product rows must use the existing image and pricing logic');
 assert.match(source,/minmin-quote-payment-grid[\s\S]*?Tổng giá trị[\s\S]*?Chiết khấu[\s\S]*?Sau chiết khấu[\s\S]*?VAT[\s\S]*?Đặt cọc[\s\S]*?Còn lại/,'Mobile quotation must show the complete payment summary');
 assert.match(source,/data-quote-mobile-action="export-excel"[\s\S]*?Xuất Excel/,'Mobile quotation must retain Excel export');
-assert.match(source,/return `<div class="minmin-quote-finance-panel">\s*<div class="minmin-quote-finance-actions">[\s\S]*?Xem trước PDF[\s\S]*?Xuất PDF[\s\S]*?Phí vận chuyển/,'Mobile PDF actions must appear before the finance inputs so the fixed footer cannot hide them');
+assert.match(source,/minmin-quote-mobile-more-actions[\s\S]*?export-excel[\s\S]*?Xuất Excel[\s\S]*?export-pdf[\s\S]*?Xuất PDF[\s\S]*?Nhập Excel cũ/,'The overflow menu must contain the three secondary quotation actions');
+assert.match(source,/data-quote-mobile-action="preview-pdf"[\s\S]*?minmin-quote-export[\s\S]*?Xem trước PDF/,'PDF preview must be the primary fixed-footer action');
+assert.match(source,/return `<div class="minmin-quote-finance-panel">\s*\$\{input\('Phí vận chuyển'/,'Expanded payment details must start with editable finance fields without duplicate export actions');
 assert.match(source,/\.minmin-quote-mobile-view\s*\{[\s\S]*?padding-bottom:\s*calc\(112px \+ env\(safe-area-inset-bottom\)\)/,'Mobile quotation must reserve comfortable space above the fixed action bar');
+assert.match(source,/\.minmin-quote-mobile-content\s*\{[\s\S]*?padding-bottom:\s*calc\(128px \+ env\(safe-area-inset-bottom\)\)/,'The final payment card must scroll fully above the fixed action bar');
+assert.match(source,/#quoteMobilePaymentSummary\s*\{[\s\S]*?scroll-margin-bottom:\s*calc\(104px \+ env\(safe-area-inset-bottom\)\)/,'Payment detail navigation must keep the card clear of the fixed footer');
 assert.match(source,/\.minmin-quote-payment-more svg\s*\{[\s\S]*?width:\s*18px;[\s\S]*?height:\s*18px;/,'Payment detail chevron must not expand the mobile controls');
 assert.match(source,/action==='export-excel'[\s\S]*?exportQuotation\(\)/,'The mobile Excel button must use the existing workbook pipeline');
 assert.match(source,/action==='preview-pdf'[\s\S]*?exportQuotationPdfFromXlsx\(\{preview:true\}\)[\s\S]*?action==='export-pdf'[\s\S]*?exportQuotationPdfFromXlsx\(\)/,'Mobile PDF actions must retain the existing Excel-to-PDF pipeline');
