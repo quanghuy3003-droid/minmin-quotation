@@ -11,13 +11,14 @@ test('outgoing desktop uses the Minmin Quiet Luxury information architecture', (
     'Doanh thu',
     'Chi phí đầu vào',
     'Lợi nhuận',
-    'Chênh lệch VAT',
+    'VAT phải nộp',
     'Kéo XML/PDF vào đây',
     'mmso-filters',
     'mmso-table-wrap',
     'mmso-product-chip',
     'mmso-group-grid',
   ]) assert.ok(patch.includes(marker), `missing ${marker}`);
+  assert.match(patch,/Math\.max\(0,totals\.outVat-totals\.inVat\)/,'VAT payable must be calculated after aggregating output and deductible input VAT');
 });
 
 test('outgoing rows expose three direct actions and move secondary actions into a menu', () => {

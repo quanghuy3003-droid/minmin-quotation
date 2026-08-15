@@ -17683,7 +17683,8 @@ document.addEventListener('click',event=>{
     const saleNet=outGNum(inv.net_amount)||lineSaleNet;
     const saleVat=outGNum(inv.vat_amount)||lineSaleVat;
     const saleTotal=outGNum(inv.total_amount)||lineSaleTotal;
-    return {saleNet,saleVat,saleTotal,inputNet,inputVat,vatDiff:saleVat-inputVat,profit:saleNet-inputNet};
+    const vatDiff=saleVat-inputVat;
+    return {saleNet,saleVat,saleTotal,inputNet,inputVat,vatDiff,vatPayable:Math.max(0,vatDiff),profit:saleNet-inputNet};
   }
   function outGBadge(text,tone='bg-white text-black/55 border-black/10'){
     return `<span class="inline-flex rounded-md border ${tone} px-2 py-1 text-[10px] font-extrabold">${esc(text)}</span>`;
@@ -17733,7 +17734,7 @@ document.addEventListener('click',event=>{
       </div>
       <div class="mt-3 grid gap-2 lg:grid-cols-2">
         <div class="rounded-lg border border-black/10 bg-white/80 p-3"><div class="mb-2 text-[10px] font-black uppercase tracking-wide text-black/40">Kết quả đơn hàng</div><div class="grid grid-cols-3 gap-2"><div><span class="block text-[10px] font-bold text-black/45">Doanh thu</span><b class="text-sm">${money(f.saleNet)}</b></div><div><span class="block text-[10px] font-bold text-black/45">Chi phí vào</span><b class="text-sm">${money(f.inputNet)}</b></div><div><span class="block text-[10px] font-bold text-black/45">Lợi nhuận</span><b class="text-sm ${f.profit>=0?'text-mint':'text-coral'}">${money(f.profit)}</b></div></div></div>
-        <div class="rounded-lg border border-black/10 bg-white/80 p-3"><div class="mb-2 text-[10px] font-black uppercase tracking-wide text-black/40">Thuế GTGT</div><div class="grid grid-cols-3 gap-2"><div><span class="block text-[10px] font-bold text-black/45">VAT vào</span><b class="text-sm">${money(f.inputVat)}</b></div><div><span class="block text-[10px] font-bold text-black/45">VAT ra</span><b class="text-sm">${money(f.saleVat)}</b></div><div><span class="block text-[10px] font-bold text-black/45">Chênh lệch</span><b class="text-sm ${f.vatDiff>=0?'text-[#8a5a00]':'text-coral'}">${money(f.vatDiff)}</b></div></div></div>
+        <div class="rounded-lg border border-black/10 bg-white/80 p-3"><div class="mb-2 text-[10px] font-black uppercase tracking-wide text-black/40">Thuế GTGT</div><div class="grid grid-cols-3 gap-2"><div><span class="block text-[10px] font-bold text-black/45">VAT vào</span><b class="text-sm">${money(f.inputVat)}</b></div><div><span class="block text-[10px] font-bold text-black/45">VAT ra</span><b class="text-sm">${money(f.saleVat)}</b></div><div><span class="block text-[10px] font-bold text-black/45">VAT phải nộp</span><b class="text-sm text-[#8a5a00]">${money(f.vatPayable)}</b></div></div></div>
       </div>
     </section>`;
   }
@@ -19799,16 +19800,23 @@ function accountingMobileSaleForm(source){
     <footer class="mm-mobile-sale-footer"><button id="saveOutgoingInvoice" type="button">Lưu nháp</button><button data-accounting-mobile-sale-complete type="button" class="is-primary">Hoàn tất</button></footer>
   </div>`;
 }
+function accountingUnifiedSaleFinance(inv){
+  const finance=window.__minminOutgoingModel?.finance?.(inv)||{};
+  const revenue=Number(finance.saleNet??inv?.net_amount??0)||0;
+  const profit=Number(finance.profit??revenue)||0;
+  const vatDiff=Number(finance.vatPayable??finance.vatDiff??inv?.vat_amount??0)||0;
+  return {revenue,profit,vatPayable:Math.max(0,vatDiff)};
+}
 function accountingUnifiedSales(){
   const panel=state.ui?.accountingMobilePanel||'', selected=state.accounting?.outgoingInvoices?.find(inv=>String(inv.id)===String(state.ui?.accountingMobileDetailId||state.accounting.editingOutgoingId||''));
   if(panel==='sale-edit'&&selected)return `${accountingUnifiedHead(selected.invoice_number?'Chỉnh sửa bán hàng':'Tạo bán hàng','Thông tin hóa đơn và sản phẩm','sales')}<div class="minmin-accounting-detail">${accountingMobileSaleForm(selected)}</div>`;
   if(panel==='sale-detail'&&selected){
-    const paid=outgoingPaid(selected), linked=accountingUnifiedSaleLinked(selected);
+    const linked=accountingUnifiedSaleLinked(selected), finance=accountingUnifiedSaleFinance(selected);
     return `${accountingUnifiedHead('Chi tiết đơn hàng',selected.customer_name||'Khách hàng','sales')}
       <article class="minmin-accounting-card minmin-accounting-list-card">
         <h2>${esc(selected.customer_name||'Chưa có khách hàng')}</h2><p>${esc(selected.invoice_number||selected.order_code||'Chưa có số hóa đơn')} · ${esc(compactDate(selected.invoice_date||selected.request_date))}</p>
         <div class="minmin-accounting-badges"><span class="minmin-accounting-badge">${esc(selected.status||'Chờ xuất hóa đơn')}</span><span class="minmin-accounting-badge ${linked?'':'warning'}">${linked?'Đủ liên kết':'Chưa đủ liên kết'}</span></div>
-        <div class="minmin-accounting-card-grid"><div><span>Tổng đơn hàng</span><strong>${money(selected.total_amount)}</strong></div><div><span>Doanh thu</span><strong>${money(selected.net_amount)}</strong></div><div><span>VAT đầu ra</span><strong>${money(selected.vat_amount)}</strong></div><div><span>Đã thu</span><strong>${money(paid)}</strong></div></div>
+        <div class="minmin-accounting-card-grid"><div><span>Tổng đơn hàng</span><strong>${money(selected.total_amount)}</strong></div><div><span>Doanh thu</span><strong>${money(finance.revenue)}</strong></div><div><span>Lợi nhuận</span><strong class="${finance.profit<0?'text-coral':'text-mint'}">${money(finance.profit)}</strong></div><div><span>VAT phải nộp</span><strong>${money(finance.vatPayable)}</strong></div></div>
         <div class="minmin-accounting-card-actions">${selected.pdf_url?`<button data-open-url="${esc(selected.pdf_url)}">Mở PDF</button>`:'<button disabled>Chưa có PDF</button>'}${selected.xml_url?`<button data-open-url="${esc(selected.xml_url)}">Mở XML</button>`:''}<button data-accounting-unified-sale-edit="${esc(selected.id)}" class="primary">Chỉnh sửa</button><button data-accounting-unified-reconcile>Đối chiếu</button></div>
       </article>`;
   }
@@ -19821,7 +19829,7 @@ function accountingUnifiedSales(){
   return `${accountingUnifiedHead('Bán hàng','Đơn bán ra và hóa đơn đầu ra')}${accountingUnifiedSearch('Tìm khách hàng, số hóa đơn...')}
     <div class="minmin-accounting-chips">${[['all','Tất cả'],['linked','Đủ liên kết'],['unlinked','Chưa đủ liên kết']].map(([key,label])=>`<button data-accounting-sales-filter="${key}" class="${filter===key?'is-active':''}">${label}</button>`).join('')}</div>
     <div class="mb-2 flex items-center justify-between text-[11px] font-bold text-black/45"><span>${rows.length} đơn hàng</span><span>Mới nhất</span></div>
-    <div class="minmin-accounting-list">${rows.length?rows.map(inv=>{const linked=isLinked(inv), status=inv.status||'Chờ xuất hóa đơn', statusTone=status==='Hủy'?'danger':status==='Chờ xuất hóa đơn'?'warning':'';return `<article class="minmin-accounting-card minmin-accounting-list-card" data-accounting-unified-card data-search="${esc(invoiceNorm([inv.customer_name,inv.customer_tax_code,inv.invoice_number,inv.order_code].join(' ')))}"><div class="minmin-accounting-list-top"><div><h2>${esc(inv.customer_name||'Chưa có khách hàng')}</h2><p>MST ${esc(inv.customer_tax_code||'--')} · ${esc(compactDate(inv.invoice_date||inv.request_date))}</p></div><button data-accounting-unified-sale-detail="${esc(inv.id)}" class="minmin-accounting-icon-button" aria-label="Chi tiết">›</button></div><div class="minmin-accounting-badges"><span class="minmin-accounting-badge ${statusTone}">${esc(status)}</span>${inv.xml_url?'<span class="minmin-accounting-badge">Đã đọc XML</span>':''}<span class="minmin-accounting-badge ${linked?'':'warning'}">${linked?'Đủ liên kết':'Chưa đủ liên kết'}</span>${inv.locked?'<span class="minmin-accounting-badge">Đã khóa</span>':''}</div><div class="minmin-accounting-card-grid"><div><span>Hồ sơ</span><strong>${esc(inv.invoice_series||inv.order_code||'--')} · ${esc(inv.invoice_number||'--')}</strong></div><div><span>Tổng</span><strong>${money(inv.total_amount)}</strong></div><div><span>Trước VAT</span><strong>${money(inv.net_amount)}</strong></div><div><span>VAT</span><strong>${money(inv.vat_amount)}</strong></div></div><div class="minmin-accounting-card-actions">${inv.xml_url?`<button data-open-url="${esc(inv.xml_url)}">XML</button>`:''}${inv.pdf_url?`<button data-open-url="${esc(inv.pdf_url)}">PDF</button>`:''}<button data-outgoing-lock="${esc(inv.id)}">${inv.locked?'Mở khóa':'Khóa'}</button><button data-outgoing-delete="${esc(inv.id)}" class="danger">Xóa</button></div></article>`}).join(''):accountingUnifiedEmpty('Chưa có đơn bán hàng phù hợp.')}</div>
+    <div class="minmin-accounting-list">${rows.length?rows.map(inv=>{const linked=isLinked(inv), finance=accountingUnifiedSaleFinance(inv), status=inv.status||'Chờ xuất hóa đơn', statusTone=status==='Hủy'?'danger':status==='Chờ xuất hóa đơn'?'warning':'';return `<article class="minmin-accounting-card minmin-accounting-list-card" data-accounting-unified-card data-search="${esc(invoiceNorm([inv.customer_name,inv.customer_tax_code,inv.invoice_number,inv.order_code].join(' ')))}"><div class="minmin-accounting-list-top"><div><h2>${esc(inv.customer_name||'Chưa có khách hàng')}</h2><p>MST ${esc(inv.customer_tax_code||'--')} · ${esc(compactDate(inv.invoice_date||inv.request_date))}</p></div><button data-accounting-unified-sale-detail="${esc(inv.id)}" class="minmin-accounting-icon-button" aria-label="Chi tiết">›</button></div><div class="minmin-accounting-badges"><span class="minmin-accounting-badge ${statusTone}">${esc(status)}</span>${inv.xml_url?'<span class="minmin-accounting-badge">Đã đọc XML</span>':''}<span class="minmin-accounting-badge ${linked?'':'warning'}">${linked?'Đủ liên kết':'Chưa đủ liên kết'}</span>${inv.locked?'<span class="minmin-accounting-badge">Đã khóa</span>':''}</div><div class="minmin-accounting-card-grid"><div><span>Tổng đơn hàng</span><strong>${money(inv.total_amount)}</strong></div><div><span>Doanh thu</span><strong>${money(finance.revenue)}</strong></div><div><span>Lợi nhuận</span><strong class="${finance.profit<0?'text-coral':'text-mint'}">${money(finance.profit)}</strong></div><div><span>VAT phải nộp</span><strong>${money(finance.vatPayable)}</strong></div></div><div class="minmin-accounting-card-actions">${inv.xml_url?`<button data-open-url="${esc(inv.xml_url)}">XML</button>`:''}${inv.pdf_url?`<button data-open-url="${esc(inv.pdf_url)}">PDF</button>`:''}<button data-outgoing-lock="${esc(inv.id)}">${inv.locked?'Mở khóa':'Khóa'}</button><button data-outgoing-delete="${esc(inv.id)}" class="danger">Xóa</button></div></article>`}).join(''):accountingUnifiedEmpty('Chưa có đơn bán hàng phù hợp.')}</div>
     <button data-accounting-unified-new-sale type="button" class="minmin-accounting-fab">${accountingMobileIcon('sale')} Thêm bán hàng</button>`;
 }
 function accountingUnifiedPurchaseUpload(){
@@ -23251,7 +23259,8 @@ async function printLabelDirect(){
       inputNet+=mmsoNum(invoice.net_amount); inputVat+=mmsoNum(invoice.vat_amount);
     });
     const saleNet=sign(line.net_amount),saleVat=sign(line.vat_amount);
-    return {kind,inputNet,inputVat,saleNet,saleVat,saleTotal:sign(line.total_amount),profit:saleNet-inputNet,vatDiff:saleVat-inputVat};
+    const vatDiff=saleVat-inputVat;
+    return {kind,inputNet,inputVat,saleNet,saleVat,saleTotal:sign(line.total_amount),profit:saleNet-inputNet,vatDiff,vatPayable:Math.max(0,vatDiff)};
   }
   function mmsoFinance(inv){
     if(mmsoModel.finance)return mmsoModel.finance(inv);
@@ -23263,7 +23272,7 @@ async function printLabelDirect(){
     if(mmsoNum(inv.net_amount))total.saleNet=mmsoNum(inv.net_amount);
     if(mmsoNum(inv.vat_amount))total.saleVat=mmsoNum(inv.vat_amount);
     if(mmsoNum(inv.total_amount))total.saleTotal=mmsoNum(inv.total_amount);
-    total.profit=total.saleNet-total.inputNet; total.vatDiff=total.saleVat-total.inputVat;
+    total.profit=total.saleNet-total.inputNet; total.vatDiff=total.saleVat-total.inputVat; total.vatPayable=Math.max(0,total.vatDiff);
     return total;
   }
   function mmsoMatch(inv){
@@ -23301,8 +23310,9 @@ async function printLabelDirect(){
     return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name]||paths.more}</svg>`;
   }
   function mmsoKpis(rows){
-    const totals=rows.reduce((sum,inv)=>{const f=mmsoFinance(inv);sum.sale+=f.saleNet;sum.cost+=f.inputNet;sum.profit+=f.profit;sum.vat+=f.vatDiff;return sum;},{sale:0,cost:0,profit:0,vat:0});
-    return `<div class="mmso-kpis">${[['Doanh thu',totals.sale,''],['Chi phí đầu vào',totals.cost,''],['Lợi nhuận',totals.profit,'accent'],['Chênh lệch VAT',totals.vat,'warning']].map(([label,value,tone])=>`<article class="mmso-kpi ${tone}"><span>${esc(label)}</span><strong>${money(value)}</strong><small>${label==='Lợi nhuận'?'Doanh thu trừ giá mua':label==='Chênh lệch VAT'?'VAT ra trừ VAT vào':'Theo bộ lọc hiện tại'}</small></article>`).join('')}</div>`;
+    const totals=rows.reduce((sum,inv)=>{const f=mmsoFinance(inv);sum.sale+=f.saleNet;sum.cost+=f.inputNet;sum.profit+=f.profit;sum.outVat+=f.saleVat;sum.inVat+=f.inputVat;return sum;},{sale:0,cost:0,profit:0,outVat:0,inVat:0});
+    const vatPayable=Math.max(0,totals.outVat-totals.inVat);
+    return `<div class="mmso-kpis">${[['Doanh thu',totals.sale,''],['Chi phí đầu vào',totals.cost,''],['Lợi nhuận',totals.profit,'accent'],['VAT phải nộp',vatPayable,'warning']].map(([label,value,tone])=>`<article class="mmso-kpi ${tone}"><span>${esc(label)}</span><strong>${money(value)}</strong><small>${label==='Lợi nhuận'?'Doanh thu trừ giá mua':label==='VAT phải nộp'?'VAT ra trừ VAT vào, tối thiểu bằng 0':'Theo bộ lọc hiện tại'}</small></article>`).join('')}</div>`;
   }
   function mmsoDropzone(rows){
     const xml=rows.filter(inv=>inv.xml_url).length,pdf=rows.filter(inv=>inv.pdf_url).length,status=state.accounting?.syncStatus||'Sẵn sàng xử lý hóa đơn.';
@@ -23330,7 +23340,7 @@ async function printLabelDirect(){
     return `<div class="mmso-menu"><button data-mmso-open-tab="${esc(inv.id)}" data-mmso-target-tab="pdf">Xem PDF</button><button data-mmso-open-tab="${esc(inv.id)}" data-mmso-target-tab="products">Khớp lại</button><button data-mmso-unlink="${esc(inv.id)}">Xóa liên kết</button><button data-mmso-open-tab="${esc(inv.id)}" data-mmso-target-tab="history">Lịch sử xử lý</button><button data-outg-delete-order="${esc(inv.id)}" class="danger">Xóa hóa đơn</button></div>`;
   }
   function mmsoGroupCards(rows){
-    return `<div class="mmso-group-grid">${rows.map(inv=>{const f=mmsoFinance(inv),lines=mmsoLines(inv),match=mmsoMatch(inv);return `<article data-mmso-row="${esc(inv.id)}"><header><span><b>${esc(inv.customer_name||'Khách hàng')}</b><small>${esc(inv.invoice_number||inv.invoice_series||'Chưa có số')}</small></span><i class="${match.complete?'complete':''}">${match.serviceOnly?'Không kho':match.complete?'Đã khớp':'Cần khớp'}</i></header><div><span>${lines.length}<small>Dòng XML</small></span><span>${money(f.saleNet)}<small>Doanh thu</small></span><span>${money(f.inputNet)}<small>Chi phí</small></span><span class="${f.profit<0?'negative':''}">${money(f.profit)}<small>Lợi nhuận</small></span></div><footer>VAT vào ${money(f.inputVat)} · VAT ra ${money(f.saleVat)} · Chênh ${money(f.vatDiff)}</footer></article>`;}).join('')}</div>`;
+    return `<div class="mmso-group-grid">${rows.map(inv=>{const f=mmsoFinance(inv),lines=mmsoLines(inv),match=mmsoMatch(inv);return `<article data-mmso-row="${esc(inv.id)}"><header><span><b>${esc(inv.customer_name||'Khách hàng')}</b><small>${esc(inv.invoice_number||inv.invoice_series||'Chưa có số')}</small></span><i class="${match.complete?'complete':''}">${match.serviceOnly?'Không kho':match.complete?'Đã khớp':'Cần khớp'}</i></header><div><span>${lines.length}<small>Dòng XML</small></span><span>${money(f.saleNet)}<small>Doanh thu</small></span><span>${money(f.inputNet)}<small>Chi phí</small></span><span class="${f.profit<0?'negative':''}">${money(f.profit)}<small>Lợi nhuận</small></span></div><footer>VAT vào ${money(f.inputVat)} · VAT ra ${money(f.saleVat)} · VAT phải nộp ${money(f.vatPayable)}</footer></article>`;}).join('')}</div>`;
   }
   function mmsoTable(rows){
     const ui=mmsoUi();

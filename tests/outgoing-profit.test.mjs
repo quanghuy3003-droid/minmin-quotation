@@ -67,7 +67,7 @@ assert.match(headerSource,/Lợi nhuận/);
 assert.match(headerSource,/Thuế GTGT/);
 assert.match(headerSource,/VAT vào/);
 assert.match(headerSource,/VAT ra/);
-assert.match(headerSource,/Chênh lệch/);
+assert.match(headerSource,/VAT phải nộp/);
 assert.doesNotMatch(headerSource,/outGMetric\('VAT/,'VAT values must not use large standalone metric cards');
 assert.match(html,/data-outg-toggle-details=/,'Each invoice needs an explicit detail collapse control');
 assert.match(html,/rows\.map\(inv=>`\$\{outGHeader\(inv\)\}\$\{!outGDetailsCollapsed\(inv\)\?outGLinesTable\(inv\):''\}`\)/,'Every expanded invoice must render its own detail table');
