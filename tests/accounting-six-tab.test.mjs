@@ -14,9 +14,9 @@ test('production entry loads the six-tab accounting presentation layer',()=>{
   assert.match(html,/assets\/accounting-six-tab\.js/);
 });
 
-test('desktop accounting exposes exactly the requested six tabs',()=>{
-  assert.match(js,/\['overview','Tổng quan'\],\['incoming','Mua vào'\],\['outgoing','Bán ra'\],\['payments','Thu\/chi'\],\['debts','Công nợ'\],\['reports','Báo cáo'\]/);
-  for(const retired of ["['vat','Thuế GTGT']","['vouchers','Chứng từ']","['cashbook','Sổ quỹ']","['reconcile','Đối soát']"]){
+test('desktop accounting exposes the redesigned workspace plus restored reconciliation',()=>{
+  assert.match(js,/\['overview','Tổng quan'\],\['incoming','Mua vào'\],\['outgoing','Bán ra'\],\['payments','Thu\/chi'\],\['debts','Công nợ'\],\['reconcile','Đối soát'\],\['reports','Báo cáo'\]/);
+  for(const retired of ["['vat','Thuế GTGT']","['vouchers','Chứng từ']","['cashbook','Sổ quỹ']"]){
     assert.ok(!js.includes(retired),`retired tab leaked into six-tab navigation: ${retired}`);
   }
 });
@@ -39,4 +39,16 @@ test('desktop redesign keeps the existing right-side drawers and product pickers
     assert.ok(js.includes(selector),`missing preserved interaction layer ${selector}`);
   }
   assert.match(js,/return page\+legacyInteractionLayers\(view\)/);
+});
+
+test('outgoing product chips render the matched inventory image',()=>{
+  assert.match(js,/if\(outgoing\)img=typeof driveAssetUrl/);
+  assert.match(js,/photoSourceValue\(stock\)/);
+});
+
+test('restored reconciliation uses the new design and existing business logic',()=>{
+  assert.ok(js.includes('globalThis.__minminReconciliation'));
+  for(const label of ['Đơn vị cần đối soát','Tổng hóa đơn','Tổng giao dịch','Chênh lệch','Kết quả đối soát','Giao dịch sao kê','Hóa đơn nhà cung cấp'])assert.ok(js.includes(label),`missing reconciliation content ${label}`);
+  assert.ok(css.includes('.mm6-reconcile-columns'));
+  assert.ok(js.includes('.mmq-reconcile-drawer-layer'));
 });

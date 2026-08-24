@@ -2,13 +2,14 @@
 (function installMinminAccountingSixTabs(){
   if(typeof renderAccountingTab!=='function'||typeof state==='undefined')return;
   const previousRender=renderAccountingTab;
-  const tabs=[['overview','Tổng quan'],['incoming','Mua vào'],['outgoing','Bán ra'],['payments','Thu/chi'],['debts','Công nợ'],['reports','Báo cáo']];
+  const tabs=[['overview','Tổng quan'],['incoming','Mua vào'],['outgoing','Bán ra'],['payments','Thu/chi'],['debts','Công nợ'],['reconcile','Đối soát'],['reports','Báo cáo']];
   const subtitles={
     overview:'Quản lý hóa đơn, dòng tiền, công nợ và báo cáo tài chính.',
     incoming:'Quản lý hóa đơn đầu vào và chi phí mua hàng.',
     outgoing:'Quản lý hóa đơn đầu ra, doanh thu và lợi nhuận.',
     payments:'Theo dõi dòng tiền thu vào, chi ra và chứng từ ngân hàng.',
     debts:'Quản lý phải thu, phải trả và tình trạng thanh toán.',
+    reconcile:'Kiểm tra chênh lệch giữa giao dịch sao kê và hóa đơn nhà cung cấp.',
     reports:'Tổng hợp VAT, đối soát và xuất báo cáo quản trị.'
   };
   const ui=()=>{
@@ -72,7 +73,10 @@
   function productChip(row,outgoing=false){
     const lines=outgoing?(row.items_json||[]):(row.items||[]),first=lines[0]||{},code=String(first.linked_inventory_code||first.selected_stock_codes?.[0]||'').split(/[;,|\n]/)[0].trim();let stock=null,img='';
     try{stock=code&&typeof findInventoryItem==='function'?findInventoryItem(code):null;}catch(_){}
-    try{img=!outgoing&&typeof inputInvoiceItemImageUrl==='function'?inputInvoiceItemImageUrl(first):'';}catch(_){}
+    try{
+      if(outgoing)img=typeof driveAssetUrl==='function'?driveAssetUrl((stock&&typeof photoSourceValue==='function'?photoSourceValue(stock):'')||first.product_image_url||first.image_url||first.image||''):'';
+      else img=typeof inputInvoiceItemImageUrl==='function'?inputInvoiceItemImageUrl(first):'';
+    }catch(_){}
     const name=stock?.name||stock?.productName||first.item_name||first.name||row.item_summary||'Chưa khớp sản phẩm';
     return `<button class="mm6-product" type="button" ${outgoing?`data-mmso-products="${e(row.id)}"`:`data-mm-accounting-open-products="${e(row.id)}"`} >${img?`<img src="${e(img)}" alt=""/>`:`<span class="img">${icon('file',15)}</span>`}<span><b>${e(name)}</b><small>${e(code||'Chưa có mã kho')}</small></span>${icon('chev',12)}</button>`;
   }
@@ -117,6 +121,26 @@
     return shell('reports',`${filters}<div class="mm6-grid-4">${kpi('upload','VAT đầu ra',cash(outVat),{note:'▲ 12,4% so với kỳ trước'})}${kpi('download','VAT đầu vào',cash(inVat),{note:'▲ 9,3% so với kỳ trước'})}${kpi('bank','VAT tạm nộp',cash(temporary),{note:'▲ 8,7% so với kỳ trước'})}${kpi('warning','Đối soát cần xử lý',String(reconcile+review),{tone:'warning',note:`${reconcile} đối soát, ${review} chứng từ`})}</div><div class="mm6-report-grid"><section class="mm6-card"><header class="mm6-card-head"><div><h2>Xuất báo cáo quản trị</h2><p>Xuất nhanh các báo cáo và dữ liệu tổng hợp phục vụ quản trị.</p></div></header><div class="mm6-export-grid">${exports.map(([ic,label,copy,id])=>`<button id="${id}" class="mm6-export">${icon(ic,28)}<b>${label}</b><small>${copy}</small></button>`).join('')}</div></section><section class="mm6-card"><header class="mm6-card-head"><div><h2>Kiểm tra nhanh</h2><p>Tổng quan nhanh tình trạng dữ liệu và đối soát trong kỳ.</p></div></header><div class="mm6-checks">${[['sync','Đối soát','Đối soát ngân hàng & công nợ',reconcile+' cần xử lý',reconcile?'warning':''],['file','Chứng từ','Chứng từ chờ xử lý',review+' chứng từ',review?'warning':''],['percent','VAT','Tờ khai & chênh lệch VAT',cash(temporary),'']].map(([ic,label,copy,value,tone])=>`<div class="mm6-check"><span class="mm6-round-icon">${icon(ic,17)}</span><span><b>${label}</b><small>${copy}</small></span><strong>${value}</strong>${status(tone?'Cảnh báo':'Hợp lệ',tone)}<span>›</span></div>`).join('')}</div></section></div><p class="mm6-secure">${icon('lock',13)}Dữ liệu kế toán được bảo mật và chỉ hiển thị theo quyền truy cập.</p>`);
   }
 
+  function reconciliation(){
+    const logic=globalThis.__minminReconciliation,filters=state.accounting?.filters||{},quiet=state.ui?.quietAccounting||{},draft=quiet.reconcileDraft||{
+      reconcileFrom:String(filters.reconcileFrom||''),reconcileTo:String(filters.reconcileTo||''),reconcileMonth:String(filters.reconcileMonth||''),reconcileYear:String(filters.reconcileYear||''),reconcileUnit:String(filters.reconcileUnit||''),reconcileStatus:String(filters.reconcileStatus||'all'),reconcileSearch:String(filters.reconcileSearch||'')
+    };
+    const parties=logic?.parties?.()||[],party=parties.find(item=>item.key===filters.reconcileUnit)||parties[0]||null;
+    const data=party&&logic?.rows?logic.rows(party,'Chi'):{invoices:[],payments:[],invoiceTotal:0,paymentTotal:0,unlinked:0,difference:0};
+    const balance=Number(data.invoiceTotal||0)-Number(data.paymentTotal||0),matched=Math.abs(balance)<1&&data.invoices.length+data.payments.length>0,statusKey=matched?'matched':'difference',visible=(filters.reconcileStatus||'all')==='all'||filters.reconcileStatus===statusKey;
+    const pairs=logic?.pairs?.(data)||[],payPairs=new Map(),invoicePairs=new Map();
+    pairs.forEach(pair=>{if(pair.payment)payPairs.set(String(pair.payment.id),pair);if(pair.invoice)invoicePairs.set(String(pair.invoice.id),pair);});
+    const years=[...new Set([new Date().getFullYear(),...inputRows().map(row=>Number(String(row.invoice_date||row.period||'').slice(0,4))).filter(Boolean),...(state.accounting?.payments||[]).map(row=>Number(String(row.payment_date||'').slice(0,4))).filter(Boolean)])].sort((a,b)=>b-a);
+    const filtersHtml=`<section class="mm6-filterbar mm6-reconcile-filters" style="--cols:7" aria-label="Bộ lọc đối soát"><label class="mm6-field"><span>Từ ngày</span><input data-mmq-reconcile-filter="reconcileFrom" type="date" value="${e(draft.reconcileFrom)}"></label><label class="mm6-field"><span>Đến ngày</span><input data-mmq-reconcile-filter="reconcileTo" type="date" value="${e(draft.reconcileTo)}"></label><label class="mm6-field"><span>Tháng</span><select data-mmq-reconcile-filter="reconcileMonth"><option value="">Tất cả</option>${Array.from({length:12},(_,index)=>`<option value="${index+1}" ${String(draft.reconcileMonth)===String(index+1)?'selected':''}>Tháng ${index+1}</option>`).join('')}</select></label><label class="mm6-field"><span>Năm</span><select data-mmq-reconcile-filter="reconcileYear"><option value="">Tất cả</option>${years.map(year=>`<option value="${year}" ${String(draft.reconcileYear)===String(year)?'selected':''}>${year}</option>`).join('')}</select></label><label class="mm6-field mm6-reconcile-unit"><span>Đơn vị cần đối soát</span><select data-mmq-reconcile-filter="reconcileUnit"><option value="">Chọn đơn vị</option>${parties.map(item=>`<option value="${e(item.key)}" ${(draft.reconcileUnit||party?.key)===item.key?'selected':''}>${e(item.name)}${item.taxCode?` · ${e(item.taxCode)}`:''}</option>`).join('')}</select></label><label class="mm6-field"><span>Trạng thái</span><select data-mmq-reconcile-filter="reconcileStatus"><option value="all" ${draft.reconcileStatus==='all'?'selected':''}>Tất cả</option><option value="matched" ${draft.reconcileStatus==='matched'?'selected':''}>Khớp</option><option value="difference" ${draft.reconcileStatus==='difference'?'selected':''}>Đang chênh lệch</option></select></label><label class="mm6-field mm6-search"><span>Tìm kiếm</span>${icon('search',15)}<input data-mmq-reconcile-filter="reconcileSearch" value="${e(draft.reconcileSearch)}" placeholder="Số hóa đơn, chứng từ..."></label><div class="mm6-reconcile-filter-actions"><button data-mmq-reconcile-apply class="mm6-btn primary" type="button">Áp dụng</button><button data-mmq-reconcile-clear class="mm6-btn" type="button">Xóa bộ lọc</button></div></section>`;
+    const result=matched?'Đã khớp':`Đang chênh ${cash(Math.abs(balance))}`;
+    const partyHtml=party?`<section class="mm6-card mm6-reconcile-party"><span class="mm6-round-icon">${icon('invoice',18)}</span><div><small>Đơn vị cần đối soát</small><strong>${e(party.name)}</strong><p>MST: ${e(party.taxCode||'—')}</p></div><div><small>Loại đối tượng</small><strong>${e(party.roles?.join(' / ')||'Nhà cung cấp')}</strong></div><div><small>Trạng thái đối soát</small>${status(result,matched?'':'warning')}</div></section>`:empty('Chưa có đơn vị đối soát','Hóa đơn mua vào sẽ tạo danh sách nhà cung cấp tại đây.');
+    const pairBadge=pair=>{const ok=pair?.payment&&pair?.invoice&&Math.abs(Number(pair.difference||0))<1;return status(ok?'Đã khớp':(pair?.status||'Chưa khớp'),ok?'':'warning');};
+    const actions=(row,kind)=>{const key=`${kind}:${row.id}`,source=kind==='payment'?(row.proof_url||''):(row.source_pdf_url||row.source_xml_url||row.source_file_url||'');return `<div class="mm6-row-actions"><button class="mm6-text-btn" data-mmq-reconcile-open="${e(key)}">Mở</button><button class="mm6-text-btn" data-mmq-reconcile-refresh="${e(key)}">Đối soát lại</button>${rowMenu('rec:'+key,[`<button data-mmq-reconcile-open="${e(key)}">Xem chi tiết</button>`,source?`<button data-open-url="${e(source)}">Mở file nguồn</button>`:'',`<button data-mmq-reconcile-note="${e(key)}">Ghi chú</button>`])}</div>`;};
+    const table=(title,rows,total,kind)=>`<section class="mm6-table-card"><header class="mm6-table-title"><div><h2>${title}</h2><p>${rows.length} dòng dữ liệu</p></div><span class="mm6-count">Tổng: ${cash(total)}</span></header>${rows.length?`<div class="mm6-table-wrap"><table class="mm6-table" style="--table-width:720px"><thead><tr><th>Ngày</th><th>${kind==='payment'?'Nội dung':'Số hóa đơn'}</th><th>${kind==='payment'?'Nguồn / File':'Nhà cung cấp / File'}</th><th>Số tiền</th><th>Đối soát</th><th>Thao tác</th></tr></thead><tbody>${rows.map(row=>{const pair=(kind==='payment'?payPairs:invoicePairs).get(String(row.id));return `<tr><td><strong>${day(kind==='payment'?row.payment_date:(row.invoice_date||row.period))}</strong></td><td><strong>${e(kind==='payment'?(row.related_label||row.payer_payee||row.note||'Giao dịch sao kê'):('HĐ '+(row.invoice_number||'chưa có số')))}</strong></td><td><strong>${e(kind==='payment'?(row.statement_source_file||row.method||'Sao kê ngân hàng'):(row.seller_name||party?.name||'Nhà cung cấp'))}</strong></td><td class="number">${cash(kind==='payment'?row.amount:row.total_amount)}</td><td>${pairBadge(pair)}</td><td>${actions(row,kind)}</td></tr>`;}).join('')}</tbody></table></div>`:empty('Chưa có dữ liệu phù hợp','Thay đổi bộ lọc rồi áp dụng lại.')}</section>`;
+    const tables=visible?`<div class="mm6-reconcile-columns">${table('Giao dịch sao kê',[...data.payments].sort((a,b)=>String(b.payment_date||'').localeCompare(String(a.payment_date||''))),data.paymentTotal,'payment')}${table('Hóa đơn nhà cung cấp',[...data.invoices].sort((a,b)=>String(b.invoice_date||b.period||'').localeCompare(String(a.invoice_date||a.period||''))),data.invoiceTotal,'invoice')}</div>`:empty('Không có dữ liệu đối soát','Trạng thái hiện tại không phù hợp bộ lọc.');
+    return shell('reconcile',`${filtersHtml}<div class="mm6-grid-4">${kpi('invoice','Tổng hóa đơn',cash(data.invoiceTotal),{note:`${data.invoices.length} hóa đơn nhà cung cấp`})}${kpi('sync','Tổng giao dịch',cash(data.paymentTotal),{note:`${data.payments.length} giao dịch sao kê`})}${kpi('warning','Chênh lệch',cash(Math.abs(balance)),{tone:matched?'':'warning',note:balance>0?'Thiếu giao dịch thanh toán':balance<0?'Thiếu hóa đơn đối ứng':'Hai nguồn bằng nhau'})}${kpi('check','Kết quả đối soát',result,{tone:matched?'':'warning',note:matched?'Không còn chênh lệch':'Cần kiểm tra hai nguồn'})}</div>${partyHtml}${tables}`);
+  }
+
   function legacyInteractionLayers(view){
     const originalView=state.accounting?.view;
     try{
@@ -127,6 +151,7 @@
       const selectors=[
         '.mmq-drawer-layer',
         '.mmq-payment-edit-layer',
+        '.mmq-reconcile-drawer-layer',
         '.mmso-drawer-backdrop',
         '.mmso-drawer',
         '#outgoingInventoryPickerOverlay'
@@ -151,6 +176,7 @@
     else if(view==='outgoing')page=outgoing();
     else if(view==='payments')page=payments();
     else if(view==='debts')page=debts();
+    else if(view==='reconcile')page=reconciliation();
     else if(view==='reports')page=reports();
     else page=overview();
     return page+legacyInteractionLayers(view);
