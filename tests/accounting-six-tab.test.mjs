@@ -32,3 +32,11 @@ test('the presentation layer is desktop-only and preserves existing handlers',()
   for(const hook of ['data-accounting-view','inputInvoiceFiles','data-mmso-drop-files','bankStatementPdf','exportAccountingReport'])assert.ok(js.includes(hook),`missing existing handler hook ${hook}`);
   assert.match(css,/@media\(min-width:768px\)/);
 });
+
+test('desktop redesign keeps the existing right-side drawers and product pickers',()=>{
+  assert.match(js,/function legacyInteractionLayers\(view\)/);
+  for(const selector of ['.mmq-drawer-layer','.mmq-payment-edit-layer','.mmso-drawer-backdrop','.mmso-drawer','#outgoingInventoryPickerOverlay']){
+    assert.ok(js.includes(selector),`missing preserved interaction layer ${selector}`);
+  }
+  assert.match(js,/return page\+legacyInteractionLayers\(view\)/);
+});

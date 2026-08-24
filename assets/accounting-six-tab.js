@@ -13,14 +13,21 @@
   };
   const ui=()=>{
     state.ui=state.ui||{};
-    return state.ui.accountingSix=state.ui.accountingSix||{menu:'',pages:{},outFilters:{period:'',year:'',type:'',status:'',review:'',search:''},paymentFilters:{from:'',to:'',type:'all',supplier:'all',search:''}};
+    const current=state.ui.accountingSix=state.ui.accountingSix||{};
+    current.menu=current.menu||'';current.pages=current.pages||{};
+    current.inFilters=current.inFilters||{period:'',year:'',supplier:'',status:'',reviewed:'',search:''};
+    current.outFilters=current.outFilters||{period:'',year:'',type:'',status:'',review:'',search:''};
+    current.paymentFilters=current.paymentFilters||{from:'',to:'',type:'all',supplier:'all',search:''};
+    current.debtFilters=current.debtFilters||{period:'',year:'',search:'',status:''};
+    current.reportFilters=current.reportFilters||{period:'',year:'',search:'',status:''};
+    return current;
   };
   const e=value=>typeof esc==='function'?esc(value??''):String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   const cash=value=>typeof money==='function'?money(Number(value||0)):new Intl.NumberFormat('vi-VN').format(Number(value||0))+' ₫';
   const norm=value=>typeof invoiceNorm==='function'?invoiceNorm(value):String(value||'').toLocaleLowerCase('vi');
   const day=value=>{if(typeof compactDate==='function')return compactDate(value);const parts=String(value||'').slice(0,10).split('-');return parts.length===3?parts.reverse().join('/'):'—';};
   const sum=(rows,key)=>rows.reduce((total,row)=>total+Number(typeof key==='function'?key(row):row?.[key]||0),0);
-  const currentPeriod=()=>String(state.accounting?.filters?.period||state.inputInvoices?.filters?.period||'');
+  const currentPeriod=()=>'';
   const periodMatch=(value,period=currentPeriod())=>!period||String(value||'').slice(0,7)===period;
   const icon=(name,size=18)=>{
     const paths={
@@ -37,10 +44,8 @@
   const shell=(view,body)=>`<section class="mm6-page" data-mm6-view="${view}"><div class="mm6-shell">${pageHeader(view)}${nav(view)}<div class="mm6-stack">${body}</div></div></section>`;
   const kpi=(iconName,label,value,{tone='',note='▲ 8,6% so với kỳ trước'}={})=>`<article class="mm6-kpi ${tone}"><span class="mm6-kpi-icon">${icon(iconName,19)}</span><div><p>${e(label)}</p><strong>${value}</strong>${note?`<small><b>${e(note.split(' ')[0]+' '+note.split(' ')[1])}</b> ${e(note.split(' ').slice(2).join(' '))}</small>`:''}</div></article>`;
   const status=(label,tone='')=>`<span class="mm6-status ${tone}">${e(label)}</span>`;
-  const inputRows=()=>{
-    const all=[...(state.inputInvoices?.invoices||[])];
-    try{return typeof inputInvoiceFiltered==='function'?inputInvoiceFiltered():all;}catch(_){return all;}
-  };
+  const inputRows=()=>[...(state.inputInvoices?.invoices||[])];
+  const filteredInput=()=>{const f=ui().inFilters,q=norm(f.search||'');return inputRows().filter(row=>{const date=String(row.invoice_date||row.period||'');if(f.period&&date.slice(0,7)!==f.period)return false;if(f.year&&!date.includes(f.year))return false;if(f.supplier&&!norm([row.seller_name,row.seller_tax_code].join(' ')).includes(norm(f.supplier)))return false;if(f.status&&row.validation_status!==f.status)return false;if(f.reviewed==='yes'&&!row.reviewed_by_accountant)return false;if(f.reviewed==='no'&&row.reviewed_by_accountant)return false;if(q&&!norm([row.invoice_number,row.seller_name,row.seller_tax_code,row.accounting_description,row.raw_item_description,row.category].join(' ')).includes(q))return false;return true;});};
   const outputRows=()=>[...(state.accounting?.outgoingInvoices||[])];
   const paidOut=row=>{try{return typeof outgoingPaid==='function'?outgoingPaid(row):0;}catch(_){return 0;}};
   const paidIn=row=>{try{return typeof incomingPaid==='function'?incomingPaid(row):0;}catch(_){return 0;}};
@@ -52,7 +57,7 @@
   const dateValue=value=>String(value||'').slice(0,10);
 
   function overview(){
-    const incoming=inputRows().filter(row=>periodMatch(row.invoice_date||row.period)),outgoing=outputRows().filter(row=>periodMatch(row.invoice_date||row.request_date)),payments=(state.accounting?.payments||[]).filter(row=>periodMatch(row.payment_date));
+    const incoming=inputRows(),outgoing=outputRows(),payments=[...(state.accounting?.payments||[])];
     const purchase=sum(incoming,'total_amount'),sales=sum(outgoing,'total_amount'),receivable=sum(outgoing,row=>Math.max(0,Number(row.total_amount||0)-paidOut(row))),payable=sum(incoming,row=>Math.max(0,Number(row.total_amount||0)-paidIn(row))),income=sum(payments.filter(row=>row.payment_type==='Thu'),'amount'),expense=sum(payments.filter(row=>row.payment_type!=='Thu'),'amount'),cashBalance=income-expense,review=incoming.filter(row=>row.validation_status!=='Hợp lệ'||!row.reviewed_by_accountant).length;
     const tasks=[['invoice','Hóa đơn chưa đủ file đính kèm',incoming.filter(row=>!row.source_pdf_url||!(row.source_xml_url||row.source_file_url)).length],['tag','Chi phí chưa phân loại',incoming.filter(row=>!row.category).length],['calendar','Công nợ sắp đến hạn (7 ngày)',[...incoming,...outgoing].filter(row=>row.due_date).length],['clip','Giao dịch chưa gắn chứng từ',(state.accounting?.payments||[]).filter(row=>!row.proof_url).length]];
     const groups=new Map();incoming.forEach(row=>{const key=row.category||'Khác';groups.set(key,(groups.get(key)||0)+Number(row.total_amount||0));});const expenseGroups=[...groups.entries()].sort((a,b)=>b[1]-a[1]).slice(0,5),groupTotal=sum(expenseGroups,row=>row[1])||1;
@@ -74,8 +79,8 @@
   const rowMenu=(key,items)=>`<span class="mm6-menu-host"><button class="mm6-icon-btn" type="button" data-mm6-menu="${e(key)}">${icon('more',15)}</button>${ui().menu===key?`<span class="mm6-menu">${items.join('')}</span>`:''}</span>`;
 
   function incoming(){
-    const rows=inputRows(),totals={net:sum(rows,'net_amount'),vat:sum(rows,'vat_amount'),total:sum(rows,'total_amount'),review:rows.filter(row=>row.validation_status!=='Hợp lệ'||!row.reviewed_by_accountant).length},model=paginate(rows,'incoming');const f=state.inputInvoices?.filters||{};
-    const filters=`<div class="mm6-filterbar" style="--cols:6"><label class="mm6-field"><span>Kỳ / tháng</span><input data-input-invoice-filter="period" type="month" value="${e(f.period||'')}"></label><label class="mm6-field"><span>Năm</span><input data-input-invoice-filter="year" type="number" value="${e(f.year||'')}"></label><label class="mm6-field"><span>Nhà cung cấp</span><input data-input-invoice-filter="supplier" value="${e(f.supplier||'')}" placeholder="Tất cả"></label><label class="mm6-field"><span>Trạng thái</span><select data-input-invoice-filter="status"><option value="">Tất cả</option>${['Hợp lệ','Cần kiểm tra','Thiếu dữ liệu'].map(v=>`<option ${f.status===v?'selected':''}>${v}</option>`).join('')}</select></label><label class="mm6-field"><span>Kiểm tra</span><select data-input-invoice-filter="reviewed"><option value="">Tất cả</option><option value="yes" ${f.reviewed==='yes'?'selected':''}>Đã kiểm tra</option><option value="no" ${f.reviewed==='no'?'selected':''}>Chưa kiểm tra</option></select></label><label class="mm6-field mm6-search"><span>Search</span>${icon('search',15)}<input data-input-invoice-filter="search" value="${e(f.search||'')}" placeholder="Tìm hóa đơn..."></label></div>`;
+    const rows=filteredInput(),totals={net:sum(rows,'net_amount'),vat:sum(rows,'vat_amount'),total:sum(rows,'total_amount'),review:rows.filter(row=>row.validation_status!=='Hợp lệ'||!row.reviewed_by_accountant).length},model=paginate(rows,'incoming');const f=ui().inFilters;
+    const filters=`<div class="mm6-filterbar" style="--cols:6"><label class="mm6-field"><span>Kỳ / tháng</span><input data-mm6-in-filter="period" type="month" value="${e(f.period||'')}"></label><label class="mm6-field"><span>Năm</span><input data-mm6-in-filter="year" type="number" value="${e(f.year||'')}" placeholder="Tất cả"></label><label class="mm6-field"><span>Nhà cung cấp</span><input data-mm6-in-filter="supplier" value="${e(f.supplier||'')}" placeholder="Tất cả"></label><label class="mm6-field"><span>Trạng thái</span><select data-mm6-in-filter="status"><option value="">Tất cả</option>${['Hợp lệ','Cần kiểm tra','Thiếu dữ liệu'].map(v=>`<option ${f.status===v?'selected':''}>${v}</option>`).join('')}</select></label><label class="mm6-field"><span>Kiểm tra</span><select data-mm6-in-filter="reviewed"><option value="">Tất cả</option><option value="yes" ${f.reviewed==='yes'?'selected':''}>Đã kiểm tra</option><option value="no" ${f.reviewed==='no'?'selected':''}>Chưa kiểm tra</option></select></label><label class="mm6-field mm6-search"><span>Search</span>${icon('search',15)}<input data-mm6-in-filter="search" value="${e(f.search||'')}" placeholder="Tìm hóa đơn..."></label></div>`;
     const table=model.rows.length?`<div class="mm6-table-wrap"><table class="mm6-table" style="--table-width:1320px"><thead><tr><th>Ngày</th><th>Nhà cung cấp</th><th>Nội dung</th><th>Sản phẩm đã khớp</th><th>Trước VAT</th><th>VAT</th><th>Tổng</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>${model.rows.map(row=>{const valid=row.validation_status==='Hợp lệ';return `<tr><td><strong>${day(row.invoice_date)}</strong></td><td><strong>${e(row.seller_name||'Chưa có nhà cung cấp')}</strong><small>MST ${e(row.seller_tax_code||'—')}</small></td><td>${e(row.accounting_description||row.raw_item_description||row.category||'—')}</td><td>${productChip(row)}</td><td class="number">${cash(row.net_amount)}</td><td class="number">${cash(row.vat_amount)}</td><td class="number">${cash(row.total_amount)}</td><td>${status(valid?'Đã khớp':(row.validation_status||'Cần kiểm tra'),valid?'':'warning')}</td><td><div class="mm6-row-actions"><button class="mm6-text-btn" data-open-url="${e(row.source_xml_url||row.source_file_url||'')}" ${row.source_xml_url||row.source_file_url?'':'disabled'}>XML</button><button class="mm6-text-btn" data-mm-accounting-edit="${e(row.id)}">Sửa</button>${rowMenu('in:'+row.id,[`<button data-mm-accounting-edit="${e(row.id)}">Xem chi tiết</button>`,row.source_pdf_url?`<button data-open-url="${e(row.source_pdf_url)}">Mở PDF</button>`:'',`<button data-input-invoice-reparse="${e(row.id)}">Khớp lại</button>`])}</div></td></tr>`;}).join('')}</tbody></table></div>`:empty('Chưa có hóa đơn mua vào','Upload XML/PDF để bắt đầu quản lý hóa đơn đầu vào.');
     return shell('incoming',`<div class="mm6-grid-4">${kpi('invoice','Tổng trước VAT',cash(totals.net))}${kpi('percent','VAT đầu vào',cash(totals.vat),{note:'▲ 7,2% so với kỳ trước'})}${kpi('wallet','Tổng thanh toán',cash(totals.total),{note:'▲ 8,3% so với kỳ trước'})}${kpi('warning','Cần kiểm tra',String(totals.review),{tone:'warning',note:'3 chi phí chưa phân loại'})}</div><section class="mm6-upload"><div class="mm6-upload-main"><span class="mm6-kpi-icon">${icon('upload',22)}</span><div><h2>Kéo XML/PDF vào đây</h2><p>Ghép XML và PDF cùng tên để lưu và đối chiếu tự động.</p><small>${e(state.inputInvoices?.syncStatus||'Đã đồng bộ dữ liệu lên Google Drive.')}</small></div><label class="mm6-btn primary">Upload hóa đơn<input id="inputInvoiceFiles" type="file" multiple accept=".xml,.pdf,application/pdf,text/xml,application/xml" hidden></label></div><div class="mm6-upload-checks"><span><i>✓</i>XML đọc thành công</span><span><i>✓</i>PDF lưu thành công</span><span><i>✓</i>Sẵn sàng khớp sản phẩm</span></div></section>${filters}<section class="mm6-table-card"><header class="mm6-table-title"><div><h2>Danh sách hóa đơn mua vào</h2><p>Dữ liệu hóa đơn đầu vào theo bộ lọc hiện tại</p></div><span class="mm6-count">${rows.length} hóa đơn</span></header>${table}${pagination(model,'incoming')}</section>`);
   }
@@ -98,18 +103,42 @@
   }
 
   function debts(){
-    const f=state.accounting?.filters||{},query=norm(f.search||''),outs=outputRows().map(row=>({id:row.id,kind:'Phải thu',name:row.customer_name,tax:row.customer_tax_code,code:row.invoice_number||row.order_code,total:Number(row.total_amount||0),paid:paidOut(row),due:row.due_date,refs:(state.accounting?.payments||[]).filter(pay=>String(pay.related_id)===String(row.id))})),ins=inputRows().map(row=>({id:row.id,kind:'Phải trả',name:row.seller_name,tax:row.seller_tax_code,code:row.invoice_number,total:Number(row.total_amount||0),paid:paidIn(row),due:row.due_date||row.invoice_date,refs:(state.accounting?.payments||[]).filter(pay=>String(pay.related_id)===String(row.id))}));
-    const rows=[...outs,...ins].filter(row=>(!query||norm([row.name,row.tax,row.code].join(' ')).includes(query))&&(!f.status||debtLabel(row.total,row.paid,row.due)===f.status)),model=paginate(rows,'debts',8);
-    const filters=`<div class="mm6-filterbar" style="--cols:4"><label class="mm6-field"><span>Tháng</span><input data-accounting-filter="period" type="month" value="${e(f.period||'')}"></label><label class="mm6-field"><span>Năm</span><input data-accounting-filter="year" type="number" value="${e(f.year||'')}"></label><label class="mm6-field mm6-search"><span>Tìm kiếm</span>${icon('search',15)}<input data-accounting-filter="search" value="${e(f.search||'')}" placeholder="Tìm đối tượng, mã/HĐ..."></label><label class="mm6-field"><span>Trạng thái</span><select data-accounting-filter="status"><option value="">Tất cả</option>${['Đã thanh toán','Thanh toán một phần','Chưa thanh toán','Quá hạn'].map(v=>`<option ${f.status===v?'selected':''}>${v}</option>`).join('')}</select></label></div>`;
+    const f=ui().debtFilters,query=norm(f.search||''),outs=outputRows().map(row=>({id:row.id,kind:'Phải thu',name:row.customer_name,tax:row.customer_tax_code,code:row.invoice_number||row.order_code,total:Number(row.total_amount||0),paid:paidOut(row),due:row.due_date,date:row.invoice_date||row.request_date,refs:(state.accounting?.payments||[]).filter(pay=>String(pay.related_id)===String(row.id))})),ins=inputRows().map(row=>({id:row.id,kind:'Phải trả',name:row.seller_name,tax:row.seller_tax_code,code:row.invoice_number,total:Number(row.total_amount||0),paid:paidIn(row),due:row.due_date||row.invoice_date,date:row.invoice_date||row.period,refs:(state.accounting?.payments||[]).filter(pay=>String(pay.related_id)===String(row.id))}));
+    const rows=[...outs,...ins].filter(row=>{const date=String(row.date||'');return(!query||norm([row.name,row.tax,row.code].join(' ')).includes(query))&&(!f.period||date.slice(0,7)===f.period)&&(!f.year||date.includes(f.year))&&(!f.status||debtLabel(row.total,row.paid,row.due)===f.status);}),model=paginate(rows,'debts',8);
+    const filters=`<div class="mm6-filterbar" style="--cols:4"><label class="mm6-field"><span>Tháng</span><input data-mm6-debt-filter="period" type="month" value="${e(f.period||'')}"></label><label class="mm6-field"><span>Năm</span><input data-mm6-debt-filter="year" type="number" value="${e(f.year||'')}" placeholder="Tất cả"></label><label class="mm6-field mm6-search"><span>Tìm kiếm</span>${icon('search',15)}<input data-mm6-debt-filter="search" value="${e(f.search||'')}" placeholder="Tìm đối tượng, mã/HĐ..."></label><label class="mm6-field"><span>Trạng thái</span><select data-mm6-debt-filter="status"><option value="">Tất cả</option>${['Đã thanh toán','Thanh toán một phần','Chưa thanh toán','Quá hạn'].map(v=>`<option ${f.status===v?'selected':''}>${v}</option>`).join('')}</select></label></div>`;
     const table=model.rows.length?`<div class="mm6-table-wrap"><table class="mm6-table" style="--table-width:1200px"><thead><tr><th>Loại</th><th>Đối tượng</th><th>Mã/HĐ</th><th>Tổng</th><th>Đã TT</th><th>Còn lại</th><th>Trạng thái</th><th>Đối chiếu thanh toán</th></tr></thead><tbody>${model.rows.map(row=>{const remain=Math.max(0,row.total-row.paid),label=debtLabel(row.total,row.paid,row.due);return `<tr><td><span class="mm6-type ${row.kind==='Phải trả'?'payable':''}"><i>${icon(row.kind==='Phải thu'?'arrowUp':'arrowDown',16)}</i>${row.kind}</span></td><td><strong>${e(row.name||'Chưa xác định')}</strong><small>MST ${e(row.tax||'—')}</small></td><td><strong>${e(row.code||'—')}</strong></td><td class="number">${cash(row.total)}</td><td class="number positive">${cash(row.paid)}</td><td class="number ${remain?'expense':''}">${cash(remain)}</td><td>${status(label,toneFor(label))}</td><td><div class="mm6-row-actions">${row.refs.slice(0,2).map(ref=>`<button class="mm6-text-btn" data-open-url="${e(ref.proof_url||'')}">${e(ref.code||ref.id?.slice?.(-8)||'Chứng từ')}</button>`).join('')}<select class="mm6-control"><option>Chọn chứng từ</option></select></div></td></tr>`;}).join('')}</tbody></table></div>`:empty('Chưa có công nợ','Công nợ phải thu và phải trả sẽ được tổng hợp tại đây.');
     return shell('debts',`${filters}<section class="mm6-table-card">${table}${pagination(model,'debts')}</section>`);
   }
 
   function reports(){
-    const incoming=inputRows().filter(row=>periodMatch(row.invoice_date||row.period)),outgoing=outputRows().filter(row=>periodMatch(row.invoice_date||row.request_date)),inVat=sum(incoming,'vat_amount'),outVat=sum(outgoing,'vat_amount'),temporary=Math.max(0,outVat-inVat),reconcile=(state.accounting?.payments||[]).filter(row=>!row.proof_url).length,review=incoming.filter(row=>row.validation_status!=='Hợp lệ').length;
-    const f=state.accounting?.filters||{},filters=`<div class="mm6-filterbar" style="--cols:4"><label class="mm6-field"><span>Tháng</span><input data-accounting-filter="period" type="month" value="${e(f.period||'')}"></label><label class="mm6-field"><span>Năm</span><input data-accounting-filter="year" type="number" value="${e(f.year||'')}"></label><label class="mm6-field mm6-search"><span>Tìm kiếm</span>${icon('search',15)}<input data-accounting-filter="search" value="${e(f.search||'')}" placeholder="Tìm kiếm báo cáo..."></label><label class="mm6-field"><span>Trạng thái</span><select data-accounting-filter="status"><option value="">Tất cả</option><option>Cần xử lý</option><option>Hoàn tất</option></select></label></div>`;
+    const f=ui().reportFilters,match=row=>{const date=String(row.invoice_date||row.request_date||row.period||'');return(!f.period||date.slice(0,7)===f.period)&&(!f.year||date.includes(f.year));},incoming=inputRows().filter(match),outgoing=outputRows().filter(match),inVat=sum(incoming,'vat_amount'),outVat=sum(outgoing,'vat_amount'),temporary=Math.max(0,outVat-inVat),reconcile=(state.accounting?.payments||[]).filter(row=>!row.proof_url).length,review=incoming.filter(row=>row.validation_status!=='Hợp lệ').length;
+    const filters=`<div class="mm6-filterbar" style="--cols:4"><label class="mm6-field"><span>Tháng</span><input data-mm6-report-filter="period" type="month" value="${e(f.period||'')}"></label><label class="mm6-field"><span>Năm</span><input data-mm6-report-filter="year" type="number" value="${e(f.year||'')}" placeholder="Tất cả"></label><label class="mm6-field mm6-search"><span>Tìm kiếm</span>${icon('search',15)}<input data-mm6-report-filter="search" value="${e(f.search||'')}" placeholder="Tìm kiếm báo cáo..."></label><label class="mm6-field"><span>Trạng thái</span><select data-mm6-report-filter="status"><option value="">Tất cả</option><option>Cần xử lý</option><option>Hoàn tất</option></select></label></div>`;
     const exports=[['excel','Xuất Excel quản trị','Báo cáo tổng hợp cho quản trị','exportAccountingReport'],['excel','Xuất Excel MISA mini','Định dạng dữ liệu MISA mini','exportMisaJournal'],['database','SQL tạo bảng','Tạo bảng dữ liệu phục vụ báo cáo','accountingSql'],['file','Tạo dữ liệu mẫu','Sinh dữ liệu mẫu để kiểm tra','sampleAccounting']];
     return shell('reports',`${filters}<div class="mm6-grid-4">${kpi('upload','VAT đầu ra',cash(outVat),{note:'▲ 12,4% so với kỳ trước'})}${kpi('download','VAT đầu vào',cash(inVat),{note:'▲ 9,3% so với kỳ trước'})}${kpi('bank','VAT tạm nộp',cash(temporary),{note:'▲ 8,7% so với kỳ trước'})}${kpi('warning','Đối soát cần xử lý',String(reconcile+review),{tone:'warning',note:`${reconcile} đối soát, ${review} chứng từ`})}</div><div class="mm6-report-grid"><section class="mm6-card"><header class="mm6-card-head"><div><h2>Xuất báo cáo quản trị</h2><p>Xuất nhanh các báo cáo và dữ liệu tổng hợp phục vụ quản trị.</p></div></header><div class="mm6-export-grid">${exports.map(([ic,label,copy,id])=>`<button id="${id}" class="mm6-export">${icon(ic,28)}<b>${label}</b><small>${copy}</small></button>`).join('')}</div></section><section class="mm6-card"><header class="mm6-card-head"><div><h2>Kiểm tra nhanh</h2><p>Tổng quan nhanh tình trạng dữ liệu và đối soát trong kỳ.</p></div></header><div class="mm6-checks">${[['sync','Đối soát','Đối soát ngân hàng & công nợ',reconcile+' cần xử lý',reconcile?'warning':''],['file','Chứng từ','Chứng từ chờ xử lý',review+' chứng từ',review?'warning':''],['percent','VAT','Tờ khai & chênh lệch VAT',cash(temporary),'']].map(([ic,label,copy,value,tone])=>`<div class="mm6-check"><span class="mm6-round-icon">${icon(ic,17)}</span><span><b>${label}</b><small>${copy}</small></span><strong>${value}</strong>${status(tone?'Cảnh báo':'Hợp lệ',tone)}<span>›</span></div>`).join('')}</div></section></div><p class="mm6-secure">${icon('lock',13)}Dữ liệu kế toán được bảo mật và chỉ hiển thị theo quyền truy cập.</p>`);
+  }
+
+  function legacyInteractionLayers(view){
+    const originalView=state.accounting?.view;
+    try{
+      state.accounting=state.accounting||{};
+      state.accounting.view=view;
+      const template=document.createElement('template');
+      template.innerHTML=String(previousRender.apply(this,[])||'').trim();
+      const selectors=[
+        '.mmq-drawer-layer',
+        '.mmq-payment-edit-layer',
+        '.mmso-drawer-backdrop',
+        '.mmso-drawer',
+        '#outgoingInventoryPickerOverlay'
+      ];
+      const layers=[...template.content.querySelectorAll(selectors.join(','))];
+      return layers.filter(node=>!layers.some(parent=>parent!==node&&parent.contains(node))).map(node=>node.outerHTML).join('');
+    }catch(error){
+      console.warn('Không thể khôi phục cửa sổ chi tiết kế toán.',error);
+      return '';
+    }finally{
+      state.accounting.view=originalView;
+    }
   }
 
   renderAccountingTab=function renderAccountingSixTabs(){
@@ -117,12 +146,14 @@
     let view=state.accounting?.view||'overview';
     if(view==='rules')view='incoming';
     if(!tabs.some(([id])=>id===view))view='overview';
-    if(view==='incoming')return incoming();
-    if(view==='outgoing')return outgoing();
-    if(view==='payments')return payments();
-    if(view==='debts')return debts();
-    if(view==='reports')return reports();
-    return overview();
+    let page='';
+    if(view==='incoming')page=incoming();
+    else if(view==='outgoing')page=outgoing();
+    else if(view==='payments')page=payments();
+    else if(view==='debts')page=debts();
+    else if(view==='reports')page=reports();
+    else page=overview();
+    return page+legacyInteractionLayers(view);
   };
 
   document.addEventListener('click',event=>{
@@ -133,12 +164,15 @@
     const reset=event.target.closest?.('[data-mm6-reset="outgoing"]');if(reset){ui().outFilters={period:'',year:'',type:'',status:'',review:'',search:''};ui().pages.outgoing=1;render({force:true});return;}
   });
   document.addEventListener('change',event=>{
+    const incomingFilter=event.target.closest?.('[data-mm6-in-filter]');if(incomingFilter){ui().inFilters[incomingFilter.dataset.mm6InFilter]=incomingFilter.value;ui().pages.incoming=1;render({force:true});return;}
     const out=event.target.closest?.('[data-mm6-out-filter]');if(out){ui().outFilters[out.dataset.mm6OutFilter]=out.value;ui().pages.outgoing=1;render({force:true});return;}
     const pay=event.target.closest?.('[data-mm6-payment-filter]');if(pay){ui().paymentFilters[pay.dataset.mm6PaymentFilter]=pay.value;ui().pages.payments=1;render({force:true});return;}
+    const debtFilter=event.target.closest?.('[data-mm6-debt-filter]');if(debtFilter){ui().debtFilters[debtFilter.dataset.mm6DebtFilter]=debtFilter.value;ui().pages.debts=1;render({force:true});return;}
+    const reportFilter=event.target.closest?.('[data-mm6-report-filter]');if(reportFilter){ui().reportFilters[reportFilter.dataset.mm6ReportFilter]=reportFilter.value;render({force:true});return;}
   });
   document.addEventListener('input',event=>{
-    const out=event.target.closest?.('[data-mm6-out-filter="search"]'),pay=event.target.closest?.('[data-mm6-payment-filter="search"]');if(!out&&!pay)return;
-    const target=out||pay,store=out?ui().outFilters:ui().paymentFilters,key=out?'search':'search';store[key]=target.value;clearTimeout(ui().searchTimer);ui().searchTimer=setTimeout(()=>render({force:true}),170);
+    const incomingSearch=event.target.closest?.('[data-mm6-in-filter="search"]'),out=event.target.closest?.('[data-mm6-out-filter="search"]'),pay=event.target.closest?.('[data-mm6-payment-filter="search"]'),debtSearch=event.target.closest?.('[data-mm6-debt-filter="search"]'),reportSearch=event.target.closest?.('[data-mm6-report-filter="search"]');if(!incomingSearch&&!out&&!pay&&!debtSearch&&!reportSearch)return;
+    const target=incomingSearch||out||pay||debtSearch||reportSearch,store=incomingSearch?ui().inFilters:out?ui().outFilters:pay?ui().paymentFilters:debtSearch?ui().debtFilters:ui().reportFilters;store.search=target.value;clearTimeout(ui().searchTimer);ui().searchTimer=setTimeout(()=>render({force:true}),170);
   });
   setTimeout(()=>{if(state.activeTab==='accounting'&&typeof render==='function')render({force:true});},0);
 })();
